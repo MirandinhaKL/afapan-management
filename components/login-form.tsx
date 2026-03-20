@@ -15,22 +15,33 @@ export function LoginForm() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setErrorMessage(null)
+
     if (!email || !password) {
+      setErrorMessage("Preencha todos os campos")
       toast.error("Preencha todos os campos")
       return
     }
 
     setIsLoading(true)
-    const success = await login(email, password)
-    setIsLoading(false)
-
-    if (!success) {
-      toast.error("Credenciais invalidas", {
-        description: "Verifique seu e-mail e senha.",
-      })
+    let success = false
+    try {
+      success = await login(email, password)
+      if (!success) {
+        const message = "Credenciais inválidas. Verifique seu e-mail e senha."
+        setErrorMessage(message)
+        toast.error(message)
+      }
+    } catch (error) {
+      const message = "Erro ao tentar fazer login. Tente novamente mais tarde."
+      setErrorMessage(message)
+      toast.error(message)
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -49,29 +60,29 @@ export function LoginForm() {
 
         <div className="space-y-6">
           <h1 className="text-balance text-4xl font-bold leading-tight text-primary-foreground">
-            Juntos pela preservacao do meio ambiente
+            Juntos pela preservação do meio ambiente
           </h1>
           <p className="text-pretty text-lg leading-relaxed text-primary-foreground/80">
-            Plataforma de gestao administrativa para acompanhar o impacto do programa de compostagem e coordenar nossas acoes ambientais.
+            Plataforma de gestão administrativa para acompanhar o impacto do programa de compostagem e coordenar nossas ações ambientais.
           </p>
           <div className="flex gap-8 pt-4">
             <div>
               <p className="text-3xl font-bold text-primary-foreground">+35</p>
-              <p className="text-sm text-primary-foreground/70">Voluntarios</p>
+              <p className="text-sm text-primary-foreground/70">Voluntários</p>
             </div>
             <div>
               <p className="text-3xl font-bold text-primary-foreground">+2</p>
               <p className="text-sm text-primary-foreground/70">Ton. recicladas</p>
             </div>
             <div>
-              <p className="text-3xl font-bold text-primary-foreground">+41</p>
-              <p className="text-sm text-primary-foreground/70">Anos de associacao</p>
+              <p className="text-3xl font-bold text-primary-foreground">+15</p>
+              <p className="text-sm text-primary-foreground/70">Anos de associação</p>
             </div>
           </div>
         </div>
 
         <p className="text-sm text-primary-foreground/50">
-          Associacao Farroupilhense de Protecao ao Ambiente Natural
+          Associação Farroupilhense de Proteção ao Ambiente Natural
         </p>
       </div>
 
@@ -79,14 +90,14 @@ export function LoginForm() {
       <div className="flex w-full flex-col items-center justify-center bg-background px-6 lg:w-1/2">
         <div className="w-full max-w-md space-y-8">
           <div className="lg:hidden">
-            <AfapanLogo size="lg" />
+                Entre com suas credenciais para acessar o sistema de gestão.
           </div>
 
           <Card className="border-border/50 shadow-sm">
             <CardHeader className="space-y-1 pb-4">
               <h2 className="text-2xl font-semibold tracking-tight text-foreground">Acessar painel</h2>
               <CardDescription>
-                Entre com suas credenciais para acessar o sistema de gestao.
+                Entre com suas credenciais para acessar o sistema de gestão.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -133,9 +144,11 @@ export function LoginForm() {
                     "Entrar"
                   )}
                 </Button>
+                {errorMessage ? (
+                  <p className="mt-2 text-sm text-destructive">{errorMessage}</p>
+                ) : null}
               </form>
-
-              <div className="mt-6 rounded-lg border border-border bg-muted/50 p-3">
+              {/* <div className="mt-6 rounded-lg border border-border bg-muted/50 p-3">
                 <p className="text-xs text-muted-foreground">
                   <strong className="text-foreground">Acesso de demonstracao:</strong>
                   <br />
@@ -143,7 +156,7 @@ export function LoginForm() {
                   <br />
                   Senha: qualquer valor
                 </p>
-              </div>
+              </div> */}
             </CardContent>
           </Card>
         </div>

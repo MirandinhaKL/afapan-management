@@ -11,8 +11,19 @@ import { CompostagemPage } from "@/components/compostagem-page"
 type Page = "dashboard" | "usuarios" | "compostagem"
 
 function AppContent() {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, loading } = useAuth()
   const [currentPage, setCurrentPage] = useState<Page>("dashboard")
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="mb-4 h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto"></div>
+          <p className="text-muted-foreground">Carregando...</p>
+        </div>
+      </div>
+    )
+  }
 
   if (!isAuthenticated) {
     return <LoginForm />

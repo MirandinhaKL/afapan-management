@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -39,14 +39,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { mockUsers, roleLabels, type User, type UserRole } from "@/lib/mock-data"
+import { roleLabels, type User, type UserRole } from "@/lib/mock-data"
 import { ExportButton } from "@/components/export-button"
 import { exportPDF, exportCSV } from "@/lib/export-utils"
+import { fetchUsers, createUser, updateUser, deleteUser } from "@/lib/supabase-queries"
 import { Plus, Pencil, Trash2, Search, UserCircle } from "lucide-react"
 import { toast } from "sonner"
 
 export function UsersPage() {
-  const [users, setUsers] = useState<User[]>(mockUsers)
+  const [users, setUsers] = useState<User[]>([])
+  const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -57,6 +59,22 @@ export function UsersPage() {
   const [formNome, setFormNome] = useState("")
   const [formEmail, setFormEmail] = useState("")
   const [formRole, setFormRole] = useState<UserRole>("voluntario")
+
+  useEffect(() => {
+    loadUsers()
+  }, [])
+
+  const loadUsers = async () => {
+    try {
+      const data = await fetchUsers()
+      setUsers(data)
+    } catch (error) {
+      toast.error("Erro ao carregar usuários")
+      console.error(error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const filteredUsers = users.filter(
     (user) =>
@@ -85,43 +103,41 @@ export function UsersPage() {
     setIsDeleteDialogOpen(true)
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formNome.trim() || !formEmail.trim()) {
-      toast.error("Preencha todos os campos obrigatorios")
+      toast.error("Preencha todos os campos obrigatórios")
       return
     }
 
-    if (editingUser) {
-      setUsers((prev) =>
-        prev.map((u) =>
-          u.id === editingUser.id
-            ? { ...u, nome: formNome, email: formEmail, role: formRole }
-            : u
-        )
-      )
-      toast.success("Usuario atualizado com sucesso")
-    } else {
-      const newUser: User = {
-        id: String(Date.now()),
-        nome: formNome,
-        email: formEmail,
-        role: formRole,
-        ativo: true,
-        criadoEm: new Date().toISOString().split("T")[0],
+    try {
+      if (editingUser) {
+        await updateUser(editingUser.id, { nome: formNome, email: formEmail, role: formRole })
+        toast.success("Usuário atualizado com sucesso")
+      } else {
+        await createUser({ nome: formNome, email: formEmail, role: formRole, ativo: true })
+        toast.success("Usuário criado com sucesso")
       }
-      setUsers((prev) => [...prev, newUser])
-      toast.success("Usuario criado com sucesso")
+      await loadUsers()
+      setIsDialogOpen(false)
+    } catch (error) {
+      toast.error("Erro ao salvar usuário")
+      console.error(error)
     }
-    setIsDialogOpen(false)
   }
 
-  const handleDelete = () => {
-    if (deletingUser) {
-      setUsers((prev) => prev.filter((u) => u.id !== deletingUser.id))
-      toast.success("Usuario removido com sucesso")
+  const handleDelete = async () => {
+    if (!deletingUser) return
+
+    try {
+      await deleteUser(deletingUser.id)
+      toast.success("Usuário removido com sucesso")
+      await loadUsers()
+      setIsDeleteDialogOpen(false)
+      setDeletingUser(null)
+    } catch (error) {
+      toast.error("Erro ao excluir usuário")
+      console.error(error)
     }
-    setIsDeleteDialogOpen(false)
-    setDeletingUser(null)
   }
 
   const handleExportPDF = () => {
@@ -210,81 +226,87 @@ export function UsersPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Usuario</TableHead>
-                  <TableHead>E-mail</TableHead>
-                  <TableHead>Perfil</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Acoes</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredUsers.length === 0 ? (
+          {loading ? (
+            <div className="py-8 text-center text-muted-foreground">
+              Carregando usuários...
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
-                      Nenhum usuario encontrado.
-                    </TableCell>
+                    <TableHead>Usuário</TableHead>
+                    <TableHead>E-mail</TableHead>
+                    <TableHead>Perfil</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
-                ) : (
-                  filteredUsers.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10">
-                            <UserCircle size={18} className="text-primary" />
-                          </div>
-                          <span className="font-medium text-foreground">{user.nome}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">{user.email}</TableCell>
-                      <TableCell>
-                        <Badge variant={roleBadgeVariant(user.role)}>
-                          {roleLabels[user.role]}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={
-                            user.ativo
-                              ? "border-success/30 bg-success/10 text-success"
-                              : "border-destructive/30 bg-destructive/10 text-destructive"
-                          }
-                        >
-                          {user.ativo ? "Ativo" : "Inativo"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openEditDialog(user)}
-                            className="h-8 w-8"
-                          >
-                            <Pencil size={14} />
-                            <span className="sr-only">Editar {user.nome}</span>
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openDeleteDialog(user)}
-                            className="h-8 w-8 text-destructive hover:text-destructive"
-                          >
-                            <Trash2 size={14} />
-                            <span className="sr-only">Excluir {user.nome}</span>
-                          </Button>
-                        </div>
+                </TableHeader>
+                <TableBody>
+                  {filteredUsers.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                        Nenhum usuário encontrado.
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                  ) : (
+                    filteredUsers.map((user) => (
+                      <TableRow key={user.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10">
+                              <UserCircle size={18} className="text-primary" />
+                            </div>
+                            <span className="font-medium text-foreground">{user.nome}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{user.email}</TableCell>
+                        <TableCell>
+                          <Badge variant={roleBadgeVariant(user.role)}>
+                            {roleLabels[user.role]}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={
+                              user.ativo
+                                ? "border-success/30 bg-success/10 text-success"
+                                : "border-destructive/30 bg-destructive/10 text-destructive"
+                            }
+                          >
+                            {user.ativo ? "Ativo" : "Inativo"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => openEditDialog(user)}
+                              className="h-8 w-8"
+                            >
+                              <Pencil size={14} />
+                              <span className="sr-only">Editar {user.nome}</span>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => openDeleteDialog(user)}
+                              className="h-8 w-8 text-destructive hover:text-destructive"
+                            >
+                              <Trash2 size={14} />
+                              <span className="sr-only">Excluir {user.nome}</span>
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
 

@@ -23,24 +23,73 @@ export interface Balde {
 
 // Queries para usuários (profiles)
 export async function fetchUsers(): Promise<User[]> {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .order('nome')
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .order('nome')
 
-  if (error) throw error
-  return data || []
+    if (error) {
+      console.error('Erro ao buscar usuários:', error)
+      throw error
+    }
+
+    console.log('Usuários retornados:', data?.length, data)
+    return data || []
+  } catch (error) {
+    console.error('Erro em fetchUsers:', error)
+    throw error
+  }
 }
 
-export async function createUser(user: Omit<User, 'id' | 'criadoEm'>): Promise<User> {
-  const { data, error } = await supabase
-    .from('profiles')
-    .insert([user])
-    .select()
-    .single()
+export async function createUser(
+  user: Omit<User, 'id' | 'criadoEm'>,
+  password: string
+): Promise<User> {
+  try {
+    // 1. Criar usuário em auth.users com email e senha
+    // Usar emailRedirectTo vazio e skipAutoConfirm (evita envio de e-mail em desenvolvimento)
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: user.email,
+      password: password,
+      options: {
+        emailRedirectTo: undefined,
+        data: {
+          nome: user.nome,
+          role: user.role,
+        },
+      },
+    })
 
-  if (error) throw error
-  return data
+    if (authError) {
+      throw new Error(`Erro ao criar usuário no Auth: ${authError.message}`)
+    }
+
+    if (!authData.user) {
+      throw new Error('Usuário não foi criado no Auth')
+    }
+
+    // 2. O trigger SQL vai criar automaticamente o perfil em profiles
+    // 3. Atualizar o perfil com os dados completos
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .update({
+        nome: user.nome,
+        role: user.role,
+        ativo: user.ativo,
+      })
+      .eq('id', authData.user.id)
+      .select()
+      .single()
+
+    if (profileError) {
+      console.warn('Aviso ao atualizar perfil:', profileError.message)
+    }
+
+    return profileData || { id: authData.user.id, ...user }
+  } catch (error) {
+    throw error
+  }
 }
 
 export async function updateUser(id: string, updates: Partial<User>): Promise<User> {

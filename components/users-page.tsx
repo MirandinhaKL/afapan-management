@@ -54,11 +54,15 @@ export function UsersPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [deletingUser, setDeletingUser] = useState<User | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // Form state
   const [formNome, setFormNome] = useState("")
   const [formEmail, setFormEmail] = useState("")
+  const [formPassword, setFormPassword] = useState("")
   const [formRole, setFormRole] = useState<UserRole>("voluntario")
+  const [formAtivo, setFormAtivo] = useState(true)
 
   useEffect(() => {
     loadUsers()
@@ -66,6 +70,7 @@ export function UsersPage() {
 
   const loadUsers = async () => {
     try {
+      setLoading(true)
       const data = await fetchUsers()
       setUsers(data)
     } catch (error) {
@@ -74,6 +79,14 @@ export function UsersPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const resetFormFields = () => {
+    setFormNome("")
+    setFormEmail("")
+    setFormPassword("")
+    setFormRole("voluntario")
+    setFormAtivo(true)
   }
 
   const filteredUsers = users.filter(
@@ -86,7 +99,9 @@ export function UsersPage() {
     setEditingUser(null)
     setFormNome("")
     setFormEmail("")
+    setFormPassword("")
     setFormRole("voluntario")
+    setFormAtivo(true)
     setIsDialogOpen(true)
   }
 
@@ -95,6 +110,7 @@ export function UsersPage() {
     setFormNome(user.nome)
     setFormEmail(user.email)
     setFormRole(user.role)
+    setFormAtivo(user.ativo)
     setIsDialogOpen(true)
   }
 
@@ -104,39 +120,72 @@ export function UsersPage() {
   }
 
   const handleSave = async () => {
-    if (!formNome.trim() || !formEmail.trim()) {
-      toast.error("Preencha todos os campos obrigatórios")
+    if (!formNome.trim()) {
+      toast.error("Nome é obrigatório")
       return
     }
 
+    if (!formEmail.trim()) {
+      toast.error("E-mail é obrigatório")
+      return
+    }
+
+    if (!editingUser && !formPassword.trim()) {
+      toast.error("Senha é obrigatória para novo usuário")
+      return
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(formEmail.trim())) {
+      toast.error("E-mail inválido")
+      return
+    }
+
+    setIsSaving(true)
     try {
       if (editingUser) {
-        await updateUser(editingUser.id, { nome: formNome, email: formEmail, role: formRole })
+        await updateUser(editingUser.id, { 
+          nome: formNome, 
+          email: formEmail, 
+          role: formRole,
+          ativo: formAtivo 
+        })
         toast.success("Usuário atualizado com sucesso")
       } else {
-        await createUser({ nome: formNome, email: formEmail, role: formRole, ativo: true })
+        await createUser(
+          { nome: formNome, email: formEmail, role: formRole, ativo: true },
+          formPassword
+        )
         toast.success("Usuário criado com sucesso")
       }
-      await loadUsers()
       setIsDialogOpen(false)
-    } catch (error) {
-      toast.error("Erro ao salvar usuário")
+      resetFormFields()
+      await loadUsers()
+    } catch (error: any) {
+      const errorMessage = error?.message || "Erro ao salvar usuário"
+      toast.error(errorMessage)
       console.error(error)
+    } finally {
+      setIsSaving(false)
     }
   }
 
   const handleDelete = async () => {
     if (!deletingUser) return
 
+    setIsDeleting(true)
     try {
       await deleteUser(deletingUser.id)
       toast.success("Usuário removido com sucesso")
-      await loadUsers()
       setIsDeleteDialogOpen(false)
       setDeletingUser(null)
-    } catch (error) {
-      toast.error("Erro ao excluir usuário")
+      await loadUsers()
+    } catch (error: any) {
+      const errorMessage = error?.message || "Erro ao excluir usuário"
+      toast.error(errorMessage)
       console.error(error)
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -152,8 +201,8 @@ export function UsersPage() {
 
     exportPDF({
       filename: "afapan-usuarios",
-      title: "Relatorio de Usuarios",
-      subtitle: `${users.length} usuarios cadastrados no sistema`,
+      title: "Relatório de Usuários",
+      subtitle: `${users.length} usuários cadastrados no sistema`,
       headers,
       rows,
     })
@@ -175,7 +224,7 @@ export function UsersPage() {
       headers,
       rows,
     })
-    toast.success("CSV de usuarios gerado com sucesso")
+    toast.success("CSV de usuários gerado com sucesso")
   }
 
   const roleBadgeVariant = (role: UserRole) => {
@@ -193,26 +242,25 @@ export function UsersPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-foreground">Usuarios</h2>
+          <h2 className="text-2xl font-bold tracking-tight text-foreground">Usuários</h2>
           <p className="text-muted-foreground">
-            Gerencie os usuarios que possuem acesso ao sistema.
+            Gerencie os usuários que possuem acesso ao sistema.
           </p>
         </div>
         <div className="flex items-center gap-2">
           <ExportButton onExportPDF={handleExportPDF} onExportCSV={handleExportCSV} />
           <Button onClick={openCreateDialog} className="gap-2">
             <Plus size={16} />
-            Novo usuario
+            Novo usuário
           </Button>
         </div>
       </div>
-
       <Card className="border-border/50">
         <CardHeader>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <CardTitle className="text-base">Lista de usuarios</CardTitle>
-              <CardDescription>{users.length} usuarios cadastrados</CardDescription>
+              <CardTitle className="text-base">Lista de usuários</CardTitle>
+              <CardDescription>{users.length} usuários cadastrados</CardDescription>
             </div>
             <div className="relative w-full sm:w-72">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
@@ -314,11 +362,11 @@ export function UsersPage() {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingUser ? "Editar usuario" : "Novo usuario"}</DialogTitle>
+            <DialogTitle>{editingUser ? "Editar usuário" : "Novo usuário"}</DialogTitle>
             <DialogDescription>
               {editingUser
-                ? "Atualize as informacoes do usuario."
-                : "Preencha os dados para criar um novo usuario."}
+                ? "Atualize as informações do usuário."
+                : "Preencha os dados para criar um novo usuário."}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -328,7 +376,7 @@ export function UsersPage() {
                 id="form-nome"
                 value={formNome}
                 onChange={(e) => setFormNome(e.target.value)}
-                placeholder="Nome do usuario"
+                placeholder="Nome do usuário"
               />
             </div>
             <div className="space-y-2">
@@ -341,6 +389,18 @@ export function UsersPage() {
                 placeholder="email@afapan.org.br"
               />
             </div>
+            {!editingUser && (
+              <div className="space-y-2">
+                <Label htmlFor="form-password">Senha</Label>
+                <Input
+                  id="form-password"
+                  type="password"
+                  value={formPassword}
+                  onChange={(e) => setFormPassword(e.target.value)}
+                  placeholder="Mínimo 6 caracteres"
+                />
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="form-role">Perfil de acesso</Label>
               <Select value={formRole} onValueChange={(v) => setFormRole(v as UserRole)}>
@@ -350,17 +410,29 @@ export function UsersPage() {
                 <SelectContent>
                   <SelectItem value="admin">Administrador</SelectItem>
                   <SelectItem value="gestor">Gestor</SelectItem>
-                  <SelectItem value="voluntario">Voluntario</SelectItem>
+                  <SelectItem value="voluntario">Voluntário</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-          </div>
+            </div>            {editingUser && (
+              <div className="flex items-center space-x-2">
+                <input
+                  id="form-ativo"
+                  type="checkbox"
+                  checked={formAtivo}
+                  onChange={(e) => setFormAtivo(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                <label htmlFor="form-ativo" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                  Usuário ativo
+                </label>
+              </div>
+            )}          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleSave}>
-              {editingUser ? "Salvar alteracoes" : "Criar usuario"}
+            <Button onClick={handleSave} disabled={isSaving}>
+              {isSaving ? "Salvando..." : editingUser ? "Salvar alterações" : "Criar usuário"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -370,20 +442,22 @@ export function UsersPage() {
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar exclusao</AlertDialogTitle>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir o usuario{" "}
-              <strong>{deletingUser?.nome}</strong>? Esta acao nao pode ser desfeita.
+              Tem certeza que deseja excluir o usuário{" "}
+              <strong>{deletingUser?.nome}</strong>? Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <Button
+              variant="destructive"
               onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeleting}
+              className="gap-2"
             >
-              Excluir
-            </AlertDialogAction>
+              {isDeleting ? "Excluindo..." : "Excluir"}
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

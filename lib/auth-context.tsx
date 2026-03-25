@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
+import { createContext, useContext, useState, useEffect, useRef, type ReactNode } from "react"
 import { supabase } from "./supabase"
 import type { User } from "./mock-data"
 
@@ -10,13 +10,20 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<boolean>
   logout: () => void
   loading: boolean
+  setIsCreatingUser: (value: boolean) => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
+  const [user, setUserState] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const isCreatingUserRef = useRef(false)
+
+  // Wrapper para controlar setUser
+  const setUser = (userData: User | null) => {
+    setUserState(userData)
+  }
 
   useEffect(() => {
     // Verifica se há uma sessão ativa ao carregar
@@ -40,7 +47,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     getSession()
 
     // Escuta mudanças na autenticação
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // Ignore auth changes while creating a user (prevents new user from becoming logged-in user)
+      if (isCreatingUserRef.current) {
+        return
+      }
       try {
         if (session?.user) {
           await fetchUserProfile(session.user.id)
@@ -122,8 +133,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
   }
 
+  const setIsCreatingUser = (value: boolean) => {
+    isCreatingUserRef.current = value
+  }
+
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, login, logout, loading, setIsCreatingUser }}>
       {children}
     </AuthContext.Provider>
   )

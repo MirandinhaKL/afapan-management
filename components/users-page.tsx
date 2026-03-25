@@ -43,10 +43,12 @@ import { roleLabels, type User, type UserRole } from "@/lib/mock-data"
 import { ExportButton } from "@/components/export-button"
 import { exportPDF, exportCSV } from "@/lib/export-utils"
 import { fetchUsers, createUser, updateUser, deleteUser } from "@/lib/supabase-queries"
+import { useAuth } from "@/lib/auth-context"
 import { Plus, Pencil, Trash2, Search, UserCircle } from "lucide-react"
 import { toast } from "sonner"
 
 export function UsersPage() {
+  const { setIsCreatingUser } = useAuth()
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
@@ -152,11 +154,17 @@ export function UsersPage() {
         })
         toast.success("Usuário atualizado com sucesso")
       } else {
-        await createUser(
-          { nome: formNome, email: formEmail, role: formRole, ativo: true },
-          formPassword
-        )
-        toast.success("Usuário criado com sucesso")
+        // Prevent the new user from becoming the logged-in user
+        setIsCreatingUser(true)
+        try {
+          await createUser(
+            { nome: formNome, email: formEmail, role: formRole, ativo: true },
+            formPassword
+          )
+          toast.success("Usuário criado com sucesso")
+        } finally {
+          setIsCreatingUser(false)
+        }
       }
       setIsDialogOpen(false)
       resetFormFields()

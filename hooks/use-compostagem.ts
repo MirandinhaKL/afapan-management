@@ -1,0 +1,306 @@
+import { useState, useEffect, useMemo } from "react"
+import { type Participante, type Turma, type TurmaCompostagem } from "@/lib/mock-data"
+import {
+  fetchParticipantesWithBaldes,
+  fetchTurmas,
+  createOrUpdateBalde,
+  fetchTurmasWithParticipantes,
+  createTurmaCompostagem,
+  updateTurmaCompostagem,
+  deleteTurmaCompostagem,
+  addParticipanteToTurma,
+  removeParticipanteFromTurma,
+} from "@/lib/supabase-queries"
+import { toast } from "sonner"
+
+const TRIMESTRE_ATUAL = "2026-Q1"
+
+export function useCompostagem() {
+  // Participant states
+  const [participantes, setParticipantes] = useState<Participante[]>([])
+  const [turmas, setTurmas] = useState<Turma[]>([])
+  const [loading, setLoading] = useState(true)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [statusFilter, setStatusFilter] = useState<"todos" | "preenchido" | "pendente">("todos")
+  const [turmaFilter, setTurmaFilter] = useState<string>("")
+  const [selectedParticipante, setSelectedParticipante] = useState<Participante | null>(null)
+  const [isDetailOpen, setIsDetailOpen] = useState(false)
+  const [isRegisterOpen, setIsRegisterOpen] = useState(false)
+  const [registerQuantidade, setRegisterQuantidade] = useState("")
+
+  // Turma management states
+  const [turmasCompostagem, setTurmasCompostagem] = useState<(TurmaCompostagem & { participantes: Participante[] })[]>([])
+  const [isCreateTurmaOpen, setIsCreateTurmaOpen] = useState(false)
+  const [newTurmaName, setNewTurmaName] = useState("")
+  const [newTurmaDescription, setNewTurmaDescription] = useState("")
+  const [selectedTurma, setSelectedTurma] = useState<(TurmaCompostagem & { participantes: Participante[] }) | null>(null)
+  const [isTurmaDetailOpen, setIsTurmaDetailOpen] = useState(false)
+  const [isAddParticipantOpen, setIsAddParticipantOpen] = useState(false)
+
+  // Load initial data
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true)
+        const [participantesData, turmasData, turmasCompostagemData] = await Promise.all([
+          fetchParticipantesWithBaldes(),
+          fetchTurmas(),
+          fetchTurmasWithParticipantes(),
+        ])
+        setParticipantes(participantesData)
+        setTurmas(turmasData)
+        setTurmasCompostagem(turmasCompostagemData)
+        if (turmasData.length > 0) {
+          setTurmaFilter(turmasData[0].semestre)
+        }
+      } catch (error) {
+        console.error("Erro ao carregar dados:", error)
+        toast.error("Erro ao carregar dados do Supabase")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadData()
+  }, [])
+
+  const filteredParticipantes = useMemo(() => {
+    return participantes
+      .filter((p) => p.turma === turmaFilter)
+      .filter(
+        (p) =>
+          p.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          p.telefone.includes(searchTerm)
+      )
+      .filter((p) => {
+        if (statusFilter === "todos") return true
+        const temRegistro = p.baldes.some((b) => b.trimestre === TRIMESTRE_ATUAL)
+        return statusFilter === "preenchido" ? temRegistro : !temRegistro
+      })
+  }, [participantes, searchTerm, statusFilter, turmaFilter])
+
+  const stats = useMemo(() => {
+    const turmaParticipantes = participantes.filter((p) => p.turma === turmaFilter)
+    const preenchidos = turmaParticipantes.filter((p) =>
+      p.baldes.some((b) => b.trimestre === TRIMESTRE_ATUAL)
+    )
+    const totalBaldes = preenchidos.reduce((acc, p) => {
+      const balde = p.baldes.find((b) => b.trimestre === TRIMESTRE_ATUAL)
+      return acc + (balde?.quantidade || 0)
+    }, 0)
+
+    return {
+      total: turmaParticipantes.length,
+      preenchidos: preenchidos.length,
+      pendentes: turmaParticipantes.length - preenchidos.length,
+      totalBaldes,
+    }
+  }, [participantes, turmaFilter])
+
+  const getStatus = (participante: Participante) => {
+    return participante.baldes.some((b) => b.trimestre === TRIMESTRE_ATUAL)
+  }
+
+  // Participant handlers
+  const handleGerarLink = (participante: Participante) => {
+    const link = `https://tally.so/r/compostagem?nome=${encodeURIComponent(participante.nome)}&turma=${participante.turma}&trimestre=${TRIMESTRE_ATUAL}`
+    const mensagem = `Ola ${participante.nome.split(" ")[0]}! Preencha o formulario de compostagem do trimestre: ${link}`
+    const whatsappUrl = `https://wa.me/55${participante.telefone.replace(/\D/g, "")}?text=${encodeURIComponent(mensagem)}`
+
+    window.open(whatsappUrl, "_blank")
+    toast.success(`Link gerado para ${participante.nome}`, {
+      description: "A janela do WhatsApp foi aberta.",
+    })
+  }
+
+  const handleRegistrarManual = async () => {
+    if (!selectedParticipante || !registerQuantidade) {
+      toast.error("Informe a quantidade de baldes")
+      return
+    }
+
+    const qtd = parseInt(registerQuantidade)
+    if (isNaN(qtd) || qtd < 0) {
+      toast.error("Quantidade inválida")
+      return
+    }
+
+    try {
+      await createOrUpdateBalde(selectedParticipante.id, TRIMESTRE_ATUAL, qtd)
+
+      setParticipantes((prev) =>
+        prev.map((p) => {
+          if (p.id !== selectedParticipante.id) return p
+          const baldesAtualizados = p.baldes.filter((b) => b.trimestre !== TRIMESTRE_ATUAL)
+          baldesAtualizados.push({
+            trimestre: TRIMESTRE_ATUAL,
+            quantidade: qtd,
+            dataRegistro: new Date().toISOString().split("T")[0],
+          })
+          return { ...p, baldes: baldesAtualizados }
+        })
+      )
+
+      toast.success(`Registro salvo para ${selectedParticipante.nome}`, {
+        description: `${qtd} baldes registrados para ${TRIMESTRE_ATUAL}.`,
+      })
+      setIsRegisterOpen(false)
+      setRegisterQuantidade("")
+    } catch (error) {
+      console.error("Erro ao registrar baldes:", error)
+      toast.error("Erro ao salvar registro")
+    }
+  }
+
+  const openDetail = (participante: Participante) => {
+    setSelectedParticipante(participante)
+    setIsDetailOpen(true)
+  }
+
+  const openRegister = (participante: Participante) => {
+    setSelectedParticipante(participante)
+    const baldeAtual = participante.baldes.find((b) => b.trimestre === TRIMESTRE_ATUAL)
+    setRegisterQuantidade(baldeAtual ? String(baldeAtual.quantidade) : "")
+    setIsRegisterOpen(true)
+  }
+
+  // Turma handlers
+  const handleCreateTurma = async () => {
+    if (!newTurmaName.trim()) {
+      toast.error("Nome da turma é obrigatório")
+      return
+    }
+
+    try {
+      const newTurma = await createTurmaCompostagem({
+        nome: newTurmaName.trim(),
+        descricao: newTurmaDescription.trim() || undefined,
+        ativo: true,
+      })
+
+      setTurmasCompostagem((prev) => [...prev, { ...newTurma, participantes: [] }])
+      toast.success(`Turma "${newTurma.nome}" criada com sucesso`)
+      setIsCreateTurmaOpen(false)
+      setNewTurmaName("")
+      setNewTurmaDescription("")
+    } catch (error) {
+      console.error("Erro ao criar turma:", error)
+      toast.error("Erro ao criar turma")
+    }
+  }
+
+  const handleDeleteTurma = async (turmaId: string) => {
+    try {
+      await deleteTurmaCompostagem(turmaId)
+      setTurmasCompostagem((prev) => prev.filter((t) => t.id !== turmaId))
+      toast.success("Turma deletada com sucesso")
+    } catch (error) {
+      console.error("Erro ao deletar turma:", error)
+      toast.error("Erro ao deletar turma")
+    }
+  }
+
+  const handleAddParticipantToTurma = async (participanteId: string) => {
+    if (!selectedTurma) return
+
+    try {
+      await addParticipanteToTurma(participanteId, selectedTurma.id)
+
+      const participante = participantes.find((p) => p.id === participanteId)
+      if (participante) {
+        setTurmasCompostagem((prev) =>
+          prev.map((t) =>
+            t.id === selectedTurma.id
+              ? { ...t, participantes: [...t.participantes, participante] }
+              : t
+          )
+        )
+        toast.success(`${participante.nome} adicionado à turma`)
+      }
+      setIsAddParticipantOpen(false)
+    } catch (error) {
+      console.error("Erro ao adicionar participante:", error)
+      toast.error("Erro ao adicionar participante")
+    }
+  }
+
+  const handleRemoveParticipantFromTurma = async (participanteId: string, turmaId: string) => {
+    try {
+      await removeParticipanteFromTurma(participanteId, turmaId)
+
+      setTurmasCompostagem((prev) =>
+        prev.map((t) =>
+          t.id === turmaId
+            ? { ...t, participantes: t.participantes.filter((p) => p.id !== participanteId) }
+            : t
+        )
+      )
+      toast.success("Participante removido da turma")
+    } catch (error) {
+      console.error("Erro ao remover participante:", error)
+      toast.error("Erro ao remover participante")
+    }
+  }
+
+  const openTurmaDetail = (turma: TurmaCompostagem & { participantes: Participante[] }) => {
+    setSelectedTurma(turma)
+    setIsTurmaDetailOpen(true)
+  }
+
+  const openAddParticipant = (turma: TurmaCompostagem & { participantes: Participante[] }) => {
+    setSelectedTurma(turma)
+    setIsAddParticipantOpen(true)
+  }
+
+  return {
+    // Participant states
+    participantes,
+    turmas,
+    loading,
+    searchTerm,
+    setSearchTerm,
+    statusFilter,
+    setStatusFilter,
+    turmaFilter,
+    setTurmaFilter,
+    selectedParticipante,
+    isDetailOpen,
+    setIsDetailOpen,
+    isRegisterOpen,
+    setIsRegisterOpen,
+    registerQuantidade,
+    setRegisterQuantidade,
+    filteredParticipantes,
+    stats,
+
+    // Turma states
+    turmasCompostagem,
+    isCreateTurmaOpen,
+    setIsCreateTurmaOpen,
+    newTurmaName,
+    setNewTurmaName,
+    newTurmaDescription,
+    setNewTurmaDescription,
+    selectedTurma,
+    isTurmaDetailOpen,
+    setIsTurmaDetailOpen,
+    isAddParticipantOpen,
+    setIsAddParticipantOpen,
+
+    // Constants
+    TRIMESTRE_ATUAL,
+
+    // Utility functions
+    getStatus,
+    handleGerarLink,
+    handleRegistrarManual,
+    openDetail,
+    openRegister,
+    handleCreateTurma,
+    handleDeleteTurma,
+    handleAddParticipantToTurma,
+    handleRemoveParticipantFromTurma,
+    openTurmaDetail,
+    openAddParticipant,
+  }
+}

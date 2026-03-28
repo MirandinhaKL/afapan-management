@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -30,7 +30,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { mockParticipantes, mockTurmas, type Participante } from "@/lib/mock-data"
+import { type Participante, type Turma, type TurmaCompostagem } from "@/lib/mock-data"
+import { fetchParticipantesWithBaldes, fetchTurmas, createOrUpdateBalde, fetchTurmasWithParticipantes, createTurmaCompostagem, updateTurmaCompostagem, deleteTurmaCompostagem, addParticipanteToTurma, removeParticipanteFromTurma } from "@/lib/supabase-queries"
 import { ExportButton } from "@/components/export-button"
 import { exportPDF, exportCSV } from "@/lib/export-utils"
 import {
@@ -43,20 +44,61 @@ import {
   Filter,
   Eye,
   Recycle,
+  Plus,
+  UserPlus,
+  UserMinus,
+  Group,
 } from "lucide-react"
 import { toast } from "sonner"
 
 const TRIMESTRE_ATUAL = "2026-Q1"
 
 export function CompostagemPage() {
-  const [participantes, setParticipantes] = useState<Participante[]>(mockParticipantes)
+  const [participantes, setParticipantes] = useState<Participante[]>([])
+  const [turmas, setTurmas] = useState<Turma[]>([])
+  const [turmasCompostagem, setTurmasCompostagem] = useState<(TurmaCompostagem & { participantes: Participante[] })[]>([])
+  const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<"todos" | "preenchido" | "pendente">("todos")
-  const [turmaFilter, setTurmaFilter] = useState<string>("2026.1")
+  const [turmaFilter, setTurmaFilter] = useState<string>("")
   const [selectedParticipante, setSelectedParticipante] = useState<Participante | null>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [isRegisterOpen, setIsRegisterOpen] = useState(false)
   const [registerQuantidade, setRegisterQuantidade] = useState("")
+
+  // Group management states
+  const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false)
+  const [newGroupName, setNewGroupName] = useState("")
+  const [newGroupDescription, setNewGroupDescription] = useState("")
+  const [selectedGroup, setSelectedGroup] = useState<(Grupo & { participantes: Participante[] }) | null>(null)
+  const [isGroupDetailOpen, setIsGroupDetailOpen] = useState(false)
+  const [isAddParticipantOpen, setIsAddParticipantOpen] = useState(false)
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true)
+        const [participantesData, turmasData, turmasCompostagemData] = await Promise.all([
+          fetchParticipantesWithBaldes(),
+          fetchTurmas(),
+          fetchTurmasWithParticipantes()
+        ])
+        setParticipantes(participantesData)
+        setTurmas(turmasData)
+        setTurmasCompostagem(turmasCompostagemData)
+        if (turmasData.length > 0) {
+          setTurmaFilter(turmasData[0].semestre)
+        }
+      } catch (error) {
+        console.error('Erro ao carregar dados:', error)
+        toast.error('Erro ao carregar dados do Supabase')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadData()
+  }, [])
 
   const filteredParticipantes = useMemo(() => {
     return participantes
@@ -106,7 +148,7 @@ export function CompostagemPage() {
     })
   }
 
-  const handleRegistrarManual = () => {
+  const handleRegistrarManual = async () => {
     if (!selectedParticipante || !registerQuantidade) {
       toast.error("Informe a quantidade de baldes")
       return
@@ -114,28 +156,120 @@ export function CompostagemPage() {
 
     const qtd = parseInt(registerQuantidade)
     if (isNaN(qtd) || qtd < 0) {
-      toast.error("Quantidade invalida")
+      toast.error("Quantidade inválida")
       return
     }
 
-    setParticipantes((prev) =>
-      prev.map((p) => {
-        if (p.id !== selectedParticipante.id) return p
-        const baldesAtualizados = p.baldes.filter((b) => b.trimestre !== TRIMESTRE_ATUAL)
-        baldesAtualizados.push({
-          trimestre: TRIMESTRE_ATUAL,
-          quantidade: qtd,
-          dataRegistro: new Date().toISOString().split("T")[0],
-        })
-        return { ...p, baldes: baldesAtualizados }
-      })
-    )
+    try {
+      await createOrUpdateBalde(selectedParticipante.id, TRIMESTRE_ATUAL, qtd)
 
-    toast.success(`Registro salvo para ${selectedParticipante.nome}`, {
-      description: `${qtd} baldes registrados para ${TRIMESTRE_ATUAL}.`,
-    })
-    setIsRegisterOpen(false)
-    setRegisterQuantidade("")
+      // Update local state
+      setParticipantes((prev) =>
+        prev.map((p) => {
+          if (p.id !== selectedParticipante.id) return p
+          const baldesAtualizados = p.baldes.filter((b) => b.trimestre !== TRIMESTRE_ATUAL)
+          baldesAtualizados.push({
+            trimestre: TRIMESTRE_ATUAL,
+            quantidade: qtd,
+            dataRegistro: new Date().toISOString().split("T")[0],
+          })
+          return { ...p, baldes: baldesAtualizados }
+        })
+      )
+
+      toast.success(`Registro salvo para ${selectedParticipante.nome}`, {
+        description: `${qtd} baldes registrados para ${TRIMESTRE_ATUAL}.`,
+      })
+      setIsRegisterOpen(false)
+      setRegisterQuantidade("")
+    } catch (error) {
+      console.error('Erro ao registrar baldes:', error)
+      toast.error('Erro ao salvar registro')
+    }
+  }
+
+  // Turma management functions
+  const handleCreateTurma = async () => {
+    if (!newGroupName.trim()) {
+      toast.error("Nome da turma é obrigatório")
+      return
+    }
+
+    try {
+      const newTurma = await createTurmaCompostagem({
+        nome: newGroupName.trim(),
+        descricao: newGroupDescription.trim() || undefined,
+        ativo: true
+      })
+
+      setTurmasCompostagem(prev => [...prev, { ...newTurma, participantes: [] }])
+      toast.success(`Turma "${newTurma.nome}" criada com sucesso`)
+      setIsCreateGroupOpen(false)
+      setNewGroupName("")
+      setNewGroupDescription("")
+    } catch (error) {
+      console.error('Erro ao criar turma:', error)
+      toast.error('Erro ao criar turma')
+    }
+  }
+
+  const handleDeleteTurma = async (turmaId: string) => {
+    try {
+      await deleteTurmaCompostagem(turmaId)
+      setTurmasCompostagem(prev => prev.filter(t => t.id !== turmaId))
+      toast.success('Turma deletada com sucesso')
+    } catch (error) {
+      console.error('Erro ao deletar turma:', error)
+      toast.error('Erro ao deletar turma')
+    }
+  }
+
+  const handleAddParticipantToTurma = async (participanteId: string) => {
+    if (!selectedGroup) return
+
+    try {
+      await addParticipanteToTurma(participanteId, selectedGroup.id)
+      
+      const participante = participantes.find(p => p.id === participanteId)
+      if (participante) {
+        setTurmasCompostagem(prev => prev.map(t => 
+          t.id === selectedGroup.id 
+            ? { ...t, participantes: [...t.participantes, participante] }
+            : t
+        ))
+        toast.success(`${participante.nome} adicionado à turma`)
+      }
+      setIsAddParticipantOpen(false)
+    } catch (error) {
+      console.error('Erro ao adicionar participante:', error)
+      toast.error('Erro ao adicionar participante')
+    }
+  }
+
+  const handleRemoveParticipantFromTurma = async (participanteId: string, turmaId: string) => {
+    try {
+      await removeParticipanteFromTurma(participanteId, turmaId)
+      
+      setTurmasCompostagem(prev => prev.map(t => 
+        t.id === turmaId 
+          ? { ...t, participantes: t.participantes.filter(p => p.id !== participanteId) }
+          : t
+      ))
+      toast.success('Participante removido da turma')
+    } catch (error) {
+      console.error('Erro ao remover participante:', error)
+      toast.error('Erro ao remover participante')
+    }
+  }
+
+  const openTurmaDetail = (turma: TurmaCompostagem & { participantes: Participante[] }) => {
+    setSelectedGroup(turma)
+    setIsGroupDetailOpen(true)
+  }
+
+  const openAddParticipant = (turma: TurmaCompostagem & { participantes: Participante[] }) => {
+    setSelectedGroup(turma)
+    setIsAddParticipantOpen(true)
   }
 
   const handleExportPDF = () => {
@@ -215,8 +349,19 @@ export function CompostagemPage() {
             Gerenciamento do programa Compostando Juntos - {TRIMESTRE_ATUAL}
           </p>
         </div>
-        <ExportButton onExportPDF={handleExportPDF} onExportCSV={handleExportCSV} />
       </div>
+
+      <Tabs defaultValue="participantes" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="participantes">Participantes</TabsTrigger>
+          <TabsTrigger value="turmas">Turmas</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="participantes" className="space-y-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div></div>
+            <ExportButton onExportPDF={handleExportPDF} onExportCSV={handleExportCSV} />
+          </div>
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-4">
@@ -286,7 +431,7 @@ export function CompostagemPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {mockTurmas.map((turma) => (
+                  {turmas.map((turma) => (
                     <SelectItem key={turma.id} value={turma.semestre}>
                       {turma.nome}
                     </SelectItem>
@@ -365,7 +510,13 @@ export function CompostagemPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredParticipantes.length === 0 ? (
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                      Carregando participantes...
+                    </TableCell>
+                  </TableRow>
+                ) : filteredParticipantes.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
                       Nenhum participante encontrado.
@@ -471,6 +622,83 @@ export function CompostagemPage() {
           </div>
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="turmas" className="space-y-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 className="text-lg font-semibold">Turmas de Compostagem</h3>
+              <p className="text-sm text-muted-foreground">
+                Organize participantes em turmas para atividades de compostagem
+              </p>
+            </div>
+            <Button onClick={() => setIsCreateGroupOpen(true)}>
+              <Plus size={16} className="mr-2" />
+              Nova Turma
+            </Button>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {loading ? (
+              <div className="col-span-full text-center py-8">Carregando turmas...</div>
+            ) : turmasCompostagem.length === 0 ? (
+              <div className="col-span-full text-center py-8 text-muted-foreground">
+                Nenhuma turma criada ainda.
+              </div>
+            ) : (
+              turmasCompostagem.map((turma) => (
+                <Card key={turma.id} className="border-border/50">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Group size={18} className="text-primary" />
+                        <CardTitle className="text-base">{turma.nome}</CardTitle>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:text-destructive"
+                        onClick={() => handleDeleteTurma(turma.id)}
+                      >
+                        <Trash2 size={14} />
+                      </Button>
+                    </div>
+                    {turma.descricao && (
+                      <CardDescription>{turma.descricao}</CardDescription>
+                    )}
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Participantes:</span>
+                      <Badge variant="secondary">{turma.participantes.length}</Badge>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => openTurmaDetail(turma)}
+                      >
+                        <Eye size={14} className="mr-1" />
+                        Ver
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => openAddParticipant(turma)}
+                      >
+                        <UserPlus size={14} className="mr-1" />
+                        Adicionar
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+        </TabsContent>
+      </Tabs>
 
       {/* Detail Dialog */}
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
@@ -569,6 +797,155 @@ export function CompostagemPage() {
             </Button>
             <Button onClick={handleRegistrarManual}>Registrar</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Turma Dialog */}
+      <Dialog open={isCreateGroupOpen} onOpenChange={setIsCreateGroupOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Criar nova turma</DialogTitle>
+            <DialogDescription>
+              Crie uma turma para organizar participantes da compostagem.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="group-name">Nome da turma *</Label>
+              <Input
+                id="group-name"
+                value={newGroupName}
+                onChange={(e) => setNewGroupName(e.target.value)}
+                placeholder="Ex: Turma Centro"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="group-description">Descrição</Label>
+              <Input
+                id="group-description"
+                value={newGroupDescription}
+                onChange={(e) => setNewGroupDescription(e.target.value)}
+                placeholder="Descrição opcional da turma"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateGroupOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleCreateTurma}>Criar Turma</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Turma Detail Dialog */}
+      <Dialog open={isGroupDetailOpen} onOpenChange={setIsGroupDetailOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Detalhes da turma: {selectedGroup?.nome}</DialogTitle>
+            <DialogDescription>
+              Participantes da turma e informações gerais.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedGroup && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Nome</Label>
+                  <p className="text-sm font-medium text-foreground">{selectedGroup.nome}</p>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Participantes</Label>
+                  <p className="text-sm font-medium text-foreground">{selectedGroup.participantes.length}</p>
+                </div>
+                {selectedGroup.descricao && (
+                  <div className="col-span-2">
+                    <Label className="text-xs text-muted-foreground">Descrição</Label>
+                    <p className="text-sm font-medium text-foreground">{selectedGroup.descricao}</p>
+                  </div>
+                )}
+                <div>
+                  <Label className="text-xs text-muted-foreground">Criado em</Label>
+                  <p className="text-sm font-medium text-foreground">
+                    {new Date(selectedGroup.criado_em).toLocaleDateString('pt-BR')}
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-xs text-muted-foreground">Participantes</Label>
+                {selectedGroup.participantes.length > 0 ? (
+                  <div className="mt-2 space-y-2 max-h-60 overflow-y-auto">
+                    {selectedGroup.participantes.map((participante) => (
+                      <div
+                        key={participante.id}
+                        className="flex items-center justify-between rounded-lg border border-border/50 p-3"
+                      >
+                        <div>
+                          <p className="text-sm font-medium text-foreground">{participante.nome}</p>
+                          <p className="text-xs text-muted-foreground">{participante.telefone}</p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          onClick={() => handleRemoveParticipantFromGroup(participante.id, selectedGroup.id)}
+                        >
+                          <UserMinus size={14} />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Nenhum participante nesta turma.
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Participant Dialog */}
+      <Dialog open={isAddParticipantOpen} onOpenChange={setIsAddParticipantOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Adicionar participante à turma</DialogTitle>
+            <DialogDescription>
+              Selecione um participante para adicionar à turma "{selectedGroup?.nome}".
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="max-h-60 overflow-y-auto space-y-2">
+              {participantes
+                .filter(p => !selectedGroup?.participantes.some(sp => sp.id === p.id))
+                .map((participante) => (
+                  <div
+                    key={participante.id}
+                    className="flex items-center justify-between rounded-lg border border-border/50 p-3"
+                  >
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{participante.nome}</p>
+                      <p className="text-xs text-muted-foreground">Turma {participante.turma} • {participante.telefone}</p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleAddParticipantToGroup(participante.id)}
+                    >
+                      <UserPlus size={14} className="mr-1" />
+                      Adicionar
+                    </Button>
+                  </div>
+                ))}
+              {participantes.filter(p => !selectedGroup?.participantes.some(sp => sp.id === p.id)).length === 0 && (
+                <p className="text-center text-sm text-muted-foreground py-4">
+                  Todos os participantes já estão nesta turma.
+                </p>
+              )}
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

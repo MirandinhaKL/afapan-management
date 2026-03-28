@@ -35,6 +35,21 @@ export interface Turma {
   ativa: boolean
 }
 
+export interface TurmaCompostagem {
+  id: string
+  nome: string
+  descricao?: string
+  ativo: boolean
+  criado_em: string
+}
+
+export interface ParticipanteTurma {
+  id: string
+  participante_id: string
+  turma_id: string
+  criado_em: string
+}
+
 export interface DashboardStats {
   totalParticipantesAtivos: number
   totalBaldesTrimestre: number

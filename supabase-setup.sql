@@ -35,10 +35,30 @@ CREATE TABLE IF NOT EXISTS baldes (
   criado_em TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Turmas de Compostagem
+CREATE TABLE IF NOT EXISTS turmas (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  nome TEXT NOT NULL,
+  descricao TEXT,
+  ativo BOOLEAN DEFAULT true,
+  criado_em TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Relacionamento Participantes-Turmas (many-to-many)
+CREATE TABLE IF NOT EXISTS participantes_turmas (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  participante_id UUID REFERENCES participantes(id) ON DELETE CASCADE,
+  turma_id UUID REFERENCES turmas(id) ON DELETE CASCADE,
+  criado_em TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(participante_id, turma_id)
+);
+
 -- Habilitar Row Level Security
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE participantes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE baldes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE turmas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE participantes_turmas ENABLE ROW LEVEL SECURITY;
 
 -- Políticas RLS para profiles
 CREATE POLICY "Users can view own profile" ON profiles
@@ -103,6 +123,32 @@ CREATE POLICY "Authenticated users can update baldes" ON baldes
   FOR UPDATE TO authenticated USING (true);
 
 CREATE POLICY "Authenticated users can delete baldes" ON baldes
+  FOR DELETE TO authenticated USING (true);
+
+-- Políticas RLS para turmas (todos os usuários autenticados podem acessar)
+CREATE POLICY "Authenticated users can view turmas" ON turmas
+  FOR SELECT TO authenticated USING (true);
+
+CREATE POLICY "Authenticated users can insert turmas" ON turmas
+  FOR INSERT TO authenticated WITH CHECK (true);
+
+CREATE POLICY "Authenticated users can update turmas" ON turmas
+  FOR UPDATE TO authenticated USING (true);
+
+CREATE POLICY "Authenticated users can delete turmas" ON turmas
+  FOR DELETE TO authenticated USING (true);
+
+-- Políticas RLS para participantes_turmas (todos os usuários autenticados podem acessar)
+CREATE POLICY "Authenticated users can view participantes_turmas" ON participantes_turmas
+  FOR SELECT TO authenticated USING (true);
+
+CREATE POLICY "Authenticated users can insert participantes_turmas" ON participantes_turmas
+  FOR INSERT TO authenticated WITH CHECK (true);
+
+CREATE POLICY "Authenticated users can update participantes_turmas" ON participantes_turmas
+  FOR UPDATE TO authenticated USING (true);
+
+CREATE POLICY "Authenticated users can delete participantes_turmas" ON participantes_turmas
   FOR DELETE TO authenticated USING (true);
 
 -- Trigger para criar perfil automaticamente quando usuário se registra

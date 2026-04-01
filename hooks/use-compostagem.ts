@@ -10,6 +10,7 @@ import {
   deleteTurmaCompostagem,
   addParticipanteToTurma,
   removeParticipanteFromTurma,
+  createParticipante,
 } from "@/lib/supabase-queries"
 import { toast } from "sonner"
 
@@ -27,6 +28,7 @@ export function useCompostagem() {
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [isRegisterOpen, setIsRegisterOpen] = useState(false)
   const [registerQuantidade, setRegisterQuantidade] = useState("")
+  const [isCreateParticipanteOpen, setIsCreateParticipanteOpen] = useState(false)
 
   // Turma management states
   const [turmasCompostagem, setTurmasCompostagem] = useState<(TurmaCompostagem & { participantes: Participante[] })[]>([])
@@ -164,6 +166,38 @@ export function useCompostagem() {
     setIsRegisterOpen(true)
   }
 
+  const handleCreateParticipante = async (data: {
+    nome: string
+    telefone: string
+    email: string
+    turma: string
+    turmaCompostagem: string
+  }) => {
+    try {
+      const createdParticipante = await createParticipante({
+        nome: data.nome,
+        telefone: data.telefone,
+        email: data.email,
+        turma: data.turma,
+        ativo: true,
+      })
+
+      // Convert to MockParticipante with baldes property
+      const newParticipante: typeof participantes[0] = {
+        ...createdParticipante,
+        telefone: createdParticipante.telefone || '',
+        baldes: [],
+      }
+
+      setParticipantes((prev) => [...prev, newParticipante])
+      toast.success(`Participante "${newParticipante.nome}" criado com sucesso`)
+      setIsCreateParticipanteOpen(false)
+    } catch (error) {
+      console.error("Erro ao criar participante:", error)
+      toast.error("Erro ao criar participante")
+    }
+  }
+
   // Turma handlers
   const handleCreateTurma = async () => {
     if (!newTurmaName.trim()) {
@@ -193,10 +227,10 @@ export function useCompostagem() {
     try {
       await deleteTurmaCompostagem(turmaId)
       setTurmasCompostagem((prev) => prev.filter((t) => t.id !== turmaId))
-      toast.success("Turma deletada com sucesso")
+      toast.success("Turma excluída com sucesso")
     } catch (error) {
-      console.error("Erro ao deletar turma:", error)
-      toast.error("Erro ao deletar turma")
+      console.error("Erro ao excluir turma:", error)
+      toast.error("Erro ao excluir turma")
     }
   }
 
@@ -272,6 +306,9 @@ export function useCompostagem() {
     setRegisterQuantidade,
     filteredParticipantes,
     stats,
+    isCreateParticipanteOpen,
+    setIsCreateParticipanteOpen,
+    handleCreateParticipante,
 
     // Turma states
     turmasCompostagem,

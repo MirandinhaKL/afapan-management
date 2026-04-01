@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useCompostagem } from "@/hooks/use-compostagem"
 import { ParticipantesTab } from "@/components/tabs/participantes-tab"
@@ -7,10 +8,14 @@ import { TurmasTab } from "@/components/tabs/turmas-tab"
 import { ParticipantDetailDialog } from "@/components/dialogs/participant-detail-dialog"
 import { RegisterBucketsDialog } from "@/components/dialogs/register-buckets-dialog"
 import { CreateTurmaDialog } from "@/components/dialogs/create-turma-dialog"
+import { CreateParticipanteDialog } from "@/components/dialogs/create-participante-dialog"
 import { TurmaDetailDialog } from "@/components/dialogs/turma-detail-dialog"
 import { AddParticipantDialog } from "@/components/dialogs/add-participant-dialog"
+import { DeleteTurmaDialog } from "@/components/dialogs/delete-turma-dialog"
 
 export function CompostagemPage() {
+  const [turmaToDelete, setTurmaToDelete] = useState<string | null>(null)
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
   const {
     // Participant states
     participantes,
@@ -31,6 +36,9 @@ export function CompostagemPage() {
     setRegisterQuantidade,
     filteredParticipantes,
     stats,
+    isCreateParticipanteOpen,
+    setIsCreateParticipanteOpen,
+    handleCreateParticipante,
 
     // Turma states
     turmasCompostagem,
@@ -62,6 +70,17 @@ export function CompostagemPage() {
     openTurmaDetail,
     openAddParticipant,
   } = useCompostagem()
+
+  const handleDeleteTurmaClick = (turmaId: string) => {
+    setTurmaToDelete(turmaId)
+    setIsDeleteConfirmOpen(true)
+  }
+
+  const handleConfirmDeleteTurma = (turmaId: string) => {
+    handleDeleteTurma(turmaId)
+  }
+
+  const turmaToDeleteObject = turmasCompostagem.find((t) => t.id === turmaToDelete) || null
 
   return (
     <div className="space-y-6">
@@ -96,6 +115,7 @@ export function CompostagemPage() {
             onOpenDetail={openDetail}
             onOpenRegister={openRegister}
             onGerarLink={handleGerarLink}
+            onCreateParticipante={() => setIsCreateParticipanteOpen(true)}
             trimestre={TRIMESTRE_ATUAL}
           />
         </TabsContent>
@@ -105,7 +125,7 @@ export function CompostagemPage() {
             turmasCompostagem={turmasCompostagem}
             loading={loading}
             onCreateTurma={() => setIsCreateTurmaOpen(true)}
-            onDeleteTurma={handleDeleteTurma}
+            onDeleteTurma={handleDeleteTurmaClick}
             onOpenTurmaDetail={openTurmaDetail}
             onOpenAddParticipant={openAddParticipant}
           />
@@ -139,6 +159,15 @@ export function CompostagemPage() {
         onCreateTurma={handleCreateTurma}
       />
 
+      <CreateParticipanteDialog
+        open={isCreateParticipanteOpen}
+        onOpenChange={setIsCreateParticipanteOpen}
+        turmas={turmas}
+        turmasCompostagem={turmasCompostagem}
+        currentTurmaFilter={turmaFilter}
+        onCreateParticipante={handleCreateParticipante}
+      />
+
       <TurmaDetailDialog
         open={isTurmaDetailOpen}
         onOpenChange={setIsTurmaDetailOpen}
@@ -152,6 +181,13 @@ export function CompostagemPage() {
         turma={selectedTurma}
         participantes={participantes}
         onAddParticipant={handleAddParticipantToTurma}
+      />
+
+      <DeleteTurmaDialog
+        open={isDeleteConfirmOpen}
+        onOpenChange={setIsDeleteConfirmOpen}
+        turma={turmaToDeleteObject}
+        onConfirmDelete={handleConfirmDeleteTurma}
       />
     </div>
   )

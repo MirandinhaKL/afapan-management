@@ -28,6 +28,7 @@ import {
   Filter,
   Eye,
   Recycle,
+  Plus,
 } from "lucide-react"
 import { type Participante, type Turma } from "@/lib/mock-data"
 import { ExportButton } from "@/components/export-button"
@@ -53,6 +54,7 @@ interface ParticipantesTabProps {
   onOpenDetail: (participante: Participante) => void
   onOpenRegister: (participante: Participante) => void
   onGerarLink: (participante: Participante) => void
+  onCreateParticipante: () => void
   trimestre: string
 }
 
@@ -71,6 +73,7 @@ export function ParticipantesTab({
   onOpenDetail,
   onOpenRegister,
   onGerarLink,
+  onCreateParticipante,
   trimestre,
 }: ParticipantesTabProps) {
   const handleExportPDF = () => {
@@ -130,7 +133,10 @@ export function ParticipantesTab({
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div></div>
+        <Button onClick={onCreateParticipante}>
+          <Plus size={16} className="mr-2" />
+          Novo Participante
+        </Button>
         <ExportButton onExportPDF={handleExportPDF} onExportCSV={handleExportCSV} />
       </div>
 

@@ -56,7 +56,7 @@ export function AddParticipantDialog({
             ))}
             {availableParticipantes.length === 0 && (
               <p className="text-center text-sm text-muted-foreground py-4">
-                Todos os participantes já estão nesta turma.
+                Não há participantes para serem associados a esta turma.
               </p>
             )}
           </div>

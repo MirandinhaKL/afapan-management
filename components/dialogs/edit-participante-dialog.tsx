@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,21 +10,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { toast } from "sonner"
-import { type Turma, type TurmaCompostagem } from "@/lib/mock-data"
+import { type Participante, type Turma } from "@/lib/mock-data"
 
-interface CreateParticipanteDialogProps {
+interface EditParticipanteDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  participante: Participante | null
   turmas: Turma[]
-  turmasCompostagem: (TurmaCompostagem & { participantes: any[] })[]
-  currentTurmaFilter: string
-  onCreateParticipante: (data: {
+  onEditParticipante: (data: {
     nome: string
     telefone: string
     email: string
     turma: string
-    turmaCompostagem: string
     endereco?: string
     bairro?: string
     cidade?: string
@@ -33,57 +30,47 @@ interface CreateParticipanteDialogProps {
   }) => void
 }
 
-export function CreateParticipanteDialog({
+export function EditParticipanteDialog({
   open,
   onOpenChange,
+  participante,
   turmas,
-  turmasCompostagem,
-  currentTurmaFilter,
-  onCreateParticipante,
-}: CreateParticipanteDialogProps) {
+  onEditParticipante,
+}: EditParticipanteDialogProps) {
   const [nome, setNome] = useState("")
   const [telefone, setTelefone] = useState("")
   const [email, setEmail] = useState("")
   const [turma, setTurma] = useState("")
   const [endereco, setEndereco] = useState("")
   const [bairro, setBairro] = useState("")
-  const [cidade, setCidade] = useState("Farroupilha")
-  const [estado, setEstado] = useState("RS")
+  const [cidade, setCidade] = useState("")
+  const [estado, setEstado] = useState("")
   const [cep, setCep] = useState("")
 
-  const handleCreate = () => {
-    // Validação detalhada
-    if (!nome.trim()) {
-      toast.error("Nome é obrigatório")
-      return
+  useEffect(() => {
+    if (participante && open) {
+      setNome(participante.nome)
+      setTelefone(participante.telefone)
+      setEmail(participante.email)
+      setTurma(participante.turma)
+      setEndereco(participante.endereco || "")
+      setBairro(participante.bairro || "")
+      setCidade(participante.cidade || "")
+      setEstado(participante.estado || "")
+      setCep(participante.cep || "")
     }
-    if (!telefone.trim()) {
-      toast.error("Telefone é obrigatório")
-      return
-    }
-    if (!email.trim()) {
-      toast.error("E-mail é obrigatório")
-      return
-    }
-    if (!turma) {
-      toast.error("Turma de Compostagem é obrigatória")
+  }, [participante, open])
+
+  const handleSave = () => {
+    if (!nome.trim() || !telefone.trim() || !email.trim() || !turma) {
       return
     }
 
-    console.log("Criando participante:", {
+    onEditParticipante({
       nome: nome.trim(),
       telefone: telefone.trim(),
       email: email.trim(),
-      turma: currentTurmaFilter,
-      turmaCompostagem: turma,
-    })
-
-    onCreateParticipante({
-      nome: nome.trim(),
-      telefone: telefone.trim(),
-      email: email.trim(),
-      turma: currentTurmaFilter,
-      turmaCompostagem: turma,
+      turma,
       endereco: endereco.trim() || undefined,
       bairro: bairro.trim() || undefined,
       cidade: cidade.trim() || undefined,
@@ -91,15 +78,7 @@ export function CreateParticipanteDialog({
       cep: cep.trim() || undefined,
     })
 
-    setNome("")
-    setTelefone("")
-    setEmail("")
-    setTurma("")
-    setEndereco("")
-    setBairro("")
-    setCidade("Farroupilha")
-    setEstado("RS")
-    setCep("")
+    handleOpenChange(false)
   }
 
   const handleOpenChange = (newOpen: boolean) => {
@@ -110,9 +89,9 @@ export function CreateParticipanteDialog({
       setTurma("")
       setEndereco("")
       setBairro("")
-      setCidade("Farroupilha")
-      setEstado("RS")
-      setCep("95180-000")
+      setCidade("")
+      setEstado("")
+      setCep("")
     }
     onOpenChange(newOpen)
   }
@@ -123,9 +102,9 @@ export function CreateParticipanteDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Novo participante</DialogTitle>
+          <DialogTitle>Editar participante</DialogTitle>
           <DialogDescription>
-            Adicione um novo participante ao programa de compostagem.
+            Atualize as informações do participante.
           </DialogDescription>
         </DialogHeader>
 
@@ -171,22 +150,21 @@ export function CreateParticipanteDialog({
 
           {/* Turma */}
           <div className="space-y-2">
-            <Label htmlFor="turma">Turma de Compostagem</Label>
+            <Label htmlFor="turma">Turma</Label>
             <Select value={turma} onValueChange={setTurma}>
               <SelectTrigger id="turma">
-                <SelectValue placeholder="Selecione uma turma de compostagem" />
+                <SelectValue placeholder="Selecione uma turma" />
               </SelectTrigger>
               <SelectContent>
-                {turmasCompostagem.length > 0 ? (
-                  turmasCompostagem.map((t) => (
-                    <SelectItem key={t.id} value={t.nome}>
-                      {t.nome}
-                      {t.descricao && ` - ${t.descricao}`}
+                {turmas.length > 0 ? (
+                  turmas.map((t) => (
+                    <SelectItem key={t.semestre} value={t.semestre}>
+                      {t.semestre}
                     </SelectItem>
                   ))
                 ) : (
                   <SelectItem value="" disabled>
-                    Nenhuma turma de compostagem disponível
+                    Nenhuma turma disponível
                   </SelectItem>
                 )}
               </SelectContent>
@@ -199,10 +177,10 @@ export function CreateParticipanteDialog({
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label htmlFor="endereco">Endereço</Label>
+                  <Label htmlFor="endereco">Rua/Avenida</Label>
                   <Input
                     id="endereco"
-                    placeholder="Rua Exemplo, 123"
+                    placeholder="Endereço"
                     value={endereco}
                     onChange={(e) => setEndereco(e.target.value)}
                   />
@@ -259,12 +237,8 @@ export function CreateParticipanteDialog({
           <Button variant="outline" onClick={() => handleOpenChange(false)}>
             Cancelar
           </Button>
-          <Button 
-            onClick={handleCreate} 
-            disabled={!isFormValid}
-            className={!isFormValid ? "opacity-50 cursor-not-allowed" : ""}
-          >
-            Criar participante
+          <Button onClick={handleSave} disabled={!isFormValid}>
+            Salvar alterações
           </Button>
         </div>
       </DialogContent>

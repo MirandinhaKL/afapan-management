@@ -8,6 +8,11 @@ export interface Participante {
   email: string
   telefone?: string
   turma: string
+  endereco?: string
+  bairro?: string
+  cidade?: string
+  estado?: string
+  cep?: string
   ativo: boolean
   criado_em?: string
 }

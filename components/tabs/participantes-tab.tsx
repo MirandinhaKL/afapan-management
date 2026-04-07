@@ -29,6 +29,7 @@ import {
   Eye,
   Recycle,
   Plus,
+  Pencil,
 } from "lucide-react"
 import { type Participante, type Turma } from "@/lib/mock-data"
 import { ExportButton } from "@/components/export-button"
@@ -55,6 +56,7 @@ interface ParticipantesTabProps {
   onOpenRegister: (participante: Participante) => void
   onGerarLink: (participante: Participante) => void
   onCreateParticipante: () => void
+  onEditParticipante: (participante: Participante) => void
   trimestre: string
 }
 
@@ -74,6 +76,7 @@ export function ParticipantesTab({
   onOpenRegister,
   onGerarLink,
   onCreateParticipante,
+  onEditParticipante,
   trimestre,
 }: ParticipantesTabProps) {
   const handleExportPDF = () => {
@@ -360,6 +363,15 @@ export function ParticipantesTab({
                             >
                               <Eye size={14} />
                               <span className="sr-only">Ver detalhes de {participante.nome}</span>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => onEditParticipante(participante)}
+                            >
+                              <Pencil size={14} />
+                              <span className="sr-only">Editar {participante.nome}</span>
                             </Button>
                             <Button
                               variant="ghost"

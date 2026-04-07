@@ -9,6 +9,7 @@ import { ParticipantDetailDialog } from "@/components/dialogs/participant-detail
 import { RegisterBucketsDialog } from "@/components/dialogs/register-buckets-dialog"
 import { CreateTurmaDialog } from "@/components/dialogs/create-turma-dialog"
 import { CreateParticipanteDialog } from "@/components/dialogs/create-participante-dialog"
+import { EditParticipanteDialog } from "@/components/dialogs/edit-participante-dialog"
 import { TurmaDetailDialog } from "@/components/dialogs/turma-detail-dialog"
 import { AddParticipantDialog } from "@/components/dialogs/add-participant-dialog"
 import { DeleteTurmaDialog } from "@/components/dialogs/delete-turma-dialog"
@@ -38,7 +39,12 @@ export function CompostagemPage() {
     stats,
     isCreateParticipanteOpen,
     setIsCreateParticipanteOpen,
+    isEditParticipanteOpen,
+    setIsEditParticipanteOpen,
+    editingParticipante,
     handleCreateParticipante,
+    handleEditParticipante,
+    openEditParticipante,
 
     // Turma states
     turmasCompostagem,
@@ -116,6 +122,7 @@ export function CompostagemPage() {
             onOpenRegister={openRegister}
             onGerarLink={handleGerarLink}
             onCreateParticipante={() => setIsCreateParticipanteOpen(true)}
+            onEditParticipante={openEditParticipante}
             trimestre={TRIMESTRE_ATUAL}
           />
         </TabsContent>
@@ -166,6 +173,14 @@ export function CompostagemPage() {
         turmasCompostagem={turmasCompostagem}
         currentTurmaFilter={turmaFilter}
         onCreateParticipante={handleCreateParticipante}
+      />
+
+      <EditParticipanteDialog
+        open={isEditParticipanteOpen}
+        onOpenChange={setIsEditParticipanteOpen}
+        participante={editingParticipante}
+        turmas={turmas}
+        onEditParticipante={handleEditParticipante}
       />
 
       <TurmaDetailDialog

@@ -17,6 +17,11 @@ export interface Participante {
   telefone: string
   email: string
   turma: string
+  endereco?: string
+  bairro?: string
+  cidade?: string
+  estado?: string
+  cep?: string
   baldes: RegistroBalde[]
   ativo: boolean
 }

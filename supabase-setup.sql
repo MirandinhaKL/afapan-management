@@ -21,6 +21,11 @@ CREATE TABLE IF NOT EXISTS participantes (
   email TEXT NOT NULL,
   telefone TEXT,
   turma TEXT NOT NULL,
+  endereco TEXT,
+  bairro TEXT,
+  cidade TEXT,
+  estado TEXT,
+  cep TEXT,
   ativo BOOLEAN DEFAULT true,
   criado_em TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -190,3 +195,11 @@ CREATE TRIGGER handle_updated_at_participantes
 CREATE TRIGGER handle_updated_at_baldes
   BEFORE UPDATE ON baldes
   FOR EACH ROW EXECUTE FUNCTION handle_updated_at();
+
+-- Adicionar colunas de endereço à tabela participantes (se não existirem)
+ALTER TABLE IF EXISTS participantes
+ADD COLUMN IF NOT EXISTS endereco TEXT,
+ADD COLUMN IF NOT EXISTS bairro TEXT,
+ADD COLUMN IF NOT EXISTS cidade TEXT,
+ADD COLUMN IF NOT EXISTS estado TEXT,
+ADD COLUMN IF NOT EXISTS cep TEXT;

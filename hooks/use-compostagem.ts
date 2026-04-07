@@ -11,6 +11,7 @@ import {
   addParticipanteToTurma,
   removeParticipanteFromTurma,
   createParticipante,
+  updateParticipante,
 } from "@/lib/supabase-queries"
 import { toast } from "sonner"
 
@@ -29,6 +30,8 @@ export function useCompostagem() {
   const [isRegisterOpen, setIsRegisterOpen] = useState(false)
   const [registerQuantidade, setRegisterQuantidade] = useState("")
   const [isCreateParticipanteOpen, setIsCreateParticipanteOpen] = useState(false)
+  const [isEditParticipanteOpen, setIsEditParticipanteOpen] = useState(false)
+  const [editingParticipante, setEditingParticipante] = useState<Participante | null>(null)
 
   // Turma management states
   const [turmasCompostagem, setTurmasCompostagem] = useState<(TurmaCompostagem & { participantes: Participante[] })[]>([])
@@ -65,6 +68,16 @@ export function useCompostagem() {
 
     loadData()
   }, [])
+
+  // Sincronizar selectedTurma com turmasCompostagem para manter dados atualizados
+  useEffect(() => {
+    if (selectedTurma) {
+      const updatedTurma = turmasCompostagem.find((t) => t.id === selectedTurma.id)
+      if (updatedTurma) {
+        setSelectedTurma(updatedTurma)
+      }
+    }
+  }, [turmasCompostagem])
 
   const filteredParticipantes = useMemo(() => {
     return participantes
@@ -106,7 +119,7 @@ export function useCompostagem() {
   // Participant handlers
   const handleGerarLink = (participante: Participante) => {
     const link = `https://tally.so/r/compostagem?nome=${encodeURIComponent(participante.nome)}&turma=${participante.turma}&trimestre=${TRIMESTRE_ATUAL}`
-    const mensagem = `Ola ${participante.nome.split(" ")[0]}! Preencha o formulario de compostagem do trimestre: ${link}`
+    const mensagem = `Olá ${participante.nome.split(" ")[0]}! Preencha o formulário de compostagem do trimestre: ${link}`
     const whatsappUrl = `https://wa.me/55${participante.telefone.replace(/\D/g, "")}?text=${encodeURIComponent(mensagem)}`
 
     window.open(whatsappUrl, "_blank")
@@ -172,15 +185,29 @@ export function useCompostagem() {
     email: string
     turma: string
     turmaCompostagem: string
+    endereco?: string
+    bairro?: string
+    cidade?: string
+    estado?: string
+    cep?: string
   }) => {
     try {
+      console.log("handleCreateParticipante chamado com:", data)
+      
       const createdParticipante = await createParticipante({
         nome: data.nome,
         telefone: data.telefone,
         email: data.email,
         turma: data.turma,
+        endereco: data.endereco,
+        bairro: data.bairro,
+        cidade: data.cidade,
+        estado: data.estado,
+        cep: data.cep,
         ativo: true,
       })
+
+      console.log("Participante criado:", createdParticipante)
 
       // Convert to MockParticipante with baldes property
       const newParticipante: typeof participantes[0] = {
@@ -190,12 +217,83 @@ export function useCompostagem() {
       }
 
       setParticipantes((prev) => [...prev, newParticipante])
+      
+      // Encontrar a turma de compostagem pelo nome e adicionar participante a ela
+      const turmaCompostagemSelected = turmasCompostagem.find((t) => t.nome === data.turmaCompostagem)
+      if (turmaCompostagemSelected) {
+        console.log("Adicionando participante à turma:", turmaCompostagemSelected.id)
+        
+        try {
+          // Salvar a relação no banco de dados
+          await addParticipanteToTurma(createdParticipante.id, turmaCompostagemSelected.id)
+          console.log("Relação criada no banco de dados")
+        } catch (relationError) {
+          console.error("Erro ao criar relação no banco:", relationError)
+        }
+        
+        // Atualizar estado local
+        setTurmasCompostagem((prev) =>
+          prev.map((t) =>
+            t.id === turmaCompostagemSelected.id
+              ? { ...t, participantes: [...t.participantes, newParticipante] }
+              : t
+          )
+        )
+      }
+      
       toast.success(`Participante "${newParticipante.nome}" criado com sucesso`)
       setIsCreateParticipanteOpen(false)
     } catch (error) {
       console.error("Erro ao criar participante:", error)
       toast.error("Erro ao criar participante")
     }
+  }
+
+  const handleEditParticipante = async (data: {
+    nome: string
+    telefone: string
+    email: string
+    turma: string
+    endereco?: string
+    bairro?: string
+    cidade?: string
+    estado?: string
+    cep?: string
+  }) => {
+    if (!editingParticipante) return
+
+    try {
+      const updatedParticipante = await updateParticipante(editingParticipante.id, {
+        nome: data.nome,
+        telefone: data.telefone,
+        email: data.email,
+        turma: data.turma,
+        endereco: data.endereco,
+        bairro: data.bairro,
+        cidade: data.cidade,
+        estado: data.estado,
+        cep: data.cep,
+      })
+
+      setParticipantes((prev) =>
+        prev.map((p) =>
+          p.id === editingParticipante.id
+            ? { ...p, ...updatedParticipante }
+            : p
+        )
+      )
+      toast.success(`Participante "${data.nome}" atualizado com sucesso`)
+      setIsEditParticipanteOpen(false)
+      setEditingParticipante(null)
+    } catch (error) {
+      console.error("Erro ao editar participante:", error)
+      toast.error("Erro ao editar participante")
+    }
+  }
+
+  const openEditParticipante = (participante: Participante) => {
+    setEditingParticipante(participante)
+    setIsEditParticipanteOpen(true)
   }
 
   // Turma handlers
@@ -249,6 +347,12 @@ export function useCompostagem() {
               : t
           )
         )
+        
+        // Atualizar selectedTurma para refletir na modal
+        setSelectedTurma((prev) =>
+          prev ? { ...prev, participantes: [...prev.participantes, participante] } : null
+        )
+        
         toast.success(`${participante.nome} adicionado à turma`)
       }
       setIsAddParticipantOpen(false)
@@ -269,6 +373,15 @@ export function useCompostagem() {
             : t
         )
       )
+      
+      // Atualizar selectedTurma se estiver visualizando esta turma
+      if (selectedTurma && selectedTurma.id === turmaId) {
+        setSelectedTurma({
+          ...selectedTurma,
+          participantes: selectedTurma.participantes.filter((p) => p.id !== participanteId)
+        })
+      }
+      
       toast.success("Participante removido da turma")
     } catch (error) {
       console.error("Erro ao remover participante:", error)
@@ -308,7 +421,12 @@ export function useCompostagem() {
     stats,
     isCreateParticipanteOpen,
     setIsCreateParticipanteOpen,
+    isEditParticipanteOpen,
+    setIsEditParticipanteOpen,
+    editingParticipante,
     handleCreateParticipante,
+    handleEditParticipante,
+    openEditParticipante,
 
     // Turma states
     turmasCompostagem,

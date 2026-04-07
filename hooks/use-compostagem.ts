@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react"
 import { type Participante, type Turma, type TurmaCompostagem } from "@/lib/mock-data"
+import { type Balde } from "@/lib/supabase-queries"
 import {
   fetchParticipantesWithBaldes,
   fetchTurmas,
@@ -12,6 +13,10 @@ import {
   removeParticipanteFromTurma,
   createParticipante,
   updateParticipante,
+  fetchBaldesForParticipant,
+  createBaldeRecord,
+  updateBaldeRecord,
+  deleteBaldeRecord,
 } from "@/lib/supabase-queries"
 import { toast } from "sonner"
 
@@ -41,6 +46,10 @@ export function useCompostagem() {
   const [selectedTurma, setSelectedTurma] = useState<(TurmaCompostagem & { participantes: Participante[] }) | null>(null)
   const [isTurmaDetailOpen, setIsTurmaDetailOpen] = useState(false)
   const [isAddParticipantOpen, setIsAddParticipantOpen] = useState(false)
+
+  // Bucket records states
+  const [baldes, setBaldes] = useState<Balde[]>([])
+  const [isLoadingBaldes, setIsLoadingBaldes] = useState(false)
 
   // Load initial data
   useEffect(() => {
@@ -163,7 +172,10 @@ export function useCompostagem() {
       setRegisterQuantidade("")
     } catch (error) {
       console.error("Erro ao registrar baldes:", error)
-      toast.error("Erro ao salvar registro")
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      toast.error("Erro ao salvar registro", {
+        description: errorMessage
+      })
     }
   }
 
@@ -399,6 +411,111 @@ export function useCompostagem() {
     setIsAddParticipantOpen(true)
   }
 
+  // Bucket records handlers
+  const fetchBaldesForSelectedParticipant = async () => {
+    if (!selectedParticipante) return
+    
+    try {
+      setIsLoadingBaldes(true)
+      const baldesData = await fetchBaldesForParticipant(selectedParticipante.id)
+      setBaldes(baldesData)
+    } catch (error) {
+      console.error("Erro ao buscar baldes:", error)
+      toast.error("Erro ao buscar registros de baldes")
+    } finally {
+      setIsLoadingBaldes(false)
+    }
+  }
+
+  const handleAddBucketRecord = async (data: { quantidade: number; dataRegistro: string }) => {
+    if (!selectedParticipante) {
+      toast.error("Nenhum participante selecionado")
+      return
+    }
+
+    try {
+      setIsLoadingBaldes(true)
+      const newBalde = await createBaldeRecord(
+        selectedParticipante.id,
+        data.quantidade,
+        data.dataRegistro
+      )
+      
+      setBaldes((prev) => [newBalde, ...prev])
+      
+      // Refresh participant data
+      await refreshParticipantsAndStats()
+      
+      toast.success(`Registro de ${data.quantidade} baldes adicionado com sucesso`)
+    } catch (error) {
+      console.error("Erro ao criar registro de balde:", error)
+      toast.error("Erro ao criar registro de balde")
+    } finally {
+      setIsLoadingBaldes(false)
+    }
+  }
+
+  const handleEditBucketRecord = async (baldeId: string, data: { quantidade: number; dataRegistro: string }) => {
+    try {
+      setIsLoadingBaldes(true)
+      const updatedBalde = await updateBaldeRecord(baldeId, {
+        quantidade: data.quantidade,
+        data_registro: data.dataRegistro,
+      })
+      
+      setBaldes((prev) =>
+        prev.map((b) => (b.id === baldeId ? updatedBalde : b))
+      )
+      
+      // Refresh participant data
+      await refreshParticipantsAndStats()
+      
+      toast.success("Registro atualizado com sucesso")
+    } catch (error) {
+      console.error("Erro ao atualizar registro de balde:", error)
+      toast.error("Erro ao atualizar registro de balde")
+    } finally {
+      setIsLoadingBaldes(false)
+    }
+  }
+
+  const handleDeleteBucketRecord = async (baldeId: string) => {
+    try {
+      setIsLoadingBaldes(true)
+      await deleteBaldeRecord(baldeId)
+      
+      setBaldes((prev) => prev.filter((b) => b.id !== baldeId))
+      
+      // Refresh participant data
+      await refreshParticipantsAndStats()
+      
+      toast.success("Registro deletado com sucesso")
+    } catch (error) {
+      console.error("Erro ao deletar registro de balde:", error)
+      toast.error("Erro ao deletar registro de balde")
+    } finally {
+      setIsLoadingBaldes(false)
+    }
+  }
+
+  // Helper function to refresh participants data after bucket record changes
+  const refreshParticipantsAndStats = async () => {
+    try {
+      const participantesData = await fetchParticipantesWithBaldes()
+      setParticipantes(participantesData)
+      
+      // Update selected participant if it exists
+      if (selectedParticipante) {
+        const updated = participantesData.find((p) => p.id === selectedParticipante.id)
+        if (updated) {
+          setSelectedParticipante(updated)
+        }
+      }
+    } catch (error) {
+      console.error("Erro ao atualizar dados:", error)
+    }
+  }
+
   return {
     // Participant states
     participantes,
@@ -457,5 +574,13 @@ export function useCompostagem() {
     handleRemoveParticipantFromTurma,
     openTurmaDetail,
     openAddParticipant,
+
+    // Bucket records
+    baldes,
+    isLoadingBaldes,
+    fetchBaldesForSelectedParticipant,
+    handleAddBucketRecord,
+    handleEditBucketRecord,
+    handleDeleteBucketRecord,
   }
 }

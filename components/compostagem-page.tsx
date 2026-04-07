@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useCompostagem } from "@/hooks/use-compostagem"
 import { ParticipantesTab } from "@/components/tabs/participantes-tab"
@@ -75,7 +75,22 @@ export function CompostagemPage() {
     handleRemoveParticipantFromTurma,
     openTurmaDetail,
     openAddParticipant,
+
+    // Bucket records
+    baldes,
+    isLoadingBaldes,
+    fetchBaldesForSelectedParticipant,
+    handleAddBucketRecord,
+    handleEditBucketRecord,
+    handleDeleteBucketRecord,
   } = useCompostagem()
+
+  // Fetch baldes when participant detail is opened
+  useEffect(() => {
+    if (isDetailOpen && selectedParticipante) {
+      fetchBaldesForSelectedParticipant()
+    }
+  }, [isDetailOpen, selectedParticipante])
 
   const handleDeleteTurmaClick = (turmaId: string) => {
     setTurmaToDelete(turmaId)
@@ -94,7 +109,7 @@ export function CompostagemPage() {
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-foreground">Compostagem</h2>
           <p className="text-muted-foreground">
-            Gerenciamento do programa Compostando Juntos - {TRIMESTRE_ATUAL}
+            Gerenciamento do programa Compostagem
           </p>
         </div>
       </div>
@@ -144,6 +159,11 @@ export function CompostagemPage() {
         open={isDetailOpen}
         onOpenChange={setIsDetailOpen}
         participante={selectedParticipante}
+        baldes={baldes}
+        isLoadingBuckets={isLoadingBaldes}
+        onAddBucketRecord={handleAddBucketRecord}
+        onEditBucketRecord={handleEditBucketRecord}
+        onDeleteBucketRecord={handleDeleteBucketRecord}
       />
 
       <RegisterBucketsDialog

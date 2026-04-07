@@ -203,3 +203,7 @@ ADD COLUMN IF NOT EXISTS bairro TEXT,
 ADD COLUMN IF NOT EXISTS cidade TEXT,
 ADD COLUMN IF NOT EXISTS estado TEXT,
 ADD COLUMN IF NOT EXISTS cep TEXT;
+
+-- Adicionar coluna data_registro à tabela baldes (se não existir)
+ALTER TABLE IF EXISTS baldes
+ADD COLUMN IF NOT EXISTS data_registro DATE DEFAULT CURRENT_DATE;

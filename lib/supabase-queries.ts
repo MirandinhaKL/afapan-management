@@ -325,15 +325,17 @@ export async function fetchTurmas(): Promise<Turma[]> {
 
 export async function createOrUpdateBalde(participanteId: string, trimestre: string, quantidade: number): Promise<void> {
   try {
+    const dataRegistro = new Date().toISOString().split('T')[0]
+    
     // Verificar se já existe um registro para este participante e trimestre
     const { data: existing, error: selectError } = await supabase
       .from('baldes')
       .select('id')
       .eq('participante_id', participanteId)
       .eq('trimestre', trimestre)
-      .single()
+      .maybeSingle()
 
-    if (selectError && selectError.code !== 'PGRST116') { // PGRST116 = not found
+    if (selectError) {
       throw selectError
     }
 
@@ -343,21 +345,23 @@ export async function createOrUpdateBalde(participanteId: string, trimestre: str
         .from('baldes')
         .update({
           quantidade,
-          data_registro: new Date().toISOString().split('T')[0]
+          data_registro: dataRegistro
         })
         .eq('id', existing.id)
+        .select()
 
       if (updateError) throw updateError
     } else {
       // Inserir
       const { error: insertError } = await supabase
         .from('baldes')
-        .insert([{
+        .insert({
           participante_id: participanteId,
           trimestre,
           quantidade,
-          data_registro: new Date().toISOString().split('T')[0]
-        }])
+          data_registro: dataRegistro
+        })
+        .select()
 
       if (insertError) throw insertError
     }
@@ -510,6 +514,117 @@ export async function fetchTurmasWithParticipantes(): Promise<(TurmaCompostagem 
     }))
   } catch (error) {
     console.error('Erro ao buscar turmas com participantes:', error)
+    throw error
+  }
+}
+// Queries para gerenciar registros de baldes individuais
+export async function fetchBaldesForParticipant(participanteId: string): Promise<Balde[]> {
+  try {
+    const { data, error } = await supabase
+      .from('baldes')
+      .select('*')
+      .eq('participante_id', participanteId)
+      .order('data_registro', { ascending: false })
+
+    if (error) throw error
+    return data || []
+  } catch (error) {
+    console.error('Erro ao buscar baldes do participante:', error)
+    throw error
+  }
+}
+
+export async function createBaldeRecord(
+  participanteId: string,
+  quantidade: number,
+  dataRegistro: string,
+  trimestre?: string
+): Promise<Balde> {
+  try {
+    // Se não for fornecido trimestre, calcular baseado na data
+    let trimstreCalc = trimestre
+    if (!trimstreCalc) {
+      const month = new Date(dataRegistro).getMonth() + 1
+      const year = new Date(dataRegistro).getFullYear()
+      const quarter = Math.ceil(month / 3)
+      trimstreCalc = `${year}-Q${quarter}`
+    }
+
+    const { data, error } = await supabase
+      .from('baldes')
+      .insert([{
+        participante_id: participanteId,
+        quantidade,
+        data_registro: dataRegistro,
+        trimestre: trimstreCalc
+      }])
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
+  } catch (error) {
+    console.error('Erro ao criar registro de balde:', error)
+    throw error
+  }
+}
+
+export async function updateBaldeRecord(
+  baldeId: string,
+  updates: {
+    quantidade?: number
+    data_registro?: string
+    trimestre?: string
+  }
+): Promise<Balde> {
+  try {
+    const { data, error } = await supabase
+      .from('baldes')
+      .update(updates)
+      .eq('id', baldeId)
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
+  } catch (error) {
+    console.error('Erro ao atualizar balde:', error)
+    throw error
+  }
+}
+
+export async function deleteBaldeRecord(baldeId: string): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from('baldes')
+      .delete()
+      .eq('id', baldeId)
+
+    if (error) throw error
+  } catch (error) {
+    console.error('Erro ao deletar balde:', error)
+    throw error
+  }
+}
+
+export async function fetchBaldesByYearAndParticipant(
+  participanteId: string,
+  year: number
+): Promise<Balde[]> {
+  try {
+    // Buscar registros do participante para o ano especificado
+    const { data, error } = await supabase
+      .from('baldes')
+      .select('*')
+      .eq('participante_id', participanteId)
+      .filter('data_registro', 'gte', `${year}-01-01`)
+      .filter('data_registro', 'lte', `${year}-12-31`)
+      .order('data_registro', { ascending: true })
+
+    if (error) throw error
+    return data || []
+  } catch (error) {
+    console.error('Erro ao buscar baldes por ano:', error)
     throw error
   }
 }

@@ -198,7 +198,7 @@ export function ParticipantesTab({
             <div>
               <CardTitle className="flex items-center gap-2 text-base">
                 <Recycle size={18} className="text-primary" />
-                Participantes do programa
+                Gerenciamento do programa
               </CardTitle>
               <CardDescription>
                 Acompanhe o preenchimento dos dados trimestrais de compostagem.

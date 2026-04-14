@@ -58,12 +58,29 @@ CREATE TABLE IF NOT EXISTS participantes_turmas (
   UNIQUE(participante_id, turma_id)
 );
 
+-- Períodos de Monitoramento de Baldes (4 períodos por ano, a cada 3 meses)
+CREATE TABLE IF NOT EXISTS turma_bucket_periods (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  turma_id UUID NOT NULL REFERENCES turmas(id) ON DELETE CASCADE,
+  periodo_numero INTEGER NOT NULL CHECK (periodo_numero >= 1 AND periodo_numero <= 4),
+  periodo_label TEXT NOT NULL,
+  data_monitoramento DATE NOT NULL,
+  criado_em TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  atualizado_em TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(turma_id, periodo_numero)
+);
+
+-- Atualizar tabela baldes para incluir referência ao período
+ALTER TABLE baldes ADD COLUMN IF NOT EXISTS turma_id UUID REFERENCES turmas(id) ON DELETE CASCADE;
+ALTER TABLE baldes ADD COLUMN IF NOT EXISTS turma_bucket_period_id UUID REFERENCES turma_bucket_periods(id) ON DELETE SET NULL;
+
 -- Habilitar Row Level Security
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE participantes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE baldes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE turmas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE participantes_turmas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE turma_bucket_periods ENABLE ROW LEVEL SECURITY;
 
 -- Políticas RLS para profiles
 CREATE POLICY "Users can view own profile" ON profiles
@@ -154,6 +171,19 @@ CREATE POLICY "Authenticated users can update participantes_turmas" ON participa
   FOR UPDATE TO authenticated USING (true);
 
 CREATE POLICY "Authenticated users can delete participantes_turmas" ON participantes_turmas
+  FOR DELETE TO authenticated USING (true);
+
+-- Políticas RLS para turma_bucket_periods (todos os usuários autenticados podem acessar)
+CREATE POLICY "Authenticated users can view turma_bucket_periods" ON turma_bucket_periods
+  FOR SELECT TO authenticated USING (true);
+
+CREATE POLICY "Authenticated users can insert turma_bucket_periods" ON turma_bucket_periods
+  FOR INSERT TO authenticated WITH CHECK (true);
+
+CREATE POLICY "Authenticated users can update turma_bucket_periods" ON turma_bucket_periods
+  FOR UPDATE TO authenticated USING (true);
+
+CREATE POLICY "Authenticated users can delete turma_bucket_periods" ON turma_bucket_periods
   FOR DELETE TO authenticated USING (true);
 
 -- Trigger para criar perfil automaticamente quando usuário se registra

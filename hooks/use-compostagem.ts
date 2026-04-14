@@ -43,6 +43,12 @@ export function useCompostagem() {
   const [isCreateTurmaOpen, setIsCreateTurmaOpen] = useState(false)
   const [newTurmaName, setNewTurmaName] = useState("")
   const [newTurmaDescription, setNewTurmaDescription] = useState("")
+  const [newTurmaDatas, setNewTurmaDatas] = useState({
+    data1: '',
+    data2: '',
+    data3: '',
+    data4: ''
+  })
   const [selectedTurma, setSelectedTurma] = useState<(TurmaCompostagem & { participantes: Participante[] }) | null>(null)
   const [isTurmaDetailOpen, setIsTurmaDetailOpen] = useState(false)
   const [isAddParticipantOpen, setIsAddParticipantOpen] = useState(false)
@@ -315,18 +321,26 @@ export function useCompostagem() {
       return
     }
 
+    // Validar que todas as 4 datas foram preenchidas
+    const datasPreenchidas = Object.values(newTurmaDatas).every(data => data.trim() !== '')
+    if (!datasPreenchidas) {
+      toast.error("Todas as 4 datas de monitoramento são obrigatórias")
+      return
+    }
+
     try {
       const newTurma = await createTurmaCompostagem({
         nome: newTurmaName.trim(),
         descricao: newTurmaDescription.trim() || undefined,
         ativo: true,
-      })
+      }, Object.values(newTurmaDatas))
 
       setTurmasCompostagem((prev) => [...prev, { ...newTurma, participantes: [] }])
-      toast.success(`Turma "${newTurma.nome}" criada com sucesso`)
+      toast.success(`Turma "${newTurma.nome}" criada com sucesso com 4 períodos de monitoramento`)
       setIsCreateTurmaOpen(false)
       setNewTurmaName("")
       setNewTurmaDescription("")
+      setNewTurmaDatas({ data1: '', data2: '', data3: '', data4: '' })
     } catch (error) {
       console.error("Erro ao criar turma:", error)
       toast.error("Erro ao criar turma")
@@ -553,6 +567,8 @@ export function useCompostagem() {
     setNewTurmaName,
     newTurmaDescription,
     setNewTurmaDescription,
+    newTurmaDatas,
+    setNewTurmaDatas,
     selectedTurma,
     isTurmaDetailOpen,
     setIsTurmaDetailOpen,

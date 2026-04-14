@@ -20,10 +20,22 @@ export interface Participante {
 export interface Balde {
   id: string
   participante_id: string
+  turma_id?: string
+  turma_bucket_period_id?: string
   trimestre: string
   quantidade: number
   data_registro: string
   criado_em?: string
+}
+
+export interface TurmaBucketPeriod {
+  id: string
+  turma_id: string
+  periodo_numero: number
+  periodo_label: string
+  data_monitoramento: string
+  criado_em?: string
+  atualizado_em?: string
 }
 
 // Queries para usuários (profiles)
@@ -287,19 +299,38 @@ export async function fetchParticipantesWithBaldes(): Promise<MockParticipante[]
 
 export async function fetchTurmas(): Promise<Turma[]> {
   try {
-    // Buscar turmas distintas dos participantes
-    const { data: turmasData, error } = await supabase
+    // Buscar turmas da tabela de turmas de compostagem
+    const { data: turmasCompostagem, error: errCompostagem } = await supabase
+      .from('turmas')
+      .select('id, nome')
+      .eq('ativo', true)
+
+    if (errCompostagem) throw errCompostagem
+
+    // Buscar turmas distintas dos participantes (para turmas antigas/adicionais)
+    const { data: turmasParticipantes, error: errParticipantes } = await supabase
       .from('participantes')
       .select('turma')
       .eq('ativo', true)
 
-    if (error) throw error
+    if (errParticipantes) throw errParticipantes
 
-    const turmasUnicas = [...new Set(turmasData?.map(p => p.turma) || [])]
+    // Criar um Set com todas as turmas (unificar de ambas as fontes)
+    const turmasSet = new Set<string>()
+    
+    // Adicionar turmas de compostagem pela coluna "nome"
+    turmasCompostagem?.forEach(t => {
+      turmasSet.add(t.nome)
+    })
+    
+    // Adicionar turmas únicas de participantes
+    turmasParticipantes?.forEach(p => {
+      if (p.turma) turmasSet.add(p.turma)
+    })
 
     // Para cada turma, contar participantes
     const turmas: Turma[] = await Promise.all(
-      turmasUnicas.map(async (turma, index) => {
+      Array.from(turmasSet).map(async (turma, index) => {
         const { count } = await supabase
           .from('participantes')
           .select('*', { count: 'exact', head: true })
@@ -388,7 +419,10 @@ export async function fetchTurmasCompostagem(): Promise<TurmaCompostagem[]> {
   }
 }
 
-export async function createTurmaCompostagem(turma: Omit<TurmaCompostagem, 'id' | 'criado_em'>): Promise<TurmaCompostagem> {
+export async function createTurmaCompostagem(
+  turma: Omit<TurmaCompostagem, 'id' | 'criado_em'>,
+  datasMonitoramento?: string[]
+): Promise<TurmaCompostagem> {
   try {
     const { data, error } = await supabase
       .from('turmas')
@@ -397,6 +431,21 @@ export async function createTurmaCompostagem(turma: Omit<TurmaCompostagem, 'id' 
       .single()
 
     if (error) throw error
+    
+    // Gerar 4 períodos de monitoramento após criar a turma
+    try {
+      if (datasMonitoramento && datasMonitoramento.length === 4) {
+        // Usar as datas fornecidas pelo usuário
+        await createTurmaBucketPeriodsWithDates(data.id, datasMonitoramento)
+      } else {
+        // Usar o padrão automático (3 em 3 meses)
+        await createTurmaBucketPeriods(data.id)
+      }
+    } catch (periodError) {
+      console.error('Aviso: não foi possível gerar períodos de monitoramento:', periodError)
+      // Não lançar erro aqui, pois a turma foi criada com sucesso
+    }
+    
     return data
   } catch (error) {
     console.error('Erro ao criar turma:', error)
@@ -431,6 +480,140 @@ export async function deleteTurmaCompostagem(id: string): Promise<void> {
     if (error) throw error
   } catch (error) {
     console.error('Erro ao deletar turma:', error)
+    throw error
+  }
+}
+
+// Queries para Períodos de Monitoramento de Baldes
+export async function createTurmaBucketPeriods(turmaId: string, dataInicio?: Date): Promise<TurmaBucketPeriod[]> {
+  try {
+    const startDate = dataInicio || new Date()
+    const periods: Omit<TurmaBucketPeriod, 'id' | 'criado_em' | 'atualizado_em'>[] = []
+    
+    // Gerar 4 períodos em intervalos de 3 meses a partir da data de início
+    // Primeiro monitoramento é 3 meses após a criação
+    for (let i = 0; i < 4; i++) {
+      const periodDate = new Date(startDate)
+      // Adicionar 3, 6, 9 ou 12 meses dependendo do período
+      periodDate.setMonth(periodDate.getMonth() + ((i + 1) * 3))
+      
+      // Ajustar para o mesmo dia do mês de início (preservando o dia)
+      periodDate.setDate(startDate.getDate())
+      
+      // Determinar o label do período baseado no mês de monitoramento
+      const month = periodDate.getMonth() // 0 = January, 11 = December
+      let periodoLabel = 'Jan-Mar'
+      if (month >= 3 && month <= 5) periodoLabel = 'Apr-Jun'
+      else if (month >= 6 && month <= 8) periodoLabel = 'Jul-Sep'
+      else if (month >= 9 && month <= 11) periodoLabel = 'Oct-Dec'
+      
+      periods.push({
+        turma_id: turmaId,
+        periodo_numero: i + 1,
+        periodo_label: periodoLabel,
+        data_monitoramento: periodDate.toISOString().split('T')[0]
+      })
+    }
+    
+    const { data, error } = await supabase
+      .from('turma_bucket_periods')
+      .insert(periods)
+      .select()
+    
+    if (error) throw error
+    return data || []
+  } catch (error) {
+    console.error('Erro ao criar períodos de baldes:', error)
+    throw error
+  }
+}
+
+export async function fetchTurmaBucketPeriods(turmaId: string): Promise<TurmaBucketPeriod[]> {
+  try {
+    const { data, error } = await supabase
+      .from('turma_bucket_periods')
+      .select('*')
+      .eq('turma_id', turmaId)
+      .order('periodo_numero')
+    
+    if (error) throw error
+    return data || []
+  } catch (error) {
+    console.error('Erro ao buscar períodos de baldes:', error)
+    throw error
+  }
+}
+
+export async function createTurmaBucketPeriodsWithDates(turmaId: string, datas: string[]): Promise<TurmaBucketPeriod[]> {
+  try {
+    if (datas.length !== 4) {
+      throw new Error('Exatamente 4 datas são necessárias')
+    }
+
+    const periods: Omit<TurmaBucketPeriod, 'id' | 'criado_em' | 'atualizado_em'>[] = []
+    const periodLabels = ['Jan-Mar', 'Apr-Jun', 'Jul-Sep', 'Oct-Dec']
+
+    datas.forEach((dataStr, index) => {
+      const date = new Date(dataStr)
+      
+      // Determinar o label do período baseado no mês
+      const month = date.getMonth()
+      let periodoLabel = periodLabels[0]
+      if (month >= 3 && month <= 5) periodoLabel = periodLabels[1]
+      else if (month >= 6 && month <= 8) periodoLabel = periodLabels[2]
+      else if (month >= 9 && month <= 11) periodoLabel = periodLabels[3]
+
+      periods.push({
+        turma_id: turmaId,
+        periodo_numero: index + 1,
+        periodo_label: periodoLabel,
+        data_monitoramento: dataStr
+      })
+    })
+
+    const { data, error } = await supabase
+      .from('turma_bucket_periods')
+      .insert(periods)
+      .select()
+
+    if (error) throw error
+    return data || []
+  } catch (error) {
+    console.error('Erro ao criar períodos de baldes com datas:', error)
+    throw error
+  }
+}
+
+export async function updateTurmaBucketPeriod(periodId: string, updates: Partial<TurmaBucketPeriod>): Promise<TurmaBucketPeriod> {
+  try {
+    const { data, error } = await supabase
+      .from('turma_bucket_periods')
+      .update({
+        ...updates,
+        atualizado_em: new Date().toISOString()
+      })
+      .eq('id', periodId)
+      .select()
+      .single()
+    
+    if (error) throw error
+    return data
+  } catch (error) {
+    console.error('Erro ao atualizar período de baldes:', error)
+    throw error
+  }
+}
+
+export async function deleteTurmaBucketPeriod(periodId: string): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from('turma_bucket_periods')
+      .delete()
+      .eq('id', periodId)
+    
+    if (error) throw error
+  } catch (error) {
+    console.error('Erro ao deletar período de baldes:', error)
     throw error
   }
 }

@@ -54,6 +54,8 @@ export function CompostagemPage() {
     setNewTurmaName,
     newTurmaDescription,
     setNewTurmaDescription,
+    newTurmaDatas,
+    setNewTurmaDatas,
     selectedTurma,
     isTurmaDetailOpen,
     setIsTurmaDetailOpen,
@@ -183,6 +185,10 @@ export function CompostagemPage() {
         onNomeChange={setNewTurmaName}
         descricao={newTurmaDescription}
         onDescricaoChange={setNewTurmaDescription}
+        datas={newTurmaDatas}
+        onDataChange={(periodo, data) => 
+          setNewTurmaDatas(prev => ({ ...prev, [periodo]: data }))
+        }
         onCreateTurma={handleCreateTurma}
       />
 

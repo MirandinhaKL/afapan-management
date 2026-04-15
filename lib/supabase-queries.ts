@@ -267,6 +267,21 @@ export async function fetchParticipantesWithBaldes(): Promise<MockParticipante[]
 
     if (errorBaldes) throw errorBaldes
 
+    // Buscar relacionamentos participante-turma
+    const { data: participantesTurmas, error: errorParticipantesTurmas } = await supabase
+      .from('participantes_turmas')
+      .select('participante_id, turma_id')
+
+    if (errorParticipantesTurmas) throw errorParticipantesTurmas
+
+    // Buscar turmas para mapear IDs para nomes
+    const { data: turmas, error: errorTurmas } = await supabase
+      .from('turmas')
+      .select('id, nome')
+
+    if (errorTurmas) throw errorTurmas
+
+    // Criar mapas para lookup rápido
     const baldesPorParticipante = baldes?.reduce((acc, balde) => {
       if (!acc[balde.participante_id]) {
         acc[balde.participante_id] = []
@@ -279,13 +294,25 @@ export async function fetchParticipantesWithBaldes(): Promise<MockParticipante[]
       return acc
     }, {} as Record<string, RegistroBalde[]>)
 
-    // Combinar participantes com baldes
+    // Criar mapa turmaId -> nome
+    const turmasMap = turmas?.reduce((acc, turma) => {
+      acc[turma.id] = turma.nome
+      return acc
+    }, {} as Record<string, string>) || {}
+
+    // Criar mapa participanteId -> turma_id
+    const participanteTurmaMap = participantesTurmas?.reduce((acc, rel) => {
+      acc[rel.participante_id] = rel.turma_id
+      return acc
+    }, {} as Record<string, string>) || {}
+
+    // Combinar participantes com baldes e turma
     const participantesComBaldes: MockParticipante[] = participantes?.map(p => ({
       id: p.id,
       nome: p.nome,
       telefone: p.telefone || '',
       email: p.email,
-      turma: p.turma,
+      turma: participanteTurmaMap[p.id] ? turmasMap[participanteTurmaMap[p.id]] : p.turma || '',
       baldes: baldesPorParticipante?.[p.id] || [],
       ativo: p.ativo
     })) || []
@@ -299,55 +326,35 @@ export async function fetchParticipantesWithBaldes(): Promise<MockParticipante[]
 
 export async function fetchTurmas(): Promise<Turma[]> {
   try {
-    // Buscar turmas da tabela de turmas de compostagem
+    // Buscar turmas apenas da tabela turmas (fonte de verdade)
     const { data: turmasCompostagem, error: errCompostagem } = await supabase
       .from('turmas')
       .select('id, nome')
       .eq('ativo', true)
+      .order('nome', { ascending: true })
 
     if (errCompostagem) throw errCompostagem
 
-    // Buscar turmas distintas dos participantes (para turmas antigas/adicionais)
-    const { data: turmasParticipantes, error: errParticipantes } = await supabase
-      .from('participantes')
-      .select('turma')
-      .eq('ativo', true)
-
-    if (errParticipantes) throw errParticipantes
-
-    // Criar um Set com todas as turmas (unificar de ambas as fontes)
-    const turmasSet = new Set<string>()
-    
-    // Adicionar turmas de compostagem pela coluna "nome"
-    turmasCompostagem?.forEach(t => {
-      turmasSet.add(t.nome)
-    })
-    
-    // Adicionar turmas únicas de participantes
-    turmasParticipantes?.forEach(p => {
-      if (p.turma) turmasSet.add(p.turma)
-    })
-
     // Para cada turma, contar participantes
     const turmas: Turma[] = await Promise.all(
-      Array.from(turmasSet).map(async (turma, index) => {
+      (turmasCompostagem || []).map(async (turma) => {
         const { count } = await supabase
           .from('participantes')
           .select('*', { count: 'exact', head: true })
-          .eq('turma', turma)
+          .eq('turma', turma.nome)
           .eq('ativo', true)
 
         return {
-          id: String(index + 1),
-          nome: `Turma ${turma}`,
-          semestre: turma,
+          id: turma.id,
+          nome: turma.nome,
+          semestre: turma.nome,
           totalParticipantes: count || 0,
           ativa: true
         }
       })
     )
 
-    return turmas.sort((a, b) => a.semestre.localeCompare(b.semestre))
+    return turmas
   } catch (error) {
     console.error('Erro ao buscar turmas:', error)
     throw error
@@ -487,6 +494,13 @@ export async function deleteTurmaCompostagem(id: string): Promise<void> {
 // Queries para Períodos de Monitoramento de Baldes
 export async function createTurmaBucketPeriods(turmaId: string, dataInicio?: Date): Promise<TurmaBucketPeriod[]> {
   try {
+    // Forçar atualização do schema cache do Supabase
+    try {
+      await supabase.from('turma_bucket_periods').select('id').limit(0)
+    } catch (_) {
+      // Ignorar erros nesta query de teste
+    }
+
     const startDate = dataInicio || new Date()
     const periods: Omit<TurmaBucketPeriod, 'id' | 'criado_em' | 'atualizado_em'>[] = []
     
@@ -548,6 +562,13 @@ export async function createTurmaBucketPeriodsWithDates(turmaId: string, datas: 
   try {
     if (datas.length !== 4) {
       throw new Error('Exatamente 4 datas são necessárias')
+    }
+
+    // Forçar atualização do schema cache do Supabase
+    try {
+      await supabase.from('turma_bucket_periods').select('id').limit(0)
+    } catch (_) {
+      // Ignorar erros nesta query de teste
     }
 
     const periods: Omit<TurmaBucketPeriod, 'id' | 'criado_em' | 'atualizado_em'>[] = []

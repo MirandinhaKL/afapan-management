@@ -158,8 +158,8 @@ export function EditParticipanteDialog({
               <SelectContent>
                 {turmas.length > 0 ? (
                   turmas.map((t) => (
-                    <SelectItem key={t.semestre} value={t.semestre}>
-                      {t.semestre}
+                    <SelectItem key={t.id} value={t.nome}>
+                      {t.nome}
                     </SelectItem>
                   ))
                 ) : (

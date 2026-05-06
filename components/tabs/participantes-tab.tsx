@@ -34,6 +34,7 @@ import {
 import { type Participante, type Turma } from "@/lib/mock-data"
 import { ExportButton } from "@/components/export-button"
 import { exportPDF, exportCSV } from "@/lib/export-utils"
+import { formatTrimestre } from "@/lib/utils"
 
 interface ParticipantesTabProps {
   filteredParticipantes: Participante[]
@@ -97,7 +98,7 @@ export function ParticipantesTab({
     exportPDF({
       filename: `afapan-compostagem-${turmaFilter}-${trimestre}`,
       title: `Relatorio de Compostagem - Turma ${turmaFilter}`,
-      subtitle: `Trimestre ${trimestre} - ${filteredParticipantes.length} participantes listados`,
+      subtitle: `${formatTrimestre(trimestre)} - ${filteredParticipantes.length} participantes listados`,
       headers,
       rows,
       orientation: "landscape",
@@ -212,8 +213,15 @@ export function ParticipantesTab({
                 </SelectTrigger>
                 <SelectContent>
                   {turmas.map((turma) => (
-                    <SelectItem key={turma.id} value={turma.semestre}>
-                      {turma.nome}
+                    <SelectItem key={turma.id} value={turma.nome}>
+                      <div className="flex items-center gap-2">
+                        <span>{turma.nome}</span>
+                        {!turma.ativa && (
+                          <Badge variant="outline" className="text-xs bg-muted text-muted-foreground">
+                            Inativa
+                          </Badge>
+                        )}
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -254,9 +262,14 @@ export function ParticipantesTab({
           {/* Progress Bar */}
           <div className="rounded-lg bg-muted/50 p-4">
             <div className="flex items-center justify-between text-sm">
-              <span className="font-medium text-foreground">
-                Progresso do trimestre {trimestre}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-foreground">
+                  Progresso do trimestre {formatTrimestre(trimestre)}
+                </span>
+                <Badge variant="secondary" className="ml-2">
+                  {formatTrimestre(trimestre)}
+                </Badge>
+              </div>
               <span className="font-bold text-primary">
                 {stats.total > 0 ? Math.round((stats.preenchidos / stats.total) * 100) : 0}%
               </span>

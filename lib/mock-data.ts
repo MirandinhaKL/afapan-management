@@ -126,7 +126,9 @@ export const mockTurmas: Turma[] = [
 ]
 
 export const mockParticipantes: Participante[] = [
-  ...gerarParticipantes("2026.1", 50, 1),
+  ...gerarParticipantes("2025.1", 50, 1),
+  ...gerarParticipantes("2025.2", 50, 51),
+  ...gerarParticipantes("2026.1", 50, 101),
 ]
 
 export const mockDashboardStats: DashboardStats = {

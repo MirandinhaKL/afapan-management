@@ -12,7 +12,7 @@ import {
   addParticipanteToTurma,
   removeParticipanteFromTurma,
   createParticipante,
-  updateParticipante,
+   updateParticipante,
   fetchBaldesForParticipant,
   createBaldeRecord,
   updateBaldeRecord,
@@ -71,7 +71,7 @@ export function useCompostagem() {
         setTurmas(turmasData)
         setTurmasCompostagem(turmasCompostagemData)
         if (turmasData.length > 0) {
-          setTurmaFilter(turmasData[0].semestre)
+          setTurmaFilter(turmasData[0].nome)
         }
       } catch (error) {
         console.error("Erro ao carregar dados:", error)
@@ -278,10 +278,16 @@ export function useCompostagem() {
     estado?: string
     cep?: string
   }) => {
-    if (!editingParticipante) return
+    if (!editingParticipante) {
+      console.error("Nenhum participante em edição")
+      return
+    }
 
     try {
-      const updatedParticipante = await updateParticipante(editingParticipante.id, {
+      console.log("Iniciando edição do participante:", editingParticipante.id)
+      console.log("Dados a atualizar:", data)
+      
+      const updateData = {
         nome: data.nome,
         telefone: data.telefone,
         email: data.email,
@@ -291,21 +297,44 @@ export function useCompostagem() {
         cidade: data.cidade,
         estado: data.estado,
         cep: data.cep,
-      })
+      }
+      
+      console.log("Chamando updateParticipante com:", updateData)
+      const updatedParticipante = await updateParticipante(editingParticipante.id, updateData)
+      
+      console.log("Resposta do updateParticipante:", updatedParticipante)
 
-      setParticipantes((prev) =>
-        prev.map((p) =>
-          p.id === editingParticipante.id
-            ? { ...p, ...updatedParticipante }
-            : p
-        )
-      )
+      if (!updatedParticipante) {
+        console.error("updateParticipante retornou undefined/null")
+        toast.error("Erro: resposta inválida do servidor")
+        return
+      }
+
+      setParticipantes((prev) => {
+        const newList = prev.map((p) => {
+          if (p.id === editingParticipante.id) {
+            const merged = {
+              ...p,
+              ...updatedParticipante,
+              baldes: p.baldes, // Preservar baldes do participante anterior
+            }
+            console.log("Participante mergeado:", merged)
+            return merged
+          }
+          return p
+        })
+        console.log("Nova lista de participantes:", newList)
+        return newList
+      })
+      
       toast.success(`Participante "${data.nome}" atualizado com sucesso`)
       setIsEditParticipanteOpen(false)
       setEditingParticipante(null)
     } catch (error) {
-      console.error("Erro ao editar participante:", error)
-      toast.error("Erro ao editar participante")
+      console.error("ERRO ao editar participante:", error)
+      const errorMessage = error instanceof Error ? error.message : "Erro desconhecido"
+      console.error("Detalhes do erro:", errorMessage)
+      toast.error(`Erro ao editar participante: ${errorMessage}`)
     }
   }
 

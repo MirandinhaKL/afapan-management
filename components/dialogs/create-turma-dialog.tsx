@@ -28,10 +28,10 @@ export function CreateTurmaDialog({
   onCreateTurma,
 }: CreateTurmaDialogProps) {
   const periodos = [
-    { key: 'data1', label: 'Período 1 (Jan-Mar)', numero: 1 },
-    { key: 'data2', label: 'Período 2 (Apr-Jun)', numero: 2 },
-    { key: 'data3', label: 'Período 3 (Jul-Sep)', numero: 3 },
-    { key: 'data4', label: 'Período 4 (Oct-Dec)', numero: 4 },
+    { key: 'data1', label: 'Período 1', numero: 1 },
+    { key: 'data2', label: 'Período 2', numero: 2 },
+    { key: 'data3', label: 'Período 3', numero: 3 },
+    { key: 'data4', label: 'Período 4', numero: 4 },
   ]
 
   return (

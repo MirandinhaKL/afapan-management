@@ -80,18 +80,44 @@ export function ParticipantesTab({
   onEditParticipante,
   trimestre,
 }: ParticipantesTabProps) {
+  const getRegistrosBaldes = (participante: Participante) => {
+    const registros = [...participante.baldes].sort((a, b) => {
+      const dataA = a.dataRegistro || a.trimestre
+      const dataB = b.dataRegistro || b.trimestre
+      return dataA.localeCompare(dataB)
+    })
+
+    return Array.from({ length: 4 }, (_, index) => registros[index]?.quantidade ?? 0)
+  }
+
+  const getTotalBaldes = (participante: Participante) => {
+    return getRegistrosBaldes(participante).reduce((total, quantidade) => total + quantidade, 0)
+  }
+
   const handleExportPDF = () => {
-    const headers = ["Nome", "Telefone", "E-mail", "Turma", "Status", "Baldes"]
+    const headers = [
+      "Nome",
+      "Telefone",
+      "E-mail",
+      "Turma",
+      "Status",
+      "Registro 1",
+      "Registro 2",
+      "Registro 3",
+      "Registro 4",
+      "Total",
+    ]
     const rows = filteredParticipantes.map((p) => {
       const preenchido = getStatus(p)
-      const baldeAtual = p.baldes.find((b) => b.trimestre === trimestre)
+      const registrosBaldes = getRegistrosBaldes(p)
       return [
         p.nome,
         p.telefone,
         p.email,
         `Turma ${p.turma}`,
         preenchido ? "Preenchido" : "Pendente",
-        baldeAtual ? baldeAtual.quantidade : 0,
+        ...registrosBaldes,
+        getTotalBaldes(p),
       ]
     })
 
@@ -106,24 +132,35 @@ export function ParticipantesTab({
         { label: "Total participantes", value: String(stats.total) },
         { label: "Preenchidos", value: String(stats.preenchidos) },
         { label: "Pendentes", value: String(stats.pendentes) },
-        { label: "Baldes no trimestre", value: String(stats.totalBaldes) },
+        { label: "Total de baldes", value: String(stats.totalBaldes) },
       ],
     })
   }
 
   const handleExportCSV = () => {
-    const headers = ["Nome", "Telefone", "E-mail", "Turma", "Status", "Baldes", "Data Registro"]
+    const headers = [
+      "Nome",
+      "Telefone",
+      "E-mail",
+      "Turma",
+      "Status",
+      "Registro 1",
+      "Registro 2",
+      "Registro 3",
+      "Registro 4",
+      "Total",
+    ]
     const rows = filteredParticipantes.map((p) => {
       const preenchido = getStatus(p)
-      const baldeAtual = p.baldes.find((b) => b.trimestre === trimestre)
+      const registrosBaldes = getRegistrosBaldes(p)
       return [
         p.nome,
         p.telefone,
         p.email,
         `Turma ${p.turma}`,
         preenchido ? "Preenchido" : "Pendente",
-        baldeAtual ? baldeAtual.quantidade : 0,
-        baldeAtual ? baldeAtual.dataRegistro : "",
+        ...registrosBaldes,
+        getTotalBaldes(p),
       ]
     })
 
@@ -186,7 +223,7 @@ export function ParticipantesTab({
             </div>
             <div>
               <p className="text-2xl font-bold text-foreground">{stats.totalBaldes}</p>
-              <p className="text-xs text-muted-foreground">Baldes no trimestre</p>
+              <p className="text-xs text-muted-foreground">Total de baldes</p>
             </div>
           </CardContent>
         </Card>
@@ -202,7 +239,7 @@ export function ParticipantesTab({
                 Gerenciamento do programa
               </CardTitle>
               <CardDescription>
-                Acompanhe o preenchimento dos dados trimestrais de compostagem.
+                Acompanhe os 4 registros de baldes por participante.
               </CardDescription>
             </div>
 
@@ -264,7 +301,7 @@ export function ParticipantesTab({
             <div className="flex items-center justify-between text-sm">
               <div className="flex items-center gap-2">
                 <span className="font-medium text-foreground">
-                  Progresso do trimestre {formatTrimestre(trimestre)}
+                  Progresso da campanha
                 </span>
                 <Badge variant="secondary" className="ml-2">
                   {formatTrimestre(trimestre)}
@@ -283,7 +320,7 @@ export function ParticipantesTab({
               />
             </div>
             <p className="mt-1.5 text-xs text-muted-foreground">
-              {stats.preenchidos} de {stats.total} participantes informaram seus dados
+              {stats.preenchidos} de {stats.total} participantes completaram os 4 registros
             </p>
           </div>
 
@@ -295,27 +332,32 @@ export function ParticipantesTab({
                   <TableHead>Participante</TableHead>
                   <TableHead className="hidden md:table-cell">Telefone</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="hidden sm:table-cell">Baldes</TableHead>
+                  <TableHead className="text-center">Registro 1</TableHead>
+                  <TableHead className="text-center">Registro 2</TableHead>
+                  <TableHead className="text-center">Registro 3</TableHead>
+                  <TableHead className="text-center">Registro 4</TableHead>
+                  <TableHead className="text-center">Total</TableHead>
                   <TableHead className="text-right">Acoes</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                    <TableCell colSpan={9} className="py-8 text-center text-muted-foreground">
                       Carregando participantes...
                     </TableCell>
                   </TableRow>
                 ) : filteredParticipantes.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                    <TableCell colSpan={9} className="py-8 text-center text-muted-foreground">
                       Nenhum participante encontrado.
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredParticipantes.map((participante) => {
                     const preenchido = getStatus(participante)
-                    const baldeAtual = participante.baldes.find((b) => b.trimestre === trimestre)
+                    const registrosBaldes = getRegistrosBaldes(participante)
+                    const totalBaldes = getTotalBaldes(participante)
                     return (
                       <TableRow key={participante.id}>
                         <TableCell>
@@ -357,14 +399,15 @@ export function ParticipantesTab({
                             {preenchido ? "Preenchido" : "Pendente"}
                           </Badge>
                         </TableCell>
-                        <TableCell className="hidden sm:table-cell">
-                          {baldeAtual ? (
+                        {registrosBaldes.map((quantidade, index) => (
+                          <TableCell key={index} className="text-center">
                             <span className="font-semibold text-foreground">
-                              {baldeAtual.quantidade}
+                              {quantidade}
                             </span>
-                          ) : (
-                            <span className="text-muted-foreground">-</span>
-                          )}
+                          </TableCell>
+                        ))}
+                        <TableCell className="text-center">
+                          <span className="font-bold text-foreground">{totalBaldes}</span>
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">

@@ -2,10 +2,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { UserMinus, Calendar } from "lucide-react"
+import { UserMinus, Calendar, MessageCircle } from "lucide-react"
 import { useState, useEffect } from "react"
 import { type Participante, type TurmaCompostagem } from "@/lib/mock-data"
 import { type TurmaBucketPeriod, fetchTurmaBucketPeriods } from "@/lib/supabase-queries"
+import { GenerateWhatsAppLinksDialog } from "./generate-whatsapp-links-dialog"
 
 interface TurmaDetailDialogProps {
   open: boolean
@@ -22,6 +23,8 @@ export function TurmaDetailDialog({
 }: TurmaDetailDialogProps) {
   const [bucketPeriods, setBucketPeriods] = useState<TurmaBucketPeriod[]>([])
   const [isLoadingPeriods, setIsLoadingPeriods] = useState(false)
+  const [isGenerateLinkDialogOpen, setIsGenerateLinkDialogOpen] = useState(false)
+  const [selectedPeriodForLinks, setSelectedPeriodForLinks] = useState<TurmaBucketPeriod | null>(null)
 
   useEffect(() => {
     if (open && turma?.id) {
@@ -40,6 +43,11 @@ export function TurmaDetailDialog({
       loadPeriods()
     }
   }, [open, turma?.id])
+
+  const handleGenerateLinksForPeriod = (period: TurmaBucketPeriod) => {
+    setSelectedPeriodForLinks(period)
+    setIsGenerateLinkDialogOpen(true)
+  }
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col gap-0 p-0">
@@ -121,8 +129,8 @@ export function TurmaDetailDialog({
                         key={period.id}
                         className="rounded-lg border border-border/50 p-3 bg-card"
                       >
-                        <div className="flex items-center justify-between">
-                          <div>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex-1">
                             <p className="text-sm font-medium text-foreground">
                               Período {period.periodo_numero}
                             </p>
@@ -130,9 +138,20 @@ export function TurmaDetailDialog({
                               {period.periodo_label}
                             </p>
                           </div>
-                          <Badge variant="outline">
-                            {new Date(period.data_monitoramento).toLocaleDateString("pt-BR")}
-                          </Badge>
+                          <div className="flex flex-col gap-1 items-end">
+                            <Badge variant="outline" className="text-xs">
+                              {new Date(period.data_monitoramento).toLocaleDateString("pt-BR")}
+                            </Badge>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 text-green-600 hover:text-green-700 hover:bg-green-50 text-xs px-2"
+                              onClick={() => handleGenerateLinksForPeriod(period)}
+                            >
+                              <MessageCircle size={12} className="mr-1" />
+                              Links
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -146,6 +165,14 @@ export function TurmaDetailDialog({
             </div>
           )}
         </div>
+
+        <GenerateWhatsAppLinksDialog
+          open={isGenerateLinkDialogOpen}
+          onOpenChange={setIsGenerateLinkDialogOpen}
+          turmaId={turma?.id || ""}
+          turmaBucketPeriodId={selectedPeriodForLinks?.id || ""}
+          periodoLabel={selectedPeriodForLinks?.periodo_label || ""}
+        />
       </DialogContent>
     </Dialog>
   )

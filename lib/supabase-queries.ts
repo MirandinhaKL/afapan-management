@@ -40,6 +40,19 @@ export interface TurmaBucketPeriod {
   atualizado_em?: string
 }
 
+export interface ParticipanteBucketLink {
+  id: string
+  participante_id: string
+  turma_bucket_period_id: string
+  token: string
+  expires_at?: string
+  is_active: boolean
+  submitted: boolean
+  submitted_at?: string
+  criado_em?: string
+  atualizado_em?: string
+}
+
 // Queries para usuários (profiles)
 export async function fetchUsers(): Promise<User[]> {
   try {
@@ -252,36 +265,95 @@ export async function fetchDashboardStats() {
 }
 
 // Queries para Compostagem
-export async function fetchParticipantesWithBaldes(): Promise<MockParticipante[]> {
+export async function fetchParticipantesWithBaldes(turmaId?: string): Promise<MockParticipante[]> {
   try {
-    const { data: participantes, error: errorParticipantes } = await supabase
+    let participanteIds: string[] | null = null
+    let turmaNomeByParticipanteId: Record<string, string> = {}
+
+    if (turmaId) {
+      const { data: turma, error: errorTurma } = await supabase
+        .from('turmas')
+        .select('id, nome')
+        .eq('id', turmaId)
+        .single()
+
+      if (errorTurma) throw errorTurma
+
+      const { data: participantesTurma, error: errorParticipantesTurma } = await supabase
+        .from('participantes_turmas')
+        .select('participante_id')
+        .eq('turma_id', turmaId)
+
+      if (errorParticipantesTurma) throw errorParticipantesTurma
+
+      participanteIds = (participantesTurma || []).map((rel) => rel.participante_id)
+      turmaNomeByParticipanteId = participanteIds.reduce((acc, participanteId) => {
+        acc[participanteId] = turma.nome
+        return acc
+      }, {} as Record<string, string>)
+
+      if (participanteIds.length === 0) {
+        return []
+      }
+    }
+
+    let participantesQuery = supabase
       .from('participantes')
       .select('*')
       .eq('ativo', true)
       .order('nome')
 
+    if (participanteIds) {
+      participantesQuery = participantesQuery.in('id', participanteIds)
+    }
+
+    const { data: participantes, error: errorParticipantes } = await participantesQuery
+
     if (errorParticipantes) throw errorParticipantes
 
-    const { data: baldes, error: errorBaldes } = await supabase
+    const idsParticipantes = (participantes || []).map((p) => p.id)
+
+    if (idsParticipantes.length === 0) {
+      return []
+    }
+
+    let baldesQuery = supabase
       .from('baldes')
       .select('*')
       .order('trimestre')
 
+    baldesQuery = baldesQuery.in('participante_id', idsParticipantes)
+
+    const { data: baldes, error: errorBaldes } = await baldesQuery
+
     if (errorBaldes) throw errorBaldes
 
-    // Buscar relacionamentos participante-turma
-    const { data: participantesTurmas, error: errorParticipantesTurmas } = await supabase
-      .from('participantes_turmas')
-      .select('participante_id, turma_id')
+    if (!turmaId) {
+      // Buscar relacionamentos participante-turma
+      const { data: participantesTurmas, error: errorParticipantesTurmas } = await supabase
+        .from('participantes_turmas')
+        .select('participante_id, turma_id')
 
-    if (errorParticipantesTurmas) throw errorParticipantesTurmas
+      if (errorParticipantesTurmas) throw errorParticipantesTurmas
 
-    // Buscar turmas para mapear IDs para nomes
-    const { data: turmas, error: errorTurmas } = await supabase
-      .from('turmas')
-      .select('id, nome')
+      // Buscar turmas para mapear IDs para nomes
+      const { data: turmas, error: errorTurmas } = await supabase
+        .from('turmas')
+        .select('id, nome')
 
-    if (errorTurmas) throw errorTurmas
+      if (errorTurmas) throw errorTurmas
+
+      // Criar mapa turmaId -> nome
+      const turmasMap = turmas?.reduce((acc, turma) => {
+        acc[turma.id] = turma.nome
+        return acc
+      }, {} as Record<string, string>) || {}
+
+      turmaNomeByParticipanteId = participantesTurmas?.reduce((acc, rel) => {
+        acc[rel.participante_id] = turmasMap[rel.turma_id] || ''
+        return acc
+      }, {} as Record<string, string>) || {}
+    }
 
     // Criar mapas para lookup rápido
     const baldesPorParticipante = baldes?.reduce((acc, balde) => {
@@ -296,25 +368,13 @@ export async function fetchParticipantesWithBaldes(): Promise<MockParticipante[]
       return acc
     }, {} as Record<string, RegistroBalde[]>)
 
-    // Criar mapa turmaId -> nome
-    const turmasMap = turmas?.reduce((acc, turma) => {
-      acc[turma.id] = turma.nome
-      return acc
-    }, {} as Record<string, string>) || {}
-
-    // Criar mapa participanteId -> turma_id
-    const participanteTurmaMap = participantesTurmas?.reduce((acc, rel) => {
-      acc[rel.participante_id] = rel.turma_id
-      return acc
-    }, {} as Record<string, string>) || {}
-
     // Combinar participantes com baldes e turma
     const participantesComBaldes: MockParticipante[] = participantes?.map(p => ({
       id: p.id,
       nome: p.nome,
       telefone: p.telefone || '',
       email: p.email,
-      turma: participanteTurmaMap[p.id] ? turmasMap[participanteTurmaMap[p.id]] : p.turma || '',
+      turma: turmaNomeByParticipanteId[p.id] || p.turma || '',
       baldes: baldesPorParticipante?.[p.id] || [],
       ativo: p.ativo
     })) || []
@@ -333,7 +393,7 @@ export async function fetchTurmas(): Promise<Turma[]> {
       .from('turmas')
       .select('id, nome')
       .eq('ativo', true)
-      .order('nome', { ascending: true })
+      .order('criado_em', { ascending: false })
 
     if (errCompostagem) throw errCompostagem
 
@@ -341,10 +401,9 @@ export async function fetchTurmas(): Promise<Turma[]> {
     const turmas: Turma[] = await Promise.all(
       (turmasCompostagem || []).map(async (turma) => {
         const { count } = await supabase
-          .from('participantes')
+          .from('participantes_turmas')
           .select('*', { count: 'exact', head: true })
-          .eq('turma', turma.nome)
-          .eq('ativo', true)
+          .eq('turma_id', turma.id)
 
         return {
           id: turma.id,
@@ -418,7 +477,7 @@ export async function fetchTurmasCompostagem(): Promise<TurmaCompostagem[]> {
       .from('turmas')
       .select('*')
       .eq('ativo', true)
-      .order('nome')
+      .order('criado_em', { ascending: false })
 
     if (error) throw error
     return data || []
@@ -833,4 +892,256 @@ export async function fetchBaldesByYearAndParticipant(
     console.error('Erro ao buscar baldes por ano:', error)
     throw error
   }
+}
+
+// ===== QUERIES PARA WHATSAPP LINKS PARA PARTICIPANTES =====
+
+/**
+ * Criar um link único para um participante fazer submissão de baldes
+ */
+export async function createParticipanteBucketLink(
+  participanteId: string,
+  turmaBucketPeriodId: string,
+  expiresAt?: Date
+): Promise<ParticipanteBucketLink> {
+  try {
+    // Gerar um token único
+    const token = generateUniqueToken()
+
+    const { data, error } = await supabase
+      .from('participante_bucket_links')
+      .insert([{
+        participante_id: participanteId,
+        turma_bucket_period_id: turmaBucketPeriodId,
+        token,
+        expires_at: expiresAt?.toISOString(),
+        is_active: true,
+        submitted: false
+      }])
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
+  } catch (error) {
+    console.error('Erro ao criar link de participante:', error)
+    throw error
+  }
+}
+
+/**
+ * Buscar link por token (sem autenticação necessária)
+ */
+export async function fetchParticipanteBucketLinkByToken(token: string): Promise<ParticipanteBucketLink | null> {
+  try {
+    const { data, error } = await supabase
+      .from('participante_bucket_links')
+      .select(`
+        *,
+        participantes:participante_id (id, nome, email, telefone),
+        turma_bucket_periods:turma_bucket_period_id (id, periodo_label, data_monitoramento)
+      `)
+      .eq('token', token)
+      .eq('is_active', true)
+      .single()
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        // Nenhum registro encontrado
+        return null
+      }
+      throw error
+    }
+
+    // Validar se o link expirou
+    if (data?.expires_at) {
+      const expiresAt = new Date(data.expires_at)
+      if (expiresAt < new Date()) {
+        return null
+      }
+    }
+
+    return data
+  } catch (error) {
+    console.error('Erro ao buscar link por token:', error)
+    throw error
+  }
+}
+
+/**
+ * Atualizar um link após submissão
+ */
+export async function updateParticipanteBucketLinkSubmission(
+  token: string,
+  quantidade: number
+): Promise<{ success: boolean; message: string }> {
+  try {
+    // Primeiro, buscar o link
+    const linkData = await fetchParticipanteBucketLinkByToken(token)
+    if (!linkData) {
+      throw new Error('Link inválido ou expirado')
+    }
+
+    // Criar registro de balde
+    const balde = await createBalde({
+      participante_id: linkData.participante_id,
+      turma_id: undefined,
+      turma_bucket_period_id: linkData.turma_bucket_period_id,
+      trimestre: `${new Date().getFullYear()}-Q${Math.ceil((new Date().getMonth() + 1) / 3)}`,
+      quantidade,
+      data_registro: new Date().toISOString().split('T')[0]
+    })
+
+    // Atualizar o link como submetido
+    await supabase
+      .from('participante_bucket_links')
+      .update({
+        submitted: true,
+        submitted_at: new Date().toISOString()
+      })
+      .eq('token', token)
+
+    return {
+      success: true,
+      message: `Obrigado! Registramos ${quantidade} baldes coletados neste período.`
+    }
+  } catch (error) {
+    console.error('Erro ao salvar submissão de baldes:', error)
+    throw error
+  }
+}
+
+/**
+ * Gerar links em lote para todos os participantes de uma turma em um período
+ */
+export async function generateBucketLinksForPeriod(
+  turmaId: string,
+  turmaBucketPeriodId: string,
+  expiresInDays: number = 30
+): Promise<Array<{ participanteId: string; participanteNome: string; token: string; link: string }>> {
+  try {
+    // Buscar todos os participantes ativos da turma
+    const { data: participantesTurma, error: errorPT } = await supabase
+      .from('participantes_turmas')
+      .select('participante_id, participantes(id, nome)')
+      .eq('turma_id', turmaId)
+
+    if (errorPT) throw errorPT
+
+    // Gerar links para cada participante
+    const expiresAt = new Date()
+    expiresAt.setDate(expiresAt.getDate() + expiresInDays)
+
+    const linksGerados: Array<{ participanteId: string; participanteNome: string; token: string; link: string }> = []
+
+    for (const rel of participantesTurma || []) {
+      const participanteId = rel.participante_id
+      const participanteNome = (rel.participantes as any)?.nome || 'Participante'
+
+      // Verificar se já existe um link ativo para este participante e período
+      const { data: existingLink } = await supabase
+        .from('participante_bucket_links')
+        .select('token')
+        .eq('participante_id', participanteId)
+        .eq('turma_bucket_period_id', turmaBucketPeriodId)
+        .eq('is_active', true)
+        .maybeSingle()
+
+      let token: string
+      if (existingLink) {
+        token = existingLink.token
+      } else {
+        // Criar novo link
+        const link = await createParticipanteBucketLink(
+          participanteId,
+          turmaBucketPeriodId,
+          expiresAt
+        )
+        token = link.token
+      }
+
+      // Construir URL do link
+      const baseUrl = typeof window !== 'undefined' ? window.location.origin : process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+      const linkUrl = `${baseUrl}/bucket/${token}`
+
+      linksGerados.push({
+        participanteId,
+        participanteNome,
+        token,
+        link: linkUrl
+      })
+    }
+
+    return linksGerados
+  } catch (error) {
+    console.error('Erro ao gerar links em lote:', error)
+    throw error
+  }
+}
+
+/**
+ * Buscar todos os links de uma turma e período
+ */
+export async function fetchBucketLinksForPeriod(
+  turmaId: string,
+  turmaBucketPeriodId: string
+): Promise<(ParticipanteBucketLink & { 
+  participante?: { id: string; nome: string };
+  periodo?: { periodo_label: string }
+})[]> {
+  try {
+    const { data: periodo, error: errorP } = await supabase
+      .from('turma_bucket_periods')
+      .select('id, turma_id')
+      .eq('id', turmaBucketPeriodId)
+      .eq('turma_id', turmaId)
+      .single()
+
+    if (errorP) throw errorP
+
+    const { data: links, error: errorL } = await supabase
+      .from('participante_bucket_links')
+      .select(`
+        *,
+        participantes:participante_id (id, nome)
+      `)
+      .eq('turma_bucket_period_id', turmaBucketPeriodId)
+      .order('criado_em', { ascending: false })
+
+    if (errorL) throw errorL
+    return links || []
+  } catch (error) {
+    console.error('Erro ao buscar links de período:', error)
+    throw error
+  }
+}
+
+/**
+ * Revogar um link específico
+ */
+export async function revokeBucketLink(token: string): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from('participante_bucket_links')
+      .update({ is_active: false })
+      .eq('token', token)
+
+    if (error) throw error
+  } catch (error) {
+    console.error('Erro ao revogar link:', error)
+    throw error
+  }
+}
+
+/**
+ * Função auxiliar para gerar um token único
+ */
+function generateUniqueToken(): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+  const length = 32
+  let token = ''
+  for (let i = 0; i < length; i++) {
+    token += chars.charAt(Math.floor(Math.random() * chars.length))
+  }
+  return token
 }

@@ -5,12 +5,12 @@ import { Plus, Eye, UserPlus, Trash2, Group } from "lucide-react"
 import { type Participante, type TurmaCompostagem } from "@/lib/mock-data"
 
 interface TurmasTabProps {
-  turmasCompostagem: (TurmaCompostagem & { participantes: Participante[] })[]
+  turmasCompostagem: (TurmaCompostagem & { participantes: Participante[]; totalParticipantes?: number })[]
   loading: boolean
   onCreateTurma: () => void
   onDeleteTurma: (turmaId: string) => void
-  onOpenTurmaDetail: (turma: TurmaCompostagem & { participantes: Participante[] }) => void
-  onOpenAddParticipant: (turma: TurmaCompostagem & { participantes: Participante[] }) => void
+  onOpenTurmaDetail: (turma: TurmaCompostagem & { participantes: Participante[]; totalParticipantes?: number }) => void
+  onOpenAddParticipant: (turma: TurmaCompostagem & { participantes: Participante[]; totalParticipantes?: number }) => void
 }
 
 export function TurmasTab({
@@ -67,7 +67,7 @@ export function TurmasTab({
                   )}
                   <div className="flex items-center justify-between pt-2">
                     <span className="text-xs text-muted-foreground">Participantes:</span>
-                    <Badge variant="secondary">{turma.participantes.length}</Badge>
+                    <Badge variant="secondary">{turma.totalParticipantes ?? turma.participantes.length}</Badge>
                   </div>
                   <div className="flex gap-2 pt-2">
                     <Button

@@ -5,7 +5,7 @@ import {
   fetchParticipantesWithBaldes,
   fetchTurmas,
   createOrUpdateBalde,
-  fetchTurmasWithParticipantes,
+  fetchTurmasCompostagem,
   createTurmaCompostagem,
   updateTurmaCompostagem,
   deleteTurmaCompostagem,
@@ -17,10 +17,24 @@ import {
   createBaldeRecord,
   updateBaldeRecord,
   deleteBaldeRecord,
+  createParticipanteBucketLink,
+  fetchTurmaBucketPeriods,
 } from "@/lib/supabase-queries"
+import { generateWhatsAppMessage } from "@/lib/whatsapp-utils"
 import { toast } from "sonner"
 
 const TRIMESTRE_ATUAL = "2026-Q1"
+const TOTAL_REGISTROS_CAMPANHA = 4
+
+const getRegistrosCampanha = (participante: Participante) => {
+  return [...participante.baldes]
+    .sort((a, b) => {
+      const dataA = a.dataRegistro || a.trimestre
+      const dataB = b.dataRegistro || b.trimestre
+      return dataA.localeCompare(dataB)
+    })
+    .slice(0, TOTAL_REGISTROS_CAMPANHA)
+}
 
 export function useCompostagem() {
   // Participant states
@@ -39,7 +53,7 @@ export function useCompostagem() {
   const [editingParticipante, setEditingParticipante] = useState<Participante | null>(null)
 
   // Turma management states
-  const [turmasCompostagem, setTurmasCompostagem] = useState<(TurmaCompostagem & { participantes: Participante[] })[]>([])
+  const [turmasCompostagem, setTurmasCompostagem] = useState<(TurmaCompostagem & { participantes: Participante[]; totalParticipantes?: number })[]>([])
   const [isCreateTurmaOpen, setIsCreateTurmaOpen] = useState(false)
   const [newTurmaName, setNewTurmaName] = useState("")
   const [newTurmaDescription, setNewTurmaDescription] = useState("")
@@ -49,7 +63,7 @@ export function useCompostagem() {
     data3: '',
     data4: ''
   })
-  const [selectedTurma, setSelectedTurma] = useState<(TurmaCompostagem & { participantes: Participante[] }) | null>(null)
+  const [selectedTurma, setSelectedTurma] = useState<(TurmaCompostagem & { participantes: Participante[]; totalParticipantes?: number }) | null>(null)
   const [isTurmaDetailOpen, setIsTurmaDetailOpen] = useState(false)
   const [isAddParticipantOpen, setIsAddParticipantOpen] = useState(false)
 
@@ -62,16 +76,27 @@ export function useCompostagem() {
     const loadData = async () => {
       try {
         setLoading(true)
-        const [participantesData, turmasData, turmasCompostagemData] = await Promise.all([
-          fetchParticipantesWithBaldes(),
+        const [turmasData, turmasCompostagemData] = await Promise.all([
           fetchTurmas(),
-          fetchTurmasWithParticipantes(),
+          fetchTurmasCompostagem(),
         ])
+
+        const ultimaTurma = turmasData[0]
+        const participantesData = ultimaTurma
+          ? await fetchParticipantesWithBaldes(ultimaTurma.id)
+          : []
+
         setParticipantes(participantesData)
         setTurmas(turmasData)
-        setTurmasCompostagem(turmasCompostagemData)
-        if (turmasData.length > 0) {
-          setTurmaFilter(turmasData[0].nome)
+        setTurmasCompostagem(
+          turmasCompostagemData.map((turma) => ({
+            ...turma,
+            participantes: turma.id === ultimaTurma?.id ? participantesData : [],
+            totalParticipantes: turmasData.find((item) => item.id === turma.id)?.totalParticipantes || 0,
+          }))
+        )
+        if (ultimaTurma) {
+          setTurmaFilter(ultimaTurma.nome)
         }
       } catch (error) {
         console.error("Erro ao carregar dados:", error)
@@ -104,19 +129,18 @@ export function useCompostagem() {
       )
       .filter((p) => {
         if (statusFilter === "todos") return true
-        const temRegistro = p.baldes.some((b) => b.trimestre === TRIMESTRE_ATUAL)
-        return statusFilter === "preenchido" ? temRegistro : !temRegistro
+        const campanhaCompleta = getRegistrosCampanha(p).length >= TOTAL_REGISTROS_CAMPANHA
+        return statusFilter === "preenchido" ? campanhaCompleta : !campanhaCompleta
       })
   }, [participantes, searchTerm, statusFilter, turmaFilter])
 
   const stats = useMemo(() => {
     const turmaParticipantes = participantes.filter((p) => p.turma === turmaFilter)
-    const preenchidos = turmaParticipantes.filter((p) =>
-      p.baldes.some((b) => b.trimestre === TRIMESTRE_ATUAL)
+    const preenchidos = turmaParticipantes.filter(
+      (p) => getRegistrosCampanha(p).length >= TOTAL_REGISTROS_CAMPANHA
     )
-    const totalBaldes = preenchidos.reduce((acc, p) => {
-      const balde = p.baldes.find((b) => b.trimestre === TRIMESTRE_ATUAL)
-      return acc + (balde?.quantidade || 0)
+    const totalBaldes = turmaParticipantes.reduce((acc, p) => {
+      return acc + getRegistrosCampanha(p).reduce((total, balde) => total + (balde.quantidade || 0), 0)
     }, 0)
 
     return {
@@ -127,20 +151,105 @@ export function useCompostagem() {
     }
   }, [participantes, turmaFilter])
 
-  const getStatus = (participante: Participante) => {
-    return participante.baldes.some((b) => b.trimestre === TRIMESTRE_ATUAL)
+  const getStatus = (participante: Participante) =>
+    getRegistrosCampanha(participante).length >= TOTAL_REGISTROS_CAMPANHA
+
+  const loadParticipantesDaTurma = async (turmaId: string) => {
+    const participantesData = await fetchParticipantesWithBaldes(turmaId)
+    const turma = turmas.find((item) => item.id === turmaId)
+
+    setTurmasCompostagem((prev) =>
+      prev.map((item) =>
+        item.id === turmaId
+          ? {
+              ...item,
+              participantes: participantesData,
+              totalParticipantes: turma?.totalParticipantes || participantesData.length,
+            }
+          : item
+      )
+    )
+
+    return participantesData
+  }
+
+  const handleTurmaFilterChange = async (turmaNome: string) => {
+    setTurmaFilter(turmaNome)
+    const turma = turmas.find((item) => item.nome === turmaNome)
+
+    if (!turma) {
+      setParticipantes([])
+      return
+    }
+
+    try {
+      setLoading(true)
+      const participantesData = await loadParticipantesDaTurma(turma.id)
+      setParticipantes(participantesData)
+    } catch (error) {
+      console.error("Erro ao carregar participantes da turma:", error)
+      toast.error("Erro ao carregar participantes da turma")
+    } finally {
+      setLoading(false)
+    }
   }
 
   // Participant handlers
-  const handleGerarLink = (participante: Participante) => {
-    const link = `https://tally.so/r/compostagem?nome=${encodeURIComponent(participante.nome)}&turma=${participante.turma}&trimestre=${TRIMESTRE_ATUAL}`
-    const mensagem = `Olá ${participante.nome.split(" ")[0]}! Preencha o formulário de compostagem do trimestre: ${link}`
-    const whatsappUrl = `https://wa.me/55${participante.telefone.replace(/\D/g, "")}?text=${encodeURIComponent(mensagem)}`
+  const handleGerarLink = async (participante: Participante) => {
+    try {
+      // Buscar a turma do participante
+      const turmaParticipante = turmasCompostagem.find(
+        (t) => t.nome === participante.turma
+      )
 
-    window.open(whatsappUrl, "_blank")
-    toast.success(`Link gerado para ${participante.nome}`, {
-      description: "A janela do WhatsApp foi aberta.",
-    })
+      if (!turmaParticipante) {
+        toast.error("Turma não encontrada")
+        return
+      }
+
+      // Buscar os períodos da turma
+      const periodos = await fetchTurmaBucketPeriods(turmaParticipante.id)
+
+      if (periodos.length === 0) {
+        toast.error("Nenhum período configurado para esta turma")
+        return
+      }
+
+      // Encontrar o período atual ou o primeiro período disponível
+      const periodoAtual = periodos.find((p) => {
+        const dataMonitoramento = new Date(p.data_monitoramento)
+        return dataMonitoramento > new Date()
+      }) || periodos[0]
+
+      // Criar o link
+      const linkData = await createParticipanteBucketLink(
+        participante.id,
+        periodoAtual.id
+      )
+
+      // Gerar a mensagem
+      const baseUrl = typeof window !== 'undefined' ? window.location.origin : undefined
+      const mensagem = generateWhatsAppMessage(
+        linkData.token,
+        participante.nome,
+        periodoAtual.periodo_label,
+        baseUrl
+      )
+
+      // Criar URL do WhatsApp com telefone do participante
+      const telefoneClean = participante.telefone.replace(/\D/g, "")
+      const whatsappUrl = `https://wa.me/55${telefoneClean}?text=${encodeURIComponent(mensagem)}`
+
+      window.open(whatsappUrl, "_blank")
+      toast.success(`Link gerado para ${participante.nome}`, {
+        description: "A janela do WhatsApp foi aberta.",
+      })
+    } catch (error) {
+      console.error("Erro ao gerar link:", error)
+      toast.error("Erro ao gerar link", {
+        description: error instanceof Error ? error.message : "Tente novamente",
+      })
+    }
   }
 
   const handleRegistrarManual = async () => {
@@ -253,7 +362,11 @@ export function useCompostagem() {
         setTurmasCompostagem((prev) =>
           prev.map((t) =>
             t.id === turmaCompostagemSelected.id
-              ? { ...t, participantes: [...t.participantes, newParticipante] }
+              ? {
+                  ...t,
+                  participantes: [...t.participantes, newParticipante],
+                  totalParticipantes: (t.totalParticipantes || t.participantes.length) + 1,
+                }
               : t
           )
         )
@@ -398,14 +511,24 @@ export function useCompostagem() {
         setTurmasCompostagem((prev) =>
           prev.map((t) =>
             t.id === selectedTurma.id
-              ? { ...t, participantes: [...t.participantes, participante] }
+              ? {
+                  ...t,
+                  participantes: [...t.participantes, participante],
+                  totalParticipantes: (t.totalParticipantes || t.participantes.length) + 1,
+                }
               : t
           )
         )
         
         // Atualizar selectedTurma para refletir na modal
         setSelectedTurma((prev) =>
-          prev ? { ...prev, participantes: [...prev.participantes, participante] } : null
+          prev
+            ? {
+                ...prev,
+                participantes: [...prev.participantes, participante],
+                totalParticipantes: (prev.totalParticipantes || prev.participantes.length) + 1,
+              }
+            : null
         )
         
         toast.success(`${participante.nome} adicionado à turma`)
@@ -424,7 +547,11 @@ export function useCompostagem() {
       setTurmasCompostagem((prev) =>
         prev.map((t) =>
           t.id === turmaId
-            ? { ...t, participantes: t.participantes.filter((p) => p.id !== participanteId) }
+            ? {
+                ...t,
+                participantes: t.participantes.filter((p) => p.id !== participanteId),
+                totalParticipantes: Math.max((t.totalParticipantes || t.participantes.length) - 1, 0),
+              }
             : t
         )
       )
@@ -433,7 +560,11 @@ export function useCompostagem() {
       if (selectedTurma && selectedTurma.id === turmaId) {
         setSelectedTurma({
           ...selectedTurma,
-          participantes: selectedTurma.participantes.filter((p) => p.id !== participanteId)
+          participantes: selectedTurma.participantes.filter((p) => p.id !== participanteId),
+          totalParticipantes: Math.max(
+            (selectedTurma.totalParticipantes || selectedTurma.participantes.length) - 1,
+            0
+          ),
         })
       }
       
@@ -444,13 +575,37 @@ export function useCompostagem() {
     }
   }
 
-  const openTurmaDetail = (turma: TurmaCompostagem & { participantes: Participante[] }) => {
-    setSelectedTurma(turma)
+  const openTurmaDetail = async (turma: TurmaCompostagem & { participantes: Participante[]; totalParticipantes?: number }) => {
+    let turmaAtualizada = turma
+
+    if (turma.participantes.length === 0 && (turma.totalParticipantes || 0) > 0) {
+      try {
+        const participantesData = await loadParticipantesDaTurma(turma.id)
+        turmaAtualizada = { ...turma, participantes: participantesData }
+      } catch (error) {
+        console.error("Erro ao carregar participantes da turma:", error)
+        toast.error("Erro ao carregar participantes da turma")
+      }
+    }
+
+    setSelectedTurma(turmaAtualizada)
     setIsTurmaDetailOpen(true)
   }
 
-  const openAddParticipant = (turma: TurmaCompostagem & { participantes: Participante[] }) => {
-    setSelectedTurma(turma)
+  const openAddParticipant = async (turma: TurmaCompostagem & { participantes: Participante[]; totalParticipantes?: number }) => {
+    let turmaAtualizada = turma
+
+    if (turma.participantes.length === 0 && (turma.totalParticipantes || 0) > 0) {
+      try {
+        const participantesData = await loadParticipantesDaTurma(turma.id)
+        turmaAtualizada = { ...turma, participantes: participantesData }
+      } catch (error) {
+        console.error("Erro ao carregar participantes da turma:", error)
+        toast.error("Erro ao carregar participantes da turma")
+      }
+    }
+
+    setSelectedTurma(turmaAtualizada)
     setIsAddParticipantOpen(true)
   }
 
@@ -544,7 +699,8 @@ export function useCompostagem() {
   // Helper function to refresh participants data after bucket record changes
   const refreshParticipantsAndStats = async () => {
     try {
-      const participantesData = await fetchParticipantesWithBaldes()
+      const turma = turmas.find((item) => item.nome === turmaFilter)
+      const participantesData = await fetchParticipantesWithBaldes(turma?.id)
       setParticipantes(participantesData)
       
       // Update selected participant if it exists
@@ -569,7 +725,7 @@ export function useCompostagem() {
     statusFilter,
     setStatusFilter,
     turmaFilter,
-    setTurmaFilter,
+    setTurmaFilter: handleTurmaFilterChange,
     selectedParticipante,
     isDetailOpen,
     setIsDetailOpen,

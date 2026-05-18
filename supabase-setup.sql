@@ -208,16 +208,26 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
--- Função para atualizar updated_at (opcional)
+-- Adicionar coluna atualizado_em às tabelas (se não existir)
+ALTER TABLE IF EXISTS participantes
+ADD COLUMN IF NOT EXISTS atualizado_em TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+
+ALTER TABLE IF EXISTS baldes
+ADD COLUMN IF NOT EXISTS atualizado_em TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+
+-- Função para atualizar atualizado_em (não toca em criado_em)
 CREATE OR REPLACE FUNCTION public.handle_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
-  NEW.criado_em = NOW();
+  NEW.atualizado_em = NOW();
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
 -- Aplicar trigger de updated_at nas tabelas
+DROP TRIGGER IF EXISTS handle_updated_at_participantes ON participantes;
+DROP TRIGGER IF EXISTS handle_updated_at_baldes ON baldes;
+
 CREATE TRIGGER handle_updated_at_participantes
   BEFORE UPDATE ON participantes
   FOR EACH ROW EXECUTE FUNCTION handle_updated_at();

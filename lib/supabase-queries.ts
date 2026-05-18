@@ -15,6 +15,7 @@ export interface Participante {
   cep?: string
   ativo: boolean
   criado_em?: string
+  atualizado_em?: string
 }
 
 export interface Balde {
@@ -26,6 +27,7 @@ export interface Balde {
   quantidade: number
   data_registro: string
   criado_em?: string
+  atualizado_em?: string
 }
 
 export interface TurmaBucketPeriod {

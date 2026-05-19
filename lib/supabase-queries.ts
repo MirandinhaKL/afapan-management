@@ -389,27 +389,48 @@ export async function fetchParticipantesWithBaldes(turmaId?: string): Promise<Mo
 export async function fetchTurmas(): Promise<Turma[]> {
   try {
     // Buscar turmas apenas da tabela turmas (fonte de verdade)
-    const { data: turmasCompostagem, error: errCompostagem } = await supabase
+    let { data: turmasCompostagem, error: errCompostagem } = await supabase
       .from('turmas')
       .select('id, nome')
       .eq('ativo', true)
       .order('criado_em', { ascending: false })
 
-    if (errCompostagem) throw errCompostagem
+    if (errCompostagem) {
+      const fallback = await supabase
+        .from('turmas')
+        .select('id, nome')
+        .eq('ativo', true)
+        .order('nome', { ascending: true })
+
+      if (fallback.error) throw fallback.error
+      turmasCompostagem = fallback.data
+    }
 
     // Para cada turma, contar participantes
     const turmas: Turma[] = await Promise.all(
       (turmasCompostagem || []).map(async (turma) => {
-        const { count } = await supabase
+        const { count, error: countError } = await supabase
           .from('participantes_turmas')
           .select('*', { count: 'exact', head: true })
           .eq('turma_id', turma.id)
+
+        let totalParticipantes = count || 0
+
+        if (countError) {
+          const fallbackCount = await supabase
+            .from('participantes')
+            .select('*', { count: 'exact', head: true })
+            .eq('turma', turma.nome)
+            .eq('ativo', true)
+
+          totalParticipantes = fallbackCount.count || 0
+        }
 
         return {
           id: turma.id,
           nome: turma.nome,
           semestre: turma.nome,
-          totalParticipantes: count || 0,
+          totalParticipantes,
           ativa: true
         }
       })
@@ -479,7 +500,17 @@ export async function fetchTurmasCompostagem(): Promise<TurmaCompostagem[]> {
       .eq('ativo', true)
       .order('criado_em', { ascending: false })
 
-    if (error) throw error
+    if (error) {
+      const fallback = await supabase
+        .from('turmas')
+        .select('*')
+        .eq('ativo', true)
+        .order('nome', { ascending: true })
+
+      if (fallback.error) throw fallback.error
+      return fallback.data || []
+    }
+
     return data || []
   } catch (error) {
     console.error('Erro ao buscar turmas:', error)

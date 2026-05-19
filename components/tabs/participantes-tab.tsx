@@ -181,54 +181,6 @@ export function ParticipantesTab({
         <ExportButton onExportPDF={handleExportPDF} onExportCSV={handleExportCSV} />
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card className="border-border/50">
-          <CardContent className="flex items-center gap-4 pt-6">
-            <div className="rounded-lg bg-primary/10 p-3">
-              <Users size={20} className="text-primary" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{stats.total}</p>
-              <p className="text-xs text-muted-foreground">Total participantes</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-border/50">
-          <CardContent className="flex items-center gap-4 pt-6">
-            <div className="rounded-lg bg-success/10 p-3">
-              <CheckCircle2 size={20} className="text-success" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{stats.preenchidos}</p>
-              <p className="text-xs text-muted-foreground">Preenchidos</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-border/50">
-          <CardContent className="flex items-center gap-4 pt-6">
-            <div className="rounded-lg bg-warning/10 p-3">
-              <Clock size={20} className="text-warning" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{stats.pendentes}</p>
-              <p className="text-xs text-muted-foreground">Pendentes</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-border/50">
-          <CardContent className="flex items-center gap-4 pt-6">
-            <div className="rounded-lg bg-primary/10 p-3">
-              <Trash2 size={20} className="text-primary" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{stats.totalBaldes}</p>
-              <p className="text-xs text-muted-foreground">Total de baldes</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
       {/* Main Content */}
       <Card className="border-border/50">
         <CardHeader>
@@ -267,6 +219,54 @@ export function ParticipantesTab({
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Stats Cards */}
+          <div className="grid gap-4 md:grid-cols-4">
+            <Card className="border-border/50 shadow-sm">
+              <CardContent className="flex items-center gap-4 p-4">
+                <div className="rounded-lg bg-primary/10 p-3">
+                  <Users size={20} className="text-primary" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-foreground">{stats.total}</p>
+                  <p className="text-xs text-muted-foreground">Total participantes</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="border-border/50 shadow-sm">
+              <CardContent className="flex items-center gap-4 p-4">
+                <div className="rounded-lg bg-success/10 p-3">
+                  <CheckCircle2 size={20} className="text-success" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-foreground">{stats.preenchidos}</p>
+                  <p className="text-xs text-muted-foreground">Preenchidos</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="border-border/50 shadow-sm">
+              <CardContent className="flex items-center gap-4 p-4">
+                <div className="rounded-lg bg-warning/10 p-3">
+                  <Clock size={20} className="text-warning" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-foreground">{stats.pendentes}</p>
+                  <p className="text-xs text-muted-foreground">Pendentes</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="border-border/50 shadow-sm">
+              <CardContent className="flex items-center gap-4 p-4">
+                <div className="rounded-lg bg-primary/10 p-3">
+                  <Trash2 size={20} className="text-primary" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-foreground">{stats.totalBaldes}</p>
+                  <p className="text-xs text-muted-foreground">Total de baldes</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
           {/* Filters */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="relative flex-1">
@@ -294,34 +294,6 @@ export function ParticipantesTab({
                 </TabsTrigger>
               </TabsList>
             </Tabs>
-          </div>
-
-          {/* Progress Bar */}
-          <div className="rounded-lg bg-muted/50 p-4">
-            <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2">
-                <span className="font-medium text-foreground">
-                  Progresso da campanha
-                </span>
-                <Badge variant="secondary" className="ml-2">
-                  {formatTrimestre(trimestre)}
-                </Badge>
-              </div>
-              <span className="font-bold text-primary">
-                {stats.total > 0 ? Math.round((stats.preenchidos / stats.total) * 100) : 0}%
-              </span>
-            </div>
-            <div className="mt-2 h-3 overflow-hidden rounded-full bg-border">
-              <div
-                className="h-full rounded-full bg-primary transition-all duration-500"
-                style={{
-                  width: `${stats.total > 0 ? (stats.preenchidos / stats.total) * 100 : 0}%`,
-                }}
-              />
-            </div>
-            <p className="mt-1.5 text-xs text-muted-foreground">
-              {stats.preenchidos} de {stats.total} participantes completaram os 4 registros
-            </p>
           </div>
 
           {/* Table */}

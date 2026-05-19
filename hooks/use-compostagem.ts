@@ -82,9 +82,16 @@ export function useCompostagem() {
         ])
 
         const ultimaTurma = turmasData[0]
-        const participantesData = ultimaTurma
-          ? await fetchParticipantesWithBaldes(ultimaTurma.id)
-          : []
+        let participantesData: Participante[] = []
+
+        if (ultimaTurma) {
+          try {
+            participantesData = await fetchParticipantesWithBaldes(ultimaTurma.id)
+          } catch (participantesError) {
+            console.error("Erro ao carregar participantes do último programa:", participantesError)
+            toast.error("Turmas carregadas, mas não foi possível carregar os participantes do último programa")
+          }
+        }
 
         setParticipantes(participantesData)
         setTurmas(turmasData)

@@ -4,7 +4,6 @@ import { type Balde } from "@/lib/supabase-queries"
 import {
   fetchParticipantesWithBaldes,
   fetchTurmas,
-  createOrUpdateBalde,
   fetchTurmasCompostagem,
   createTurmaCompostagem,
   updateTurmaCompostagem,
@@ -26,14 +25,44 @@ import { toast } from "sonner"
 const TRIMESTRE_ATUAL = "2026-Q1"
 const TOTAL_REGISTROS_CAMPANHA = 4
 
-const getRegistrosCampanha = (participante: Participante) => {
-  return [...participante.baldes]
+const getRegistrosCampanhaSlots = (participante: Participante) => {
+  const slots: Array<Participante["baldes"][number] | undefined> = Array.from(
+    { length: TOTAL_REGISTROS_CAMPANHA },
+    () => undefined
+  )
+
+  const registrosOrdenados = [...participante.baldes]
     .sort((a, b) => {
       const dataA = a.dataRegistro || a.trimestre
       const dataB = b.dataRegistro || b.trimestre
-      return dataA.localeCompare(dataB)
+      return `${dataA}-${a.trimestre}`.localeCompare(`${dataB}-${b.trimestre}`)
     })
-    .slice(0, TOTAL_REGISTROS_CAMPANHA)
+
+  const registrosSemSlot: Participante["baldes"] = []
+
+  registrosOrdenados.forEach((registro) => {
+    const slotMatch = registro.trimestre.match(/-R([1-4])$/)
+    const slotIndex = slotMatch ? Number(slotMatch[1]) - 1 : -1
+
+    if (slotIndex >= 0 && !slots[slotIndex]) {
+      slots[slotIndex] = registro
+    } else {
+      registrosSemSlot.push(registro)
+    }
+  })
+
+  registrosSemSlot.forEach((registro) => {
+    const slotIndex = slots.findIndex((slot) => !slot)
+    if (slotIndex >= 0) {
+      slots[slotIndex] = registro
+    }
+  })
+
+  return slots
+}
+
+const getRegistrosCampanha = (participante: Participante) => {
+  return getRegistrosCampanhaSlots(participante).filter(Boolean) as Participante["baldes"]
 }
 
 export function useCompostagem() {
@@ -48,6 +77,7 @@ export function useCompostagem() {
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [isRegisterOpen, setIsRegisterOpen] = useState(false)
   const [registerQuantidade, setRegisterQuantidade] = useState("")
+  const [selectedRegistroIndex, setSelectedRegistroIndex] = useState(0)
   const [isCreateParticipanteOpen, setIsCreateParticipanteOpen] = useState(false)
   const [isEditParticipanteOpen, setIsEditParticipanteOpen] = useState(false)
   const [editingParticipante, setEditingParticipante] = useState<Participante | null>(null)
@@ -272,23 +302,65 @@ export function useCompostagem() {
     }
 
     try {
-      await createOrUpdateBalde(selectedParticipante.id, TRIMESTRE_ATUAL, qtd)
+      const registrosCampanha = getRegistrosCampanhaSlots(selectedParticipante)
+      const registroAtual = registrosCampanha[selectedRegistroIndex]
+      const dataRegistro = registroAtual?.dataRegistro || new Date().toISOString().split("T")[0]
+      let registroSalvoId = registroAtual?.id
+
+      if (registroAtual?.id) {
+        await updateBaldeRecord(registroAtual.id, {
+          quantidade: qtd,
+          data_registro: dataRegistro,
+        })
+      } else {
+        const novoRegistro = await createBaldeRecord(
+          selectedParticipante.id,
+          qtd,
+          dataRegistro,
+          `${TRIMESTRE_ATUAL}-R${selectedRegistroIndex + 1}`
+        )
+        registroSalvoId = novoRegistro.id
+      }
+
+      let participanteAtualizado: Participante | null = null
 
       setParticipantes((prev) =>
         prev.map((p) => {
           if (p.id !== selectedParticipante.id) return p
-          const baldesAtualizados = p.baldes.filter((b) => b.trimestre !== TRIMESTRE_ATUAL)
-          baldesAtualizados.push({
-            trimestre: TRIMESTRE_ATUAL,
+          const baldesAtualizados = [...p.baldes]
+          const registroAtualizado = {
+            ...registroAtual,
+            id: registroSalvoId,
+            trimestre: registroAtual?.trimestre || `${TRIMESTRE_ATUAL}-R${selectedRegistroIndex + 1}`,
             quantidade: qtd,
-            dataRegistro: new Date().toISOString().split("T")[0],
-          })
-          return { ...p, baldes: baldesAtualizados }
+            dataRegistro,
+          }
+
+          if (registroAtual) {
+            const registroIndex = baldesAtualizados.findIndex((b) =>
+              registroAtual.id ? b.id === registroAtual.id : b === registroAtual
+            )
+
+            if (registroIndex >= 0) {
+              baldesAtualizados[registroIndex] = registroAtualizado
+            } else {
+              baldesAtualizados.push(registroAtualizado)
+            }
+          } else {
+            baldesAtualizados.push(registroAtualizado)
+          }
+
+          participanteAtualizado = { ...p, baldes: baldesAtualizados }
+          return participanteAtualizado
         })
       )
 
+      if (participanteAtualizado) {
+        setSelectedParticipante(participanteAtualizado)
+      }
+
       toast.success(`Registro salvo para ${selectedParticipante.nome}`, {
-        description: `${qtd} baldes registrados para ${TRIMESTRE_ATUAL}.`,
+        description: `${qtd} baldes salvos no registro ${selectedRegistroIndex + 1}.`,
       })
       setIsRegisterOpen(false)
       setRegisterQuantidade("")
@@ -308,8 +380,15 @@ export function useCompostagem() {
 
   const openRegister = (participante: Participante) => {
     setSelectedParticipante(participante)
-    const baldeAtual = participante.baldes.find((b) => b.trimestre === TRIMESTRE_ATUAL)
-    setRegisterQuantidade(baldeAtual ? String(baldeAtual.quantidade) : "")
+    const registrosCampanha = getRegistrosCampanhaSlots(participante)
+    const primeiroRegistroPendente = Array.from(
+      { length: TOTAL_REGISTROS_CAMPANHA },
+      (_, index) => index
+    ).find((index) => !registrosCampanha[index])
+    const registroIndex = primeiroRegistroPendente ?? 0
+
+    setSelectedRegistroIndex(registroIndex)
+    setRegisterQuantidade(registrosCampanha[registroIndex] ? String(registrosCampanha[registroIndex].quantidade) : "")
     setIsRegisterOpen(true)
   }
 
@@ -478,13 +557,29 @@ export function useCompostagem() {
     }
 
     try {
+      const datasMonitoramento = Object.values(newTurmaDatas).map((data) => data.trim())
       const newTurma = await createTurmaCompostagem({
         nome: newTurmaName.trim(),
         descricao: newTurmaDescription.trim() || undefined,
         ativo: true,
-      }, Object.values(newTurmaDatas))
+      }, datasMonitoramento)
 
-      setTurmasCompostagem((prev) => [...prev, { ...newTurma, participantes: [] }])
+      setTurmasCompostagem((prev) => [
+        { ...newTurma, participantes: [], totalParticipantes: 0 },
+        ...prev,
+      ])
+      setTurmas((prev) => [
+        {
+          id: newTurma.id,
+          nome: newTurma.nome,
+          semestre: newTurma.nome,
+          totalParticipantes: 0,
+          ativa: newTurma.ativo,
+        },
+        ...prev,
+      ])
+      setParticipantes([])
+      setTurmaFilter(newTurma.nome)
       toast.success(`Turma "${newTurma.nome}" criada com sucesso com 4 períodos de monitoramento`)
       setIsCreateTurmaOpen(false)
       setNewTurmaName("")
@@ -492,7 +587,9 @@ export function useCompostagem() {
       setNewTurmaDatas({ data1: '', data2: '', data3: '', data4: '' })
     } catch (error) {
       console.error("Erro ao criar turma:", error)
-      toast.error("Erro ao criar turma")
+      toast.error("Erro ao criar turma", {
+        description: error instanceof Error ? error.message : "Tente novamente",
+      })
     }
   }
 
@@ -740,6 +837,8 @@ export function useCompostagem() {
     setIsRegisterOpen,
     registerQuantidade,
     setRegisterQuantidade,
+    selectedRegistroIndex,
+    setSelectedRegistroIndex,
     filteredParticipantes,
     stats,
     isCreateParticipanteOpen,

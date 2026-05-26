@@ -44,12 +44,52 @@ export function CreateParticipanteDialog({
   const [nome, setNome] = useState("")
   const [telefone, setTelefone] = useState("")
   const [email, setEmail] = useState("")
+  const [telefoneTouched, setTelefoneTouched] = useState(false)
+  const [emailTouched, setEmailTouched] = useState(false)
   const [turma, setTurma] = useState("")
   const [endereco, setEndereco] = useState("")
   const [bairro, setBairro] = useState("")
   const [cidade, setCidade] = useState("Farroupilha")
   const [estado, setEstado] = useState("RS")
   const [cep, setCep] = useState("")
+
+  const getTelefoneDigits = (valor: string) => {
+    const digits = valor.replace(/\D/g, "")
+
+    if ((digits.length === 12 || digits.length === 13) && digits.startsWith("55")) {
+      return digits.slice(2)
+    }
+
+    return digits
+  }
+
+  const formatTelefone = (valor: string) => {
+    const digits = getTelefoneDigits(valor).slice(0, 11)
+
+    if (digits.length <= 2) return digits
+    if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`
+    if (digits.length <= 10) {
+      return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`
+    }
+
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`
+  }
+
+  const isValidTelefone = (valor: string) => {
+    const digits = getTelefoneDigits(valor)
+
+    if (digits.length !== 10 && digits.length !== 11) return false
+    if (digits.startsWith("00")) return false
+
+    return true
+  }
+
+  const isValidEmail = (valor: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(valor.trim())
+  }
+
+  const telefoneInvalido = telefoneTouched && telefone.trim() !== "" && !isValidTelefone(telefone)
+  const emailInvalido = emailTouched && email.trim() !== "" && !isValidEmail(email)
 
   const handleCreate = () => {
     // Validação detalhada
@@ -63,6 +103,18 @@ export function CreateParticipanteDialog({
     }
     if (!email.trim()) {
       toast.error("E-mail é obrigatório")
+      return
+    }
+    if (!isValidTelefone(telefone)) {
+      toast.error("Telefone invalido", {
+        description: "Informe um telefone com DDD, com 10 ou 11 digitos.",
+      })
+      return
+    }
+    if (!isValidEmail(email)) {
+      toast.error("E-mail invalido", {
+        description: "Informe um e-mail no formato nome@dominio.com.",
+      })
       return
     }
     if (!turma) {
@@ -94,6 +146,8 @@ export function CreateParticipanteDialog({
     setNome("")
     setTelefone("")
     setEmail("")
+    setTelefoneTouched(false)
+    setEmailTouched(false)
     setTurma("")
     setEndereco("")
     setBairro("")
@@ -107,6 +161,8 @@ export function CreateParticipanteDialog({
       setNome("")
       setTelefone("")
       setEmail("")
+      setTelefoneTouched(false)
+      setEmailTouched(false)
       setTurma("")
       setEndereco("")
       setBairro("")
@@ -117,7 +173,13 @@ export function CreateParticipanteDialog({
     onOpenChange(newOpen)
   }
 
-  const isFormValid = nome.trim() && telefone.trim() && email.trim() && turma
+  const isFormValid =
+    nome.trim() &&
+    telefone.trim() &&
+    email.trim() &&
+    turma &&
+    isValidTelefone(telefone) &&
+    isValidEmail(email)
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -150,9 +212,18 @@ export function CreateParticipanteDialog({
                   <Input
                     id="telefone"
                     placeholder="(11) 98765-4321"
+                    type="tel"
+                    inputMode="tel"
                     value={telefone}
-                    onChange={(e) => setTelefone(e.target.value)}
+                    onChange={(e) => setTelefone(formatTelefone(e.target.value))}
+                    onBlur={() => setTelefoneTouched(true)}
+                    aria-invalid={telefoneInvalido}
                   />
+                  {telefoneInvalido && (
+                    <p className="text-xs text-destructive">
+                      Informe DDD + telefone, com 10 ou 11 digitos.
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -163,7 +234,14 @@ export function CreateParticipanteDialog({
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    onBlur={() => setEmailTouched(true)}
+                    aria-invalid={emailInvalido}
                   />
+                  {emailInvalido && (
+                    <p className="text-xs text-destructive">
+                      Informe um e-mail valido, como nome@dominio.com.
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

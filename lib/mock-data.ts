@@ -27,6 +27,7 @@ export interface Participante {
 }
 
 export interface RegistroBalde {
+  id?: string
   trimestre: string
   quantidade: number
   dataRegistro: string

@@ -21,6 +21,10 @@ export function TurmasTab({
   onOpenTurmaDetail,
   onOpenAddParticipant,
 }: TurmasTabProps) {
+  const turmasOrdenadas = [...turmasCompostagem].sort((a, b) => {
+    return new Date(b.criado_em).getTime() - new Date(a.criado_em).getTime()
+  })
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -44,7 +48,7 @@ export function TurmasTab({
             Nenhuma turma criada ainda.
           </div>
         ) : (
-          turmasCompostagem.map((turma) => (
+          turmasOrdenadas.map((turma) => (
             <Card key={turma.id} className="border-border/50">
               <CardContent className="pt-6">
                 <div className="space-y-3">

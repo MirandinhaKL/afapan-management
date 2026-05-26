@@ -81,13 +81,36 @@ export function ParticipantesTab({
   trimestre,
 }: ParticipantesTabProps) {
   const getRegistrosBaldes = (participante: Participante) => {
+    const slots: Array<Participante["baldes"][number] | undefined> = Array.from(
+      { length: 4 },
+      () => undefined
+    )
     const registros = [...participante.baldes].sort((a, b) => {
       const dataA = a.dataRegistro || a.trimestre
       const dataB = b.dataRegistro || b.trimestre
-      return dataA.localeCompare(dataB)
+      return `${dataA}-${a.trimestre}`.localeCompare(`${dataB}-${b.trimestre}`)
+    })
+    const registrosSemSlot: Participante["baldes"] = []
+
+    registros.forEach((registro) => {
+      const slotMatch = registro.trimestre.match(/-R([1-4])$/)
+      const slotIndex = slotMatch ? Number(slotMatch[1]) - 1 : -1
+
+      if (slotIndex >= 0 && !slots[slotIndex]) {
+        slots[slotIndex] = registro
+      } else {
+        registrosSemSlot.push(registro)
+      }
     })
 
-    return Array.from({ length: 4 }, (_, index) => registros[index]?.quantidade ?? 0)
+    registrosSemSlot.forEach((registro) => {
+      const slotIndex = slots.findIndex((slot) => !slot)
+      if (slotIndex >= 0) {
+        slots[slotIndex] = registro
+      }
+    })
+
+    return slots.map((registro) => registro?.quantidade ?? 0)
   }
 
   const getTotalBaldes = (participante: Participante) => {

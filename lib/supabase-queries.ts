@@ -74,6 +74,35 @@ export async function fetchUsers(): Promise<User[]> {
   }
 }
 
+export async function fetchUsersPage(
+  page: number,
+  pageSize: number,
+  searchTerm = ""
+): Promise<{ users: User[]; total: number }> {
+  const from = (page - 1) * pageSize
+  const to = from + pageSize - 1
+
+  let query = supabase
+    .from('profiles')
+    .select('*', { count: 'exact' })
+    .order('nome')
+    .range(from, to)
+
+  const search = searchTerm.trim()
+  if (search) {
+    query = query.or(`nome.ilike.%${search}%,email.ilike.%${search}%`)
+  }
+
+  const { data, error, count } = await query
+
+  if (error) throw error
+
+  return {
+    users: data || [],
+    total: count || 0,
+  }
+}
+
 export async function createUser(
   user: Omit<User, 'id' | 'criadoEm'>,
   password: string
@@ -361,6 +390,7 @@ export async function fetchParticipantesWithBaldes(turmaId?: string): Promise<Mo
         acc[balde.participante_id] = []
       }
       acc[balde.participante_id].push({
+        id: balde.id,
         trimestre: balde.trimestre,
         quantidade: balde.quantidade,
         dataRegistro: balde.data_registro

@@ -44,7 +44,7 @@ export function ParticipantDetailDialog({
           <DialogHeader>
             <DialogTitle>Detalhes do participante</DialogTitle>
             <DialogDescription>
-              Informacoes completas e historico de compostagem.
+              Informações completas e histórico de compostagem.
             </DialogDescription>
           </DialogHeader>
           {participante && (

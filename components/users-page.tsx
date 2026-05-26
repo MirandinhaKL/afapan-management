@@ -42,16 +42,20 @@ import {
 import { roleLabels, type User, type UserRole } from "@/lib/mock-data"
 import { ExportButton } from "@/components/export-button"
 import { exportPDF, exportCSV } from "@/lib/export-utils"
-import { fetchUsers, createUser, updateUser, deleteUser } from "@/lib/supabase-queries"
+import { fetchUsersPage, createUser, updateUser, deleteUser } from "@/lib/supabase-queries"
 import { useAuth } from "@/lib/auth-context"
 import { Plus, Pencil, Trash2, Search, UserCircle } from "lucide-react"
 import { toast } from "sonner"
 
+const USERS_PER_PAGE = 20
+
 export function UsersPage() {
   const { setIsCreatingUser } = useAuth()
   const [users, setUsers] = useState<User[]>([])
+  const [totalUsers, setTotalUsers] = useState(0)
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
+  const [currentPage, setCurrentPage] = useState(1)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<User | null>(null)
@@ -68,13 +72,14 @@ export function UsersPage() {
 
   useEffect(() => {
     loadUsers()
-  }, [])
+  }, [currentPage, searchTerm])
 
   const loadUsers = async () => {
     try {
       setLoading(true)
-      const data = await fetchUsers()
-      setUsers(data)
+      const data = await fetchUsersPage(currentPage, USERS_PER_PAGE, searchTerm)
+      setUsers(data.users)
+      setTotalUsers(data.total)
     } catch (error) {
       toast.error("Erro ao carregar usuários")
       console.error(error)
@@ -91,11 +96,19 @@ export function UsersPage() {
     setFormAtivo(true)
   }
 
-  const filteredUsers = users.filter(
-    (user) =>
-      user.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const filteredUsers = users
+  const totalPages = Math.max(1, Math.ceil(totalUsers / USERS_PER_PAGE))
+  const paginatedUsers = users
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm])
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages)
+    }
+  }, [currentPage, totalPages])
 
   const openCreateDialog = () => {
     setEditingUser(null)
@@ -210,7 +223,7 @@ export function UsersPage() {
     exportPDF({
       filename: "afapan-usuarios",
       title: "Relatório de Usuários",
-      subtitle: `${users.length} usuários cadastrados no sistema`,
+      subtitle: `${totalUsers} usuários cadastrados no sistema`,
       headers,
       rows,
     })
@@ -268,7 +281,7 @@ export function UsersPage() {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardTitle className="text-base">Lista de usuários</CardTitle>
-              <CardDescription>{users.length} usuários cadastrados</CardDescription>
+              <CardDescription>{totalUsers} usuários cadastrados</CardDescription>
             </div>
             <div className="relative w-full sm:w-72">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
@@ -283,10 +296,26 @@ export function UsersPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="py-8 text-center text-muted-foreground">
-              Carregando usuários...
+            <div className="space-y-3 py-4" aria-busy="true" aria-live="polite">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                Carregando usuarios...
+              </div>
+              {Array.from({ length: 6 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="grid grid-cols-[1.5fr_1.5fr_1fr_1fr_72px] gap-4 rounded-md border border-border/50 p-3"
+                >
+                  <div className="h-5 animate-pulse rounded bg-muted" />
+                  <div className="h-5 animate-pulse rounded bg-muted" />
+                  <div className="h-5 animate-pulse rounded bg-muted" />
+                  <div className="h-5 animate-pulse rounded bg-muted" />
+                  <div className="h-5 animate-pulse rounded bg-muted" />
+                </div>
+              ))}
             </div>
           ) : (
+            <>
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -306,7 +335,7 @@ export function UsersPage() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredUsers.map((user) => (
+                    paginatedUsers.map((user) => (
                       <TableRow key={user.id}>
                         <TableCell>
                           <div className="flex items-center gap-3">
@@ -362,6 +391,36 @@ export function UsersPage() {
                 </TableBody>
               </Table>
             </div>
+            {totalUsers > USERS_PER_PAGE && (
+              <div className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm text-muted-foreground">
+                  Mostrando {(currentPage - 1) * USERS_PER_PAGE + 1}-
+                  {Math.min(currentPage * USERS_PER_PAGE, totalUsers)} de {totalUsers} usuarios
+                </p>
+                <div className="flex items-center justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((page) => Math.max(page - 1, 1))}
+                    disabled={currentPage === 1}
+                  >
+                    Anterior
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    Pagina {currentPage} de {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((page) => Math.min(page + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                  >
+                    Proxima
+                  </Button>
+                </div>
+              </div>
+            )}
+            </>
           )}
         </CardContent>
       </Card>

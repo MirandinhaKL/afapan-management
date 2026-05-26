@@ -35,6 +35,8 @@ export function CompostagemPage() {
     setIsRegisterOpen,
     registerQuantidade,
     setRegisterQuantidade,
+    selectedRegistroIndex,
+    setSelectedRegistroIndex,
     filteredParticipantes,
     stats,
     isCreateParticipanteOpen,
@@ -174,6 +176,8 @@ export function CompostagemPage() {
         participante={selectedParticipante}
         quantidade={registerQuantidade}
         onQuantidadeChange={setRegisterQuantidade}
+        registroIndex={selectedRegistroIndex}
+        onRegistroChange={setSelectedRegistroIndex}
         onRegister={handleRegistrarManual}
         trimestre={TRIMESTRE_ATUAL}
       />

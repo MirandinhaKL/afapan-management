@@ -26,11 +26,12 @@ import {
   Users,
   Trash2,
   Filter,
-  Eye,
+  CircleUser,
   Recycle,
   Plus,
-  Pencil,
+  UserRoundPen,
 } from "lucide-react"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { type Participante, type Turma } from "@/lib/mock-data"
 import { ExportButton } from "@/components/export-button"
 import { exportPDF, exportCSV } from "@/lib/export-utils"
@@ -406,24 +407,38 @@ export function ParticipantesTab({
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => onOpenDetail(participante)}
-                            >
-                              <Eye size={14} />
-                              <span className="sr-only">Ver detalhes de {participante.nome}</span>
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => onEditParticipante(participante)}
-                            >
-                              <Pencil size={14} />
-                              <span className="sr-only">Editar {participante.nome}</span>
-                            </Button>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => onOpenDetail(participante)}
+                                >
+                                  <CircleUser size={14} />
+                                  <span className="sr-only">Ver detalhes de {participante.nome}</span>
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Informações do Participante</p>
+                              </TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => onEditParticipante(participante)}
+                                >
+                                  <UserRoundPen size={14} />
+                                  <span className="sr-only">Editar {participante.nome}</span>
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Editar participante</p>
+                              </TooltipContent>
+                            </Tooltip>
                             <Button
                               variant="ghost"
                               size="icon"

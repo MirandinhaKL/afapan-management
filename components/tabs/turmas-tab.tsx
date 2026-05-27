@@ -1,7 +1,8 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Eye, UserPlus, Trash2, Group } from "lucide-react"
+import { Plus, CircleUser, UserPlus, Trash2, Group } from "lucide-react"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { type Participante, type TurmaCompostagem } from "@/lib/mock-data"
 
 interface TurmasTabProps {
@@ -74,15 +75,22 @@ export function TurmasTab({
                     <Badge variant="secondary">{turma.totalParticipantes ?? turma.participantes.length}</Badge>
                   </div>
                   <div className="flex gap-2 pt-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => onOpenTurmaDetail(turma)}
-                    >
-                      <Eye size={14} className="mr-1" />
-                      Ver
-                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => onOpenTurmaDetail(turma)}
+                        >
+                          <CircleUser size={14} className="mr-1" />
+                          Ver
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Detalhes do Participante</p>
+                      </TooltipContent>
+                    </Tooltip>
                     <Button
                       variant="outline"
                       size="sm"

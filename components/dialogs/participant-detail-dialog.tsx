@@ -1,22 +1,14 @@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { FileText } from "lucide-react"
 import { type Participante } from "@/lib/mock-data"
 import { type Balde } from "@/lib/supabase-queries"
-import { useState } from "react"
-import { BucketRecordsDialog } from "@/components/dialogs/bucket-records-dialog"
 
 interface ParticipantDetailDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   participante: Participante | null
   baldes?: Balde[]
-  onAddBucketRecord?: (data: { quantidade: number; dataRegistro: string }) => void
-  onEditBucketRecord?: (baldeId: string, data: { quantidade: number; dataRegistro: string }) => void
-  onDeleteBucketRecord?: (baldeId: string) => void
-  isLoadingBuckets?: boolean
 }
 
 export function ParticipantDetailDialog({
@@ -24,12 +16,7 @@ export function ParticipantDetailDialog({
   onOpenChange,
   participante,
   baldes = [],
-  onAddBucketRecord,
-  onEditBucketRecord,
-  onDeleteBucketRecord,
-  isLoadingBuckets = false,
 }: ParticipantDetailDialogProps) {
-  const [isBucketsDialogOpen, setIsBucketsDialogOpen] = useState(false)
 
   const currentYear = new Date().getFullYear()
   const recordsThisYear = baldes.filter(b => {
@@ -40,37 +27,78 @@ export function ParticipantDetailDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Detalhes do participante</DialogTitle>
+        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+          <DialogHeader className="shrink-0">
+            <DialogTitle>Detalhes do Participante</DialogTitle>
             <DialogDescription>
               Informações completas e histórico de compostagem.
             </DialogDescription>
           </DialogHeader>
           {participante && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-xs text-muted-foreground">Nome</Label>
-                  <p className="text-sm font-medium text-foreground">{participante.nome}</p>
+            <div className="flex-1 overflow-y-auto pr-4 space-y-4">
+              {/* Informações Pessoais */}
+              <div className="space-y-3 rounded-lg border border-border/50 bg-muted/20 p-4">
+                <h3 className="text-sm font-semibold text-foreground">Informações Pessoais</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Nome</Label>
+                    <p className="text-sm font-medium text-foreground">{participante.nome}</p>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Turma</Label>
+                    <p className="text-sm font-medium text-foreground">
+                      Turma {participante.turma}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Telefone</Label>
+                    <p className="text-sm font-medium text-foreground">
+                      {participante.telefone}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">E-mail</Label>
+                    <p className="text-sm font-medium text-foreground">
+                      {participante.email}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground">Turma</Label>
-                  <p className="text-sm font-medium text-foreground">
-                    Turma {participante.turma}
-                  </p>
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground">Telefone</Label>
-                  <p className="text-sm font-medium text-foreground">
-                    {participante.telefone}
-                  </p>
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground">E-mail</Label>
-                  <p className="text-sm font-medium text-foreground">
-                    {participante.email}
-                  </p>
+              </div>
+
+              {/* Endereço */}
+              <div className="space-y-3 rounded-lg border border-border/50 bg-muted/20 p-4">
+                <h3 className="text-sm font-semibold text-foreground">Endereço</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2">
+                    <Label className="text-xs text-muted-foreground">Rua</Label>
+                    <p className="text-sm font-medium text-foreground">
+                      {participante.endereco || "Não informado"}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Bairro</Label>
+                    <p className="text-sm font-medium text-foreground">
+                      {participante.bairro || "Não informado"}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">CEP</Label>
+                    <p className="text-sm font-medium text-foreground">
+                      {participante.cep || "Não informado"}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Cidade</Label>
+                    <p className="text-sm font-medium text-foreground">
+                      {participante.cidade || "Não informado"}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Estado</Label>
+                    <p className="text-sm font-medium text-foreground">
+                      {participante.estado || "Não informado"}
+                    </p>
+                  </div>
                 </div>
               </div>
 
@@ -116,34 +144,10 @@ export function ParticipantDetailDialog({
                 </div>
               )}
 
-              {/* Bucket Management Button */}
-              <Button
-                onClick={() => setIsBucketsDialogOpen(true)}
-                variant="default"
-                className="w-full gap-2"
-                disabled={isLoadingBuckets}
-              >
-                <FileText className="h-4 w-4" />
-                Gerenciar Registros de Baldes
-              </Button>
             </div>
           )}
         </DialogContent>
       </Dialog>
-
-      {/* Bucket Records Dialog */}
-      {participante && (
-        <BucketRecordsDialog
-          open={isBucketsDialogOpen}
-          onOpenChange={setIsBucketsDialogOpen}
-          participante={participante}
-          baldes={baldes}
-          onAddRecord={onAddBucketRecord || (() => {})}
-          onEditRecord={onEditBucketRecord || (() => {})}
-          onDeleteRecord={onDeleteBucketRecord || (() => {})}
-          isLoading={isLoadingBuckets}
-        />
-      )}
     </>
   )
 }

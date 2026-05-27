@@ -11,10 +11,11 @@ interface BucketRecordFormProps {
     quantidade: number
     dataRegistro: string
   }
-  onSubmit: (data: { quantidade: number; dataRegistro: string }) => void
+  onSubmit: (data: { quantidade: number; dataRegistro: string; trimestre?: string }) => void
   onCancel: () => void
   isLoading?: boolean
   isEditing?: boolean
+  autoTrimestre?: string
 }
 
 export function BucketRecordForm({
@@ -23,6 +24,7 @@ export function BucketRecordForm({
   onCancel,
   isLoading = false,
   isEditing = false,
+  autoTrimestre,
 }: BucketRecordFormProps) {
   const today = new Date().toISOString().split("T")[0]
   const [quantidade, setQuantidade] = useState(
@@ -58,6 +60,7 @@ export function BucketRecordForm({
     onSubmit({
       quantidade: qtd,
       dataRegistro,
+      trimestre: autoTrimestre,
     })
 
     // Reset form

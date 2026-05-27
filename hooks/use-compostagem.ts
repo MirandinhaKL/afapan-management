@@ -729,7 +729,7 @@ export function useCompostagem() {
     }
   }
 
-  const handleAddBucketRecord = async (data: { quantidade: number; dataRegistro: string }) => {
+  const handleAddBucketRecord = async (data: { quantidade: number; dataRegistro: string; trimestre?: string }) => {
     if (!selectedParticipante) {
       toast.error("Nenhum participante selecionado")
       return
@@ -740,7 +740,8 @@ export function useCompostagem() {
       const newBalde = await createBaldeRecord(
         selectedParticipante.id,
         data.quantidade,
-        data.dataRegistro
+        data.dataRegistro,
+        data.trimestre
       )
       
       setBaldes((prev) => [newBalde, ...prev])

@@ -164,10 +164,6 @@ export function CompostagemPage() {
         onOpenChange={setIsDetailOpen}
         participante={selectedParticipante}
         baldes={baldes}
-        isLoadingBuckets={isLoadingBaldes}
-        onAddBucketRecord={handleAddBucketRecord}
-        onEditBucketRecord={handleEditBucketRecord}
-        onDeleteBucketRecord={handleDeleteBucketRecord}
       />
 
       <RegisterBucketsDialog

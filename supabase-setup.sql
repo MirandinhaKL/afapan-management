@@ -1,0 +1,249 @@
+-- Script SQL para configurar tabelas no Supabase
+-- Execute este script no SQL Editor do painel Supabase
+
+-- Habilitar UUID extension (se não estiver habilitada)
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- Perfis de Usuários (vinculado a auth.users)
+CREATE TABLE IF NOT EXISTS profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  nome TEXT NOT NULL,
+  email TEXT UNIQUE NOT NULL,
+  role TEXT CHECK (role IN ('admin', 'gestor', 'voluntario')) DEFAULT 'voluntario',
+  ativo BOOLEAN DEFAULT true,
+  criadoEm TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Participantes
+CREATE TABLE IF NOT EXISTS participantes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  nome TEXT NOT NULL,
+  email TEXT NOT NULL,
+  telefone TEXT,
+  turma TEXT NOT NULL,
+  endereco TEXT,
+  bairro TEXT,
+  cidade TEXT,
+  estado TEXT,
+  cep TEXT,
+  ativo BOOLEAN DEFAULT true,
+  criado_em TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Registros de Baldes
+CREATE TABLE IF NOT EXISTS baldes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  participante_id UUID REFERENCES participantes(id) ON DELETE CASCADE,
+  trimestre TEXT NOT NULL,
+  quantidade INTEGER NOT NULL DEFAULT 0,
+  data_registro DATE DEFAULT CURRENT_DATE,
+  criado_em TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Turmas de Compostagem
+CREATE TABLE IF NOT EXISTS turmas (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  nome TEXT NOT NULL,
+  descricao TEXT,
+  ativo BOOLEAN DEFAULT true,
+  criado_em TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Relacionamento Participantes-Turmas (many-to-many)
+CREATE TABLE IF NOT EXISTS participantes_turmas (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  participante_id UUID REFERENCES participantes(id) ON DELETE CASCADE,
+  turma_id UUID REFERENCES turmas(id) ON DELETE CASCADE,
+  criado_em TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(participante_id, turma_id)
+);
+
+-- Períodos de Monitoramento de Baldes (4 períodos por ano, a cada 3 meses)
+CREATE TABLE IF NOT EXISTS turma_bucket_periods (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  turma_id UUID NOT NULL REFERENCES turmas(id) ON DELETE CASCADE,
+  periodo_numero INTEGER NOT NULL CHECK (periodo_numero >= 1 AND periodo_numero <= 4),
+  periodo_label TEXT NOT NULL,
+  data_monitoramento DATE NOT NULL,
+  criado_em TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  atualizado_em TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(turma_id, periodo_numero)
+);
+
+-- Atualizar tabela baldes para incluir referência ao período
+ALTER TABLE baldes ADD COLUMN IF NOT EXISTS turma_id UUID REFERENCES turmas(id) ON DELETE CASCADE;
+ALTER TABLE baldes ADD COLUMN IF NOT EXISTS turma_bucket_period_id UUID REFERENCES turma_bucket_periods(id) ON DELETE SET NULL;
+
+-- Habilitar Row Level Security
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE participantes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE baldes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE turmas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE participantes_turmas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE turma_bucket_periods ENABLE ROW LEVEL SECURITY;
+
+-- Políticas RLS para profiles
+CREATE POLICY "Users can view own profile" ON profiles
+  FOR SELECT USING (auth.uid() = id);
+
+CREATE POLICY "Users can update own profile" ON profiles
+  FOR UPDATE USING (auth.uid() = id);
+
+CREATE POLICY "Admins can view all profiles" ON profiles
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE id = auth.uid() AND role = 'admin'
+    )
+  );
+
+CREATE POLICY "Admins can update all profiles" ON profiles
+  FOR UPDATE USING (
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE id = auth.uid() AND role = 'admin'
+    )
+  );
+
+CREATE POLICY "Admins can insert profiles" ON profiles
+  FOR INSERT WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE id = auth.uid() AND role = 'admin'
+    )
+  );
+
+CREATE POLICY "Admins can delete profiles" ON profiles
+  FOR DELETE USING (
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE id = auth.uid() AND role = 'admin'
+    )
+  );
+
+-- Políticas RLS para participantes (todos os usuários autenticados podem acessar)
+CREATE POLICY "Authenticated users can view participantes" ON participantes
+  FOR SELECT TO authenticated USING (true);
+
+CREATE POLICY "Authenticated users can insert participantes" ON participantes
+  FOR INSERT TO authenticated WITH CHECK (true);
+
+CREATE POLICY "Authenticated users can update participantes" ON participantes
+  FOR UPDATE TO authenticated USING (true);
+
+CREATE POLICY "Authenticated users can delete participantes" ON participantes
+  FOR DELETE TO authenticated USING (true);
+
+-- Políticas RLS para baldes (todos os usuários autenticados podem acessar)
+CREATE POLICY "Authenticated users can view baldes" ON baldes
+  FOR SELECT TO authenticated USING (true);
+
+CREATE POLICY "Authenticated users can insert baldes" ON baldes
+  FOR INSERT TO authenticated WITH CHECK (true);
+
+CREATE POLICY "Authenticated users can update baldes" ON baldes
+  FOR UPDATE TO authenticated USING (true);
+
+CREATE POLICY "Authenticated users can delete baldes" ON baldes
+  FOR DELETE TO authenticated USING (true);
+
+-- Políticas RLS para turmas (todos os usuários autenticados podem acessar)
+CREATE POLICY "Authenticated users can view turmas" ON turmas
+  FOR SELECT TO authenticated USING (true);
+
+CREATE POLICY "Authenticated users can insert turmas" ON turmas
+  FOR INSERT TO authenticated WITH CHECK (true);
+
+CREATE POLICY "Authenticated users can update turmas" ON turmas
+  FOR UPDATE TO authenticated USING (true);
+
+CREATE POLICY "Authenticated users can delete turmas" ON turmas
+  FOR DELETE TO authenticated USING (true);
+
+-- Políticas RLS para participantes_turmas (todos os usuários autenticados podem acessar)
+CREATE POLICY "Authenticated users can view participantes_turmas" ON participantes_turmas
+  FOR SELECT TO authenticated USING (true);
+
+CREATE POLICY "Authenticated users can insert participantes_turmas" ON participantes_turmas
+  FOR INSERT TO authenticated WITH CHECK (true);
+
+CREATE POLICY "Authenticated users can update participantes_turmas" ON participantes_turmas
+  FOR UPDATE TO authenticated USING (true);
+
+CREATE POLICY "Authenticated users can delete participantes_turmas" ON participantes_turmas
+  FOR DELETE TO authenticated USING (true);
+
+-- Políticas RLS para turma_bucket_periods (todos os usuários autenticados podem acessar)
+CREATE POLICY "Authenticated users can view turma_bucket_periods" ON turma_bucket_periods
+  FOR SELECT TO authenticated USING (true);
+
+CREATE POLICY "Authenticated users can insert turma_bucket_periods" ON turma_bucket_periods
+  FOR INSERT TO authenticated WITH CHECK (true);
+
+CREATE POLICY "Authenticated users can update turma_bucket_periods" ON turma_bucket_periods
+  FOR UPDATE TO authenticated USING (true);
+
+CREATE POLICY "Authenticated users can delete turma_bucket_periods" ON turma_bucket_periods
+  FOR DELETE TO authenticated USING (true);
+
+-- Trigger para criar perfil automaticamente quando usuário se registra
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, nome, email, role, ativo)
+  VALUES (
+    NEW.id,
+    COALESCE(NEW.raw_user_meta_data->>'nome', split_part(NEW.email, '@', 1)),
+    NEW.email,
+    COALESCE(NEW.raw_user_meta_data->>'role', 'voluntario'),
+    true
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Criar trigger
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- Adicionar coluna atualizado_em às tabelas (se não existir)
+ALTER TABLE IF EXISTS participantes
+ADD COLUMN IF NOT EXISTS atualizado_em TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+
+ALTER TABLE IF EXISTS baldes
+ADD COLUMN IF NOT EXISTS atualizado_em TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+
+-- Função para atualizar atualizado_em (não toca em criado_em)
+CREATE OR REPLACE FUNCTION public.handle_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.atualizado_em = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Aplicar trigger de updated_at nas tabelas
+DROP TRIGGER IF EXISTS handle_updated_at_participantes ON participantes;
+DROP TRIGGER IF EXISTS handle_updated_at_baldes ON baldes;
+
+CREATE TRIGGER handle_updated_at_participantes
+  BEFORE UPDATE ON participantes
+  FOR EACH ROW EXECUTE FUNCTION handle_updated_at();
+
+CREATE TRIGGER handle_updated_at_baldes
+  BEFORE UPDATE ON baldes
+  FOR EACH ROW EXECUTE FUNCTION handle_updated_at();
+
+-- Adicionar colunas de endereço à tabela participantes (se não existirem)
+ALTER TABLE IF EXISTS participantes
+ADD COLUMN IF NOT EXISTS endereco TEXT,
+ADD COLUMN IF NOT EXISTS bairro TEXT,
+ADD COLUMN IF NOT EXISTS cidade TEXT,
+ADD COLUMN IF NOT EXISTS estado TEXT,
+ADD COLUMN IF NOT EXISTS cep TEXT;
+
+-- Adicionar coluna data_registro à tabela baldes (se não existir)
+ALTER TABLE IF EXISTS baldes
+ADD COLUMN IF NOT EXISTS data_registro DATE DEFAULT CURRENT_DATE;

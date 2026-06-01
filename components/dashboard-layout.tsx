@@ -75,7 +75,7 @@ export function DashboardLayout({ currentPage, onNavigate, children }: Dashboard
             </div>
             <div>
               <p className="text-sm font-bold tracking-tight text-sidebar-foreground">AFAPAN</p>
-              <p className="text-xs text-sidebar-foreground/60">Gestao</p>
+              <p className="text-xs text-sidebar-foreground/60">Gestão</p>
             </div>
           </div>
           <Button

@@ -333,7 +333,7 @@ export function ParticipantesTab({
                   <TableHead className="text-center">Registro 3</TableHead>
                   <TableHead className="text-center">Registro 4</TableHead>
                   <TableHead className="text-center">Total</TableHead>
-                  <TableHead className="text-right">Acoes</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -439,27 +439,41 @@ export function ParticipantesTab({
                                 <p>Editar participante</p>
                               </TooltipContent>
                             </Tooltip>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => onOpenRegister(participante)}
-                            >
-                              <Recycle size={14} />
-                              <span className="sr-only">Registrar baldes de {participante.nome}</span>
-                            </Button>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => onOpenRegister(participante)}
+                                >
+                                  <Recycle size={14} />
+                                  <span className="sr-only">Registrar baldes de {participante.nome}</span>
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Registrar Baldes</p>
+                              </TooltipContent>
+                            </Tooltip>
                             {!preenchido && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-primary hover:text-primary"
-                                onClick={() => onGerarLink(participante)}
-                              >
-                                <Send size={14} />
-                                <span className="sr-only">
-                                  Enviar link para {participante.nome}
-                                </span>
-                              </Button>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-primary hover:text-primary"
+                                    onClick={() => onGerarLink(participante)}
+                                  >
+                                    <Send size={14} />
+                                    <span className="sr-only">
+                                      Enviar link para {participante.nome}
+                                    </span>
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Enviar mensagem WhatsApp</p>
+                                </TooltipContent>
+                              </Tooltip>
                             )}
                           </div>
                         </TableCell>

@@ -1,9 +1,18 @@
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { useEffect, useState } from "react"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { type Participante } from "@/lib/mock-data"
+import { type TurmaBucketPeriod } from "@/lib/supabase-queries"
+import { toast } from "sonner"
+
+interface RegistroForm {
+  index: number
+  quantidade: string
+  data: string
+  periodo: TurmaBucketPeriod | undefined
+}
 
 interface RegisterBucketsDialogProps {
   open: boolean
@@ -15,31 +24,24 @@ interface RegisterBucketsDialogProps {
   onRegistroChange: (index: number) => void
   onRegister: () => void
   trimestre: string
+  turmaPeriodos?: TurmaBucketPeriod[]
+  onSalvarTodos?: (registros: RegistroForm[]) => Promise<void>
 }
 
-export function RegisterBucketsDialog({
-  open,
-  onOpenChange,
-  participante,
-  quantidade,
-  onQuantidadeChange,
-  registroIndex,
-  onRegistroChange,
-  onRegister,
-}: RegisterBucketsDialogProps) {
-  const registros = (() => {
-    const slots: Array<Participante["baldes"][number] | undefined> = Array.from(
-      { length: 4 },
-      () => undefined
-    )
-    const registrosOrdenados = [...(participante?.baldes || [])].sort((a, b) => {
+function getRegistrosCampanhaSlots(participante: Participante) {
+  const slots: Array<Participante["baldes"][number] | undefined> = Array.from(
+    { length: 4 },
+    () => undefined
+  )
+  const registrosSemSlot: Participante["baldes"] = []
+
+  ;[...participante.baldes]
+    .sort((a, b) => {
       const dataA = a.dataRegistro || a.trimestre
       const dataB = b.dataRegistro || b.trimestre
       return `${dataA}-${a.trimestre}`.localeCompare(`${dataB}-${b.trimestre}`)
     })
-    const registrosSemSlot: Participante["baldes"] = []
-
-    registrosOrdenados.forEach((registro) => {
+    .forEach((registro) => {
       const slotMatch = registro.trimestre.match(/-R([1-4])$/)
       const slotIndex = slotMatch ? Number(slotMatch[1]) - 1 : -1
 
@@ -50,72 +52,149 @@ export function RegisterBucketsDialog({
       }
     })
 
-    registrosSemSlot.forEach((registro) => {
-      const slotIndex = slots.findIndex((slot) => !slot)
-      if (slotIndex >= 0) {
-        slots[slotIndex] = registro
+  registrosSemSlot.forEach((registro) => {
+    const slotIndex = slots.findIndex((slot) => !slot)
+    if (slotIndex >= 0) {
+      slots[slotIndex] = registro
+    }
+  })
+
+  return slots
+}
+
+export function RegisterBucketsDialog({
+  open,
+  onOpenChange,
+  participante,
+  turmaPeriodos = [],
+  onSalvarTodos,
+}: RegisterBucketsDialogProps) {
+  const [registros, setRegistros] = useState<RegistroForm[]>([])
+  const [isSaving, setIsSaving] = useState(false)
+
+  useEffect(() => {
+    if (!open || !participante) return
+
+    const registrosExistentes = getRegistrosCampanhaSlots(participante)
+
+    setRegistros(
+      Array.from({ length: 4 }, (_, index) => {
+        const periodo = turmaPeriodos[index]
+        const registroExistente = registrosExistentes[index]
+
+        return {
+          index,
+          quantidade: registroExistente?.quantidade.toString() || "",
+          data: registroExistente?.dataRegistro || periodo?.data_monitoramento || "",
+          periodo,
+        }
+      })
+    )
+  }, [open, participante, turmaPeriodos])
+
+  const handleQuantidadeChange = (index: number, valor: string) => {
+    setRegistros((prev) =>
+      prev.map((registro) =>
+        registro.index === index ? { ...registro, quantidade: valor } : registro
+      )
+    )
+  }
+
+  const handleSalvarTodos = async () => {
+    const registrosPreenchidos = registros.filter((registro) => registro.quantidade.trim() !== "")
+
+    if (registrosPreenchidos.length === 0) {
+      toast.error("Preencha pelo menos uma quantidade de baldes")
+      return
+    }
+
+    for (const registro of registrosPreenchidos) {
+      const quantidade = Number(registro.quantidade)
+      if (!Number.isInteger(quantidade) || quantidade < 0) {
+        toast.error(`Quantidade invalida no registro ${registro.index + 1}`)
+        return
       }
-    })
+    }
 
-    return slots.map((registro, index) => ({
-      index,
-      quantidade: registro?.quantidade,
-    }))
-  })()
+    if (!onSalvarTodos) return
 
-  const handleRegistroChange = (value: string) => {
-    const index = Number(value)
-    const registro = registros[index]
-
-    onRegistroChange(index)
-    onQuantidadeChange(registro.quantidade !== undefined ? String(registro.quantidade) : "")
+    try {
+      setIsSaving(true)
+      await onSalvarTodos(registros)
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Registrar baldes</DialogTitle>
+          <DialogTitle>Registrar Baldes</DialogTitle>
           <DialogDescription>
-            Registrar manualmente a quantidade de baldes para{" "}
-            <strong>{participante?.nome}</strong>.
+            Informe os registros de baldes de <strong>{participante?.nome}</strong>.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 py-2">
-          <div className="space-y-2">
-            <Label htmlFor="registro-baldes">Registro da campanha</Label>
-            <Select value={String(registroIndex)} onValueChange={handleRegistroChange}>
-              <SelectTrigger id="registro-baldes">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {registros.map((registro) => (
-                  <SelectItem key={registro.index} value={String(registro.index)}>
-                    Registro {registro.index + 1}
-                    {registro.quantidade !== undefined ? ` - ${registro.quantidade} baldes` : " - sem valor"}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+
+        <div className="space-y-3">
+          <div className="hidden grid-cols-[110px_1fr_140px] gap-3 px-1 text-xs font-medium text-muted-foreground sm:grid">
+            <span>Registro</span>
+            <span>Data</span>
+            <span>Baldes</span>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="quantidade-baldes">Quantidade de baldes</Label>
-            <Input
-              id="quantidade-baldes"
-              type="number"
-              min="0"
-              value={quantidade}
-              onChange={(e) => onQuantidadeChange(e.target.value)}
-              placeholder="Ex: 8"
-            />
-          </div>
+
+          {registros.map((registro) => (
+            <div
+              key={registro.index}
+              className="grid gap-2 rounded-md border border-border/60 p-3 sm:grid-cols-[110px_1fr_140px] sm:items-end sm:gap-3"
+            >
+              <div>
+                <Label className="text-xs text-muted-foreground sm:hidden">Registro</Label>
+                <p className="text-sm font-medium text-foreground">Registro {registro.index + 1}</p>
+                {registro.periodo?.periodo_label && (
+                  <p className="text-xs text-muted-foreground">{registro.periodo.periodo_label}</p>
+                )}
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor={`data-${registro.index}`} className="text-xs text-muted-foreground sm:hidden">
+                  Data
+                </Label>
+                <Input
+                  id={`data-${registro.index}`}
+                  type={registro.data ? "date" : "text"}
+                  value={registro.data || "Sem data configurada"}
+                  disabled
+                  className="h-9 bg-muted"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor={`quantidade-${registro.index}`} className="text-xs text-muted-foreground sm:hidden">
+                  Baldes
+                </Label>
+                <Input
+                  id={`quantidade-${registro.index}`}
+                  type="number"
+                  min="0"
+                  value={registro.quantidade}
+                  onChange={(event) => handleQuantidadeChange(registro.index, event.target.value)}
+                  placeholder="0"
+                  className="h-9"
+                />
+              </div>
+            </div>
+          ))}
         </div>
-        <DialogFooter>
+
+        <div className="flex justify-end gap-2 pt-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button onClick={onRegister}>Salvar registro {registroIndex + 1}</Button>
-        </DialogFooter>
+          <Button onClick={handleSalvarTodos} disabled={isSaving}>
+            {isSaving ? "Salvando..." : "Salvar registros"}
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   )

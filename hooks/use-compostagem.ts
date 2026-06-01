@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react"
 import { type Participante, type Turma, type TurmaCompostagem } from "@/lib/mock-data"
-import { type Balde } from "@/lib/supabase-queries"
+import { type Balde, type TurmaBucketPeriod } from "@/lib/supabase-queries"
 import {
   fetchParticipantesWithBaldes,
   fetchTurmas,
@@ -85,6 +85,7 @@ export function useCompostagem() {
   // Turma management states
   const [turmasCompostagem, setTurmasCompostagem] = useState<(TurmaCompostagem & { participantes: Participante[]; totalParticipantes?: number })[]>([])
   const [isCreateTurmaOpen, setIsCreateTurmaOpen] = useState(false)
+  const [isCreatingTurma, setIsCreatingTurma] = useState(false)
   const [newTurmaName, setNewTurmaName] = useState("")
   const [newTurmaDescription, setNewTurmaDescription] = useState("")
   const [newTurmaDatas, setNewTurmaDatas] = useState({
@@ -100,6 +101,7 @@ export function useCompostagem() {
   // Bucket records states
   const [baldes, setBaldes] = useState<Balde[]>([])
   const [isLoadingBaldes, setIsLoadingBaldes] = useState(false)
+  const [turmaPeriodos, setTurmaPeriodos] = useState<TurmaBucketPeriod[]>([])
 
   // Load initial data
   useEffect(() => {
@@ -233,6 +235,8 @@ export function useCompostagem() {
 
   // Participant handlers
   const handleGerarLink = async (participante: Participante) => {
+    const whatsappWindow = typeof window !== "undefined" ? window.open("", "_blank") : null
+
     try {
       // Buscar a turma do participante
       const turmaParticipante = turmasCompostagem.find(
@@ -240,6 +244,7 @@ export function useCompostagem() {
       )
 
       if (!turmaParticipante) {
+        whatsappWindow?.close()
         toast.error("Turma não encontrada")
         return
       }
@@ -248,6 +253,7 @@ export function useCompostagem() {
       const periodos = await fetchTurmaBucketPeriods(turmaParticipante.id)
 
       if (periodos.length === 0) {
+        whatsappWindow?.close()
         toast.error("Nenhum período configurado para esta turma")
         return
       }
@@ -275,13 +281,19 @@ export function useCompostagem() {
 
       // Criar URL do WhatsApp com telefone do participante
       const telefoneClean = participante.telefone.replace(/\D/g, "")
-      const whatsappUrl = `https://wa.me/55${telefoneClean}?text=${encodeURIComponent(mensagem)}`
+      const telefoneWhatsApp = telefoneClean.startsWith("55") ? telefoneClean : `55${telefoneClean}`
+      const whatsappUrl = `https://wa.me/${telefoneWhatsApp}?text=${encodeURIComponent(mensagem)}`
 
-      window.open(whatsappUrl, "_blank")
+      if (whatsappWindow) {
+        whatsappWindow.location.href = whatsappUrl
+      } else {
+        window.location.href = whatsappUrl
+      }
       toast.success(`Link gerado para ${participante.nome}`, {
         description: "A janela do WhatsApp foi aberta.",
       })
     } catch (error) {
+      whatsappWindow?.close()
       console.error("Erro ao gerar link:", error)
       toast.error("Erro ao gerar link", {
         description: error instanceof Error ? error.message : "Tente novamente",
@@ -389,7 +401,113 @@ export function useCompostagem() {
 
     setSelectedRegistroIndex(registroIndex)
     setRegisterQuantidade(registrosCampanha[registroIndex] ? String(registrosCampanha[registroIndex].quantidade) : "")
+    setTurmaPeriodos([])
     setIsRegisterOpen(true)
+
+    const turmaAssociada =
+      turmasCompostagem.find((t) => t.nome === participante.turma) ||
+      turmasCompostagem.find((t) => t.participantes.some((p) => p.id === participante.id)) ||
+      turmas.find((t) => t.nome === participante.turma) ||
+      turmas.find((t) => t.nome === turmaFilter)
+
+    if (!turmaAssociada) {
+      return
+    }
+
+    fetchTurmaBucketPeriods(turmaAssociada.id)
+      .then(setTurmaPeriodos)
+      .catch((error) => {
+        console.error("Erro ao buscar períodos da turma:", error)
+        setTurmaPeriodos([])
+      })
+  }
+
+  const handleSalvarTodosBuckets = async (
+    registros: Array<{
+      index: number
+      quantidade: string
+      data: string
+      periodo?: TurmaBucketPeriod
+    }>
+  ) => {
+    if (!selectedParticipante) {
+      toast.error("Participante não selecionado")
+      return
+    }
+
+    try {
+      const baldesAtualizados = [...selectedParticipante.baldes]
+      let savednCount = 0
+
+      for (const registro of registros) {
+        if (registro.quantidade.trim() === "") continue
+
+        const qtd = parseInt(registro.quantidade)
+        if (isNaN(qtd) || qtd < 0) {
+          toast.error(`Quantidade inválida para o período ${registro.index + 1}`)
+          return
+        }
+
+        const registrosCampanha = getRegistrosCampanhaSlots(selectedParticipante)
+        const registroAtual = registrosCampanha[registro.index]
+        const trimestre = `${TRIMESTRE_ATUAL}-R${registro.index + 1}`
+        const dataRegistro = registro.data || new Date().toISOString().split("T")[0]
+
+        const registroAtualizado = {
+          ...registroAtual,
+          id: registroAtual?.id,
+          trimestre,
+          quantidade: qtd,
+          dataRegistro,
+        }
+
+        if (registroAtual?.id) {
+          await updateBaldeRecord(registroAtual.id, {
+            quantidade: qtd,
+            data_registro: dataRegistro,
+          })
+        } else {
+          const novoRegistro = await createBaldeRecord(
+            selectedParticipante.id,
+            qtd,
+            dataRegistro,
+            trimestre
+          )
+          registroAtualizado.id = novoRegistro.id
+        }
+
+        const registroIndex = baldesAtualizados.findIndex((b) =>
+          registroAtual?.id ? b.id === registroAtual.id : b.trimestre === trimestre
+        )
+        if (registroIndex >= 0) {
+          baldesAtualizados[registroIndex] = registroAtualizado
+        } else {
+          baldesAtualizados.push(registroAtualizado)
+        }
+        savednCount++
+      }
+
+      setParticipantes((prev) =>
+        prev.map((p) =>
+          p.id === selectedParticipante.id
+            ? { ...p, baldes: baldesAtualizados }
+            : p
+        )
+      )
+
+      setSelectedParticipante({ ...selectedParticipante, baldes: baldesAtualizados })
+
+      toast.success(`${savednCount} registro(s) salvo(s) com sucesso!`, {
+        description: `Baldes registrados para ${selectedParticipante.nome}.`,
+      })
+      setIsRegisterOpen(false)
+    } catch (error) {
+      console.error("Erro ao salvar registros de baldes:", error)
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      toast.error("Erro ao salvar registros", {
+        description: errorMessage
+      })
+    }
   }
 
   const handleCreateParticipante = async (data: {
@@ -544,20 +662,25 @@ export function useCompostagem() {
 
   // Turma handlers
   const handleCreateTurma = async () => {
+    if (isCreatingTurma) {
+      return false
+    }
+
     if (!newTurmaName.trim()) {
       toast.error("Nome da turma é obrigatório")
       return
     }
 
     // Validar que todas as 4 datas foram preenchidas
-    const datasPreenchidas = Object.values(newTurmaDatas).every(data => data.trim() !== '')
+    const datasMonitoramento = Object.values(newTurmaDatas).map((data) => data.trim())
+    const datasPreenchidas = datasMonitoramento.every((data) => data !== "")
     if (!datasPreenchidas) {
       toast.error("Todas as 4 datas de monitoramento são obrigatórias")
       return
     }
 
     try {
-      const datasMonitoramento = Object.values(newTurmaDatas).map((data) => data.trim())
+      setIsCreatingTurma(true)
       const newTurma = await createTurmaCompostagem({
         nome: newTurmaName.trim(),
         descricao: newTurmaDescription.trim() || undefined,
@@ -585,22 +708,56 @@ export function useCompostagem() {
       setNewTurmaName("")
       setNewTurmaDescription("")
       setNewTurmaDatas({ data1: '', data2: '', data3: '', data4: '' })
+      return true
     } catch (error) {
       console.error("Erro ao criar turma:", error)
       toast.error("Erro ao criar turma", {
         description: error instanceof Error ? error.message : "Tente novamente",
       })
+      return false
+    } finally {
+      setIsCreatingTurma(false)
     }
   }
 
   const handleDeleteTurma = async (turmaId: string) => {
     try {
+      const turmaRemovida = turmas.find((turma) => turma.id === turmaId)
+
       await deleteTurmaCompostagem(turmaId)
       setTurmasCompostagem((prev) => prev.filter((t) => t.id !== turmaId))
+      setTurmas((prev) => {
+        const turmasAtualizadas = prev.filter((turma) => turma.id !== turmaId)
+
+        if (turmaRemovida?.nome === turmaFilter) {
+          const proximaTurma = turmasAtualizadas[0]
+          setTurmaFilter(proximaTurma?.nome || "")
+          setParticipantes([])
+
+          if (proximaTurma) {
+            loadParticipantesDaTurma(proximaTurma.id)
+              .then(setParticipantes)
+              .catch((error) => {
+                console.error("Erro ao carregar próxima turma:", error)
+              })
+          }
+        }
+
+        return turmasAtualizadas
+      })
+
+      if (selectedTurma?.id === turmaId) {
+        setSelectedTurma(null)
+        setIsTurmaDetailOpen(false)
+        setIsAddParticipantOpen(false)
+      }
+
       toast.success("Turma excluída com sucesso")
     } catch (error) {
       console.error("Erro ao excluir turma:", error)
-      toast.error("Erro ao excluir turma")
+      toast.error("Erro ao excluir turma", {
+        description: error instanceof Error ? error.message : "Tente novamente",
+      })
     }
   }
 
@@ -854,6 +1011,7 @@ export function useCompostagem() {
     // Turma states
     turmasCompostagem,
     isCreateTurmaOpen,
+    isCreatingTurma,
     setIsCreateTurmaOpen,
     newTurmaName,
     setNewTurmaName,
@@ -890,5 +1048,7 @@ export function useCompostagem() {
     handleAddBucketRecord,
     handleEditBucketRecord,
     handleDeleteBucketRecord,
+    turmaPeriodos,
+    handleSalvarTodosBuckets,
   }
 }

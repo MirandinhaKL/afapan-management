@@ -51,6 +51,7 @@ export function CompostagemPage() {
     // Turma states
     turmasCompostagem,
     isCreateTurmaOpen,
+    isCreatingTurma,
     setIsCreateTurmaOpen,
     newTurmaName,
     setNewTurmaName,
@@ -87,6 +88,8 @@ export function CompostagemPage() {
     handleAddBucketRecord,
     handleEditBucketRecord,
     handleDeleteBucketRecord,
+    turmaPeriodos,
+    handleSalvarTodosBuckets,
   } = useCompostagem()
 
   // Fetch baldes when participant detail is opened
@@ -176,6 +179,8 @@ export function CompostagemPage() {
         onRegistroChange={setSelectedRegistroIndex}
         onRegister={handleRegistrarManual}
         trimestre={TRIMESTRE_ATUAL}
+        turmaPeriodos={turmaPeriodos}
+        onSalvarTodos={handleSalvarTodosBuckets}
       />
 
       <CreateTurmaDialog
@@ -190,6 +195,7 @@ export function CompostagemPage() {
           setNewTurmaDatas(prev => ({ ...prev, [periodo]: data }))
         }
         onCreateTurma={handleCreateTurma}
+        isCreating={isCreatingTurma}
       />
 
       <CreateParticipanteDialog

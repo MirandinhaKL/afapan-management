@@ -143,7 +143,7 @@ export function exportPDF({
       doc.setTextColor(150, 150, 150)
       doc.setFontSize(7)
       doc.text(
-        "AFAPAN - Modulo de Gestao Administrativa",
+        "AFAPAN - Módulo de Gestão Administrativa",
         14,
         pageHeight - 7
       )

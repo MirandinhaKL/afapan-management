@@ -12,6 +12,9 @@ export interface WhatsAppLinkConfig {
 /**
  * Gera a URL para o WhatsApp Web/App com mensagem pré-preenchida
  */
+/**
+ * Gera a URL para o WhatsApp Web/App com mensagem pré-preenchida
+ */
 export function generateWhatsAppLink(
   token: string,
   participanteName: string,

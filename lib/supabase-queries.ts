@@ -601,6 +601,52 @@ export async function updateTurmaCompostagem(id: string, updates: Partial<TurmaC
 
 export async function deleteTurmaCompostagem(id: string): Promise<void> {
   try {
+    const { data: periodos, error: periodosError } = await supabase
+      .from('turma_bucket_periods')
+      .select('id')
+      .eq('turma_id', id)
+
+    if (periodosError) throw periodosError
+
+    const periodoIds = (periodos || []).map((periodo) => periodo.id)
+
+    if (periodoIds.length > 0) {
+      const { error: linksError } = await supabase
+        .from('participante_bucket_links')
+        .delete()
+        .in('turma_bucket_period_id', periodoIds)
+
+      if (linksError) throw linksError
+
+      const { error: baldesPeriodosError } = await supabase
+        .from('baldes')
+        .update({ turma_bucket_period_id: null })
+        .in('turma_bucket_period_id', periodoIds)
+
+      if (baldesPeriodosError) throw baldesPeriodosError
+    }
+
+    const { error: baldesError } = await supabase
+      .from('baldes')
+      .delete()
+      .eq('turma_id', id)
+
+    if (baldesError) throw baldesError
+
+    const { error: participantesTurmasError } = await supabase
+      .from('participantes_turmas')
+      .delete()
+      .eq('turma_id', id)
+
+    if (participantesTurmasError) throw participantesTurmasError
+
+    const { error: bucketPeriodsError } = await supabase
+      .from('turma_bucket_periods')
+      .delete()
+      .eq('turma_id', id)
+
+    if (bucketPeriodsError) throw bucketPeriodsError
+
     const { error } = await supabase
       .from('turmas')
       .delete()

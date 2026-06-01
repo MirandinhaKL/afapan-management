@@ -8,8 +8,8 @@ const _inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 const _jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-jetbrains-mono' })
 
 export const metadata: Metadata = {
-  title: 'AFAPAN - Gestao Administrativa',
-  description: 'Modulo de gestao administrativa da AFAPAN - Associacao Farroupilhense de Protecao ao Ambiente Natural',
+  title: 'AFAPAN - Gestão Administrativa',
+  description: 'Módulo de gestão administrativa da AFAPAN - Associação Farroupilhense de Proteção ao Ambiente Natural',
   icons: {
     icon: [
       {

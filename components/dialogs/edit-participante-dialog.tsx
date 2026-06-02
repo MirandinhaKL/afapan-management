@@ -29,7 +29,7 @@ interface EditParticipanteDialogProps {
     cidade?: string
     estado?: string
     cep?: string
-  }) => void
+  }) => Promise<void>
 }
 
 export function EditParticipanteDialog({
@@ -120,7 +120,7 @@ export function EditParticipanteDialog({
     }
   }, [participante, open])
 
-  const handleSave = () => {
+  const handleSave = async () => {
     // Validação detalhada
     if (!nome.trim()) {
       toast.error("Nome é obrigatório")
@@ -151,7 +151,7 @@ export function EditParticipanteDialog({
       return
     }
 
-    onEditParticipante({
+    await onEditParticipante({
       nome: nome.trim(),
       telefone: telefone.trim(),
       email: email.trim(),

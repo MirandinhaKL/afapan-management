@@ -603,7 +603,7 @@ export function useCompostagem() {
     try {
       console.log("Iniciando edição do participante:", editingParticipante.id)
       console.log("Dados a atualizar:", data)
-      
+
       const updateData = {
         nome: data.nome,
         telefone: data.telefone,
@@ -615,10 +615,10 @@ export function useCompostagem() {
         estado: data.estado,
         cep: data.cep,
       }
-      
+
       console.log("Chamando updateParticipante com:", updateData)
       const updatedParticipante = await updateParticipante(editingParticipante.id, updateData)
-      
+
       console.log("Resposta do updateParticipante:", updatedParticipante)
 
       if (!updatedParticipante) {
@@ -627,23 +627,82 @@ export function useCompostagem() {
         return
       }
 
-      setParticipantes((prev) => {
-        const newList = prev.map((p) => {
-          if (p.id === editingParticipante.id) {
-            const merged = {
-              ...p,
-              ...updatedParticipante,
-              baldes: p.baldes, // Preservar baldes do participante anterior
-            }
-            console.log("Participante mergeado:", merged)
-            return merged
-          }
-          return p
-        })
-        console.log("Nova lista de participantes:", newList)
-        return newList
-      })
-      
+      const participanteAtualizado = {
+        ...editingParticipante,
+        ...updatedParticipante,
+        ...data,
+        baldes: editingParticipante.baldes,
+      }
+
+      const turmaAlterada = data.turma !== editingParticipante.turma
+      const oldTurma = turmas.find((t) => t.nome === editingParticipante.turma)
+      const newTurma = turmas.find((t) => t.nome === data.turma)
+
+      if (turmaAlterada && oldTurma && newTurma) {
+        try {
+          await removeParticipanteFromTurma(editingParticipante.id, oldTurma.id)
+          await addParticipanteToTurma(editingParticipante.id, newTurma.id)
+
+          setTurmas((prev) =>
+            prev.map((t) => {
+              if (t.id === oldTurma.id) {
+                return {
+                  ...t,
+                  totalParticipantes: Math.max(0, (t.totalParticipantes || 0) - 1),
+                }
+              }
+              if (t.id === newTurma.id) {
+                return {
+                  ...t,
+                  totalParticipantes: (t.totalParticipantes || 0) + 1,
+                }
+              }
+              return t
+            })
+          )
+
+          setTurmasCompostagem((prev) =>
+            prev.map((t) => {
+              if (t.id === oldTurma.id) {
+                return {
+                  ...t,
+                  participantes: t.participantes.filter((p) => p.id !== editingParticipante.id),
+                  totalParticipantes: Math.max(0, (t.totalParticipantes || t.participantes.length) - 1),
+                }
+              }
+              if (t.id === newTurma.id) {
+                const alreadyInNew = t.participantes.some((p) => p.id === editingParticipante.id)
+                return {
+                  ...t,
+                  participantes: alreadyInNew
+                    ? t.participantes.map((p) =>
+                        p.id === editingParticipante.id ? participanteAtualizado : p
+                      )
+                    : [...t.participantes, participanteAtualizado],
+                  totalParticipantes: (t.totalParticipantes || t.participantes.length) + (alreadyInNew ? 0 : 1),
+                }
+              }
+              return t
+            })
+          )
+        } catch (relationError) {
+          console.error("Erro ao atualizar relacionamento de turma:", relationError)
+        }
+      }
+
+      setParticipantes((prev) =>
+        prev.map((p) =>
+          p.id === editingParticipante.id
+            ? {
+                ...p,
+                ...updatedParticipante,
+                ...data,
+                baldes: p.baldes,
+              }
+            : p
+        )
+      )
+
       toast.success(`Participante "${data.nome}" atualizado com sucesso`)
       setIsEditParticipanteOpen(false)
       setEditingParticipante(null)

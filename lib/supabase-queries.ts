@@ -1168,7 +1168,9 @@ export async function generateBucketLinksForPeriod(
       }
 
       // Construir URL do link
-      const baseUrl = typeof window !== 'undefined' ? window.location.origin : process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ||
+        (typeof window !== 'undefined' ? window.location.origin : undefined) ||
+        'http://localhost:3000'
       const linkUrl = `${baseUrl}/bucket/${token}`
 
       linksGerados.push({

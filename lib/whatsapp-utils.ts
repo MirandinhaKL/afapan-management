@@ -9,6 +9,15 @@ export interface WhatsAppLinkConfig {
   useShortUrl?: boolean
 }
 
+function resolveBaseUrl(baseUrl?: string) {
+  return (
+    baseUrl ||
+    process.env.NEXT_PUBLIC_BASE_URL ||
+    (typeof window !== 'undefined' ? window.location.origin : undefined) ||
+    'http://localhost:3000'
+  )
+}
+
 /**
  * Gera a URL para o WhatsApp Web/App com mensagem pré-preenchida
  */
@@ -21,9 +30,7 @@ export function generateWhatsAppLink(
   periodLabel: string,
   config?: WhatsAppLinkConfig
 ): string {
-  const baseUrl = config?.baseUrl || 
-    (typeof window !== 'undefined' ? window.location.origin : process.env.NEXT_PUBLIC_BASE_URL) || 
-    'http://localhost:3000'
+  const baseUrl = resolveBaseUrl(config?.baseUrl)
 
   const bucketFormUrl = `${baseUrl}/bucket/${token}`
 
@@ -61,9 +68,7 @@ export function generateWhatsAppMessage(
   periodLabel: string,
   baseUrl?: string
 ): string {
-  const fullBaseUrl = baseUrl || 
-    (typeof window !== 'undefined' ? window.location.origin : process.env.NEXT_PUBLIC_BASE_URL) || 
-    'http://localhost:3000'
+  const fullBaseUrl = resolveBaseUrl(baseUrl)
 
   const bucketFormUrl = `${fullBaseUrl}/bucket/${token}`
 
@@ -132,9 +137,7 @@ export function openWhatsAppApp(
   phoneNumber?: string,
   baseUrl?: string
 ): void {
-  const baseUrlFinal = baseUrl || 
-    (typeof window !== 'undefined' ? window.location.origin : process.env.NEXT_PUBLIC_BASE_URL) || 
-    'http://localhost:3000'
+  const baseUrlFinal = resolveBaseUrl(baseUrl)
   
   const bucketFormUrl = `${baseUrlFinal}/bucket/${token}`
 

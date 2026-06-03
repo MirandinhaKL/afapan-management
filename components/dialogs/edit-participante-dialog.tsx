@@ -13,6 +13,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card"
 import { toast } from "sonner"
 import { type Participante, type Turma } from "@/lib/mock-data"
+import { LoadingOverlay } from "@/components/ui/loading-overlay"
 
 interface EditParticipanteDialogProps {
   open: boolean
@@ -51,6 +52,7 @@ export function EditParticipanteDialog({
   const [estado, setEstado] = useState("")
   const [cep, setCep] = useState("")
   const [cepTouched, setCepTouched] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
 
   const getTelefoneDigits = (valor: string) => {
     const digits = valor.replace(/\D/g, "")
@@ -151,19 +153,34 @@ export function EditParticipanteDialog({
       return
     }
 
-    await onEditParticipante({
-      nome: nome.trim(),
-      telefone: telefone.trim(),
-      email: email.trim(),
-      turma,
-      endereco: endereco.trim() || undefined,
-      bairro: bairro.trim() || undefined,
-      cidade: cidade.trim() || undefined,
-      estado: estado.trim() || undefined,
-      cep: cep.trim() || undefined,
-    })
+    setIsSaving(true)
+    let saveSucceeded = false
 
-    handleOpenChange(false)
+    try {
+      await onEditParticipante({
+        nome: nome.trim(),
+        telefone: telefone.trim(),
+        email: email.trim(),
+        turma,
+        endereco: endereco.trim() || undefined,
+        bairro: bairro.trim() || undefined,
+        cidade: cidade.trim() || undefined,
+        estado: estado.trim() || undefined,
+        cep: cep.trim() || undefined,
+      })
+
+      saveSucceeded = true
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Erro ao salvar participante"
+      toast.error(message)
+      console.error("Erro ao salvar participante:", error)
+    } finally {
+      setIsSaving(false)
+    }
+
+    if (saveSucceeded) {
+      handleOpenChange(false)
+    }
   }
 
   const handleOpenChange = (newOpen: boolean) => {
@@ -195,14 +212,17 @@ export function EditParticipanteDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Editar participante</DialogTitle>
-          <DialogDescription>
-            Atualize as informações do participante.
-          </DialogDescription>
-        </DialogHeader>
+        <div className="relative">
+          {isSaving && <LoadingOverlay message="Salvando participante..." />}
 
-        <div className="space-y-4">
+          <DialogHeader>
+            <DialogTitle>Editar participante</DialogTitle>
+            <DialogDescription>
+              Atualize as informações do participante.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
           {/* Dados Pessoais */}
           <Card>
             <CardContent className="pt-6">
@@ -355,13 +375,14 @@ export function EditParticipanteDialog({
         </div>
 
         <div className="flex gap-2 justify-end pt-4">
-          <Button variant="outline" onClick={() => handleOpenChange(false)}>
+          <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={isSaving}>
             Cancelar
           </Button>
-          <Button onClick={handleSave} disabled={!isFormValid}>
-            Salvar alterações
+          <Button onClick={handleSave} disabled={!isFormValid || isSaving}>
+            {isSaving ? "Salvando..." : "Salvar alterações"}
           </Button>
         </div>
+      </div>
       </DialogContent>
     </Dialog>
   )

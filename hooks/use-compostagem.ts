@@ -271,7 +271,9 @@ export function useCompostagem() {
       )
 
       // Gerar a mensagem
-      const baseUrl = typeof window !== 'undefined' ? window.location.origin : undefined
+      const baseUrl =
+        process.env.NEXT_PUBLIC_BASE_URL ||
+        (typeof window !== 'undefined' ? window.location.origin : undefined)
       const mensagem = generateWhatsAppMessage(
         linkData.token,
         participante.nome,

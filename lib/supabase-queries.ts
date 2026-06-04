@@ -1076,49 +1076,6 @@ export async function fetchParticipanteBucketLinkByToken(token: string): Promise
 }
 
 /**
- * Atualizar um link após submissão
- */
-export async function updateParticipanteBucketLinkSubmission(
-  token: string,
-  quantidade: number
-): Promise<{ success: boolean; message: string }> {
-  try {
-    // Primeiro, buscar o link
-    const linkData = await fetchParticipanteBucketLinkByToken(token)
-    if (!linkData) {
-      throw new Error('Link inválido ou expirado')
-    }
-
-    // Criar registro de balde
-    const balde = await createBalde({
-      participante_id: linkData.participante_id,
-      turma_id: undefined,
-      turma_bucket_period_id: linkData.turma_bucket_period_id,
-      trimestre: `${new Date().getFullYear()}-Q${Math.ceil((new Date().getMonth() + 1) / 3)}`,
-      quantidade,
-      data_registro: new Date().toISOString().split('T')[0]
-    })
-
-    // Atualizar o link como submetido
-    await supabase
-      .from('participante_bucket_links')
-      .update({
-        submitted: true,
-        submitted_at: new Date().toISOString()
-      })
-      .eq('token', token)
-
-    return {
-      success: true,
-      message: `Obrigado! Registramos ${quantidade} baldes coletados neste período.`
-    }
-  } catch (error) {
-    console.error('Erro ao salvar submissão de baldes:', error)
-    throw error
-  }
-}
-
-/**
  * Gerar links em lote para todos os participantes de uma turma em um período
  */
 export async function generateBucketLinksForPeriod(

@@ -10,7 +10,6 @@ const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
-    // Ajuste o timeout para reduzir ruídos em dev; mantenha em 5000 (padrão) para produção.
-    lockAcquireTimeout: 5000,
+    persistSession: true,
   },
 })

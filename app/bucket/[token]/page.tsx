@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
-import { fetchParticipanteBucketLinkByToken, updateParticipanteBucketLinkSubmission } from "@/lib/supabase-queries"
+import { fetchParticipanteBucketLinkByToken } from "@/lib/supabase-queries"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -42,7 +42,26 @@ export default function BucketForm() {
   const [bucketsInput, setBucketsInput] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [submitSuccess, setSubmitSuccess] = useState(false)
+  const [submittedBuckets, setSubmittedBuckets] = useState<number | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
+
+  const buildWhatsAppUrl = (quantidade: number) => {
+    const reportPhone = "5554997020020"
+    const participanteName = (linkData?.participantes as any)?.nome || "Participante"
+    const participanteId = linkData?.participante_id || ""
+    const periodoLabel = (linkData?.turma_bucket_periods as any)?.periodo_label || "Este período"
+    const periodoId = linkData?.turma_bucket_period_id || ""
+    const message = `Registro de baldes AFAPAN
+
+Participante: ${participanteName}
+Participante ID: ${participanteId}
+Período: ${periodoLabel}
+Período ID: ${periodoId}
+Token do link: ${token}
+Quantidade de baldes: ${quantidade}`
+
+    return `https://wa.me/${reportPhone}?text=${encodeURIComponent(message)}`
+  }
 
   useEffect(() => {
     const loadLinkData = async () => {
@@ -92,18 +111,14 @@ export default function BucketForm() {
       setSubmitting(true)
       setSubmitError(null)
 
-      const result = await updateParticipanteBucketLinkSubmission(token as string, quantidade)
-
-      if (result.success) {
-        setSubmitSuccess(true)
-        setBucketsInput("")
-      } else {
-        setSubmitError(result.message)
-      }
+      window.open(buildWhatsAppUrl(quantidade), "_blank", "noopener,noreferrer")
+      setSubmittedBuckets(quantidade)
+      setSubmitSuccess(true)
+      setBucketsInput("")
     } catch (err) {
       console.error("Erro ao enviar dados:", err)
       setSubmitError(
-        err instanceof Error ? err.message : "Erro ao salvar os dados. Tente novamente."
+        err instanceof Error ? err.message : "Erro ao abrir o WhatsApp. Tente novamente."
       )
     } finally {
       setSubmitting(false)
@@ -159,11 +174,11 @@ export default function BucketForm() {
               Obrigado, {participanteName}!
             </p>
             <p className="text-center text-sm">
-              Registramos a quantidade de baldes coletados neste período. Sua contribuição é importante para o programa AFAPAN!
+              Abrimos o WhatsApp com a mensagem preenchida. Envie a mensagem para concluir o registro.
             </p>
             <div className="bg-green-50 p-3 rounded-md text-center">
               <p className="text-sm font-semibold text-green-700">
-                {bucketsInput} balde(s) registrado(s)
+                {submittedBuckets} balde(s) registrado(s)
               </p>
             </div>
           </CardContent>
@@ -240,17 +255,17 @@ export default function BucketForm() {
               {submitting ? (
                 <div className="flex items-center gap-2">
                   <Spinner className="w-4 h-4" />
-                  Enviando...
+                  Abrindo WhatsApp...
                 </div>
               ) : (
-                "Enviar"
+                "Enviar pelo WhatsApp"
               )}
             </Button>
 
             {/* Footer Info */}
             <div className="text-center space-y-1 pt-4 border-t">
               <p className="text-xs text-muted-foreground">
-                Seus dados serão salvos com segurança
+                O registro será enviado por mensagem de WhatsApp
               </p>
               <p className="text-xs text-muted-foreground">
                 AFAPAN - Gestão de Compostagem

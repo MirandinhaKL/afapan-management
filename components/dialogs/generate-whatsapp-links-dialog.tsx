@@ -229,7 +229,14 @@ export function GenerateWhatsAppLinksDialog({
                             {link.token}
                           </p>
                           <p className="text-xs text-muted-foreground mt-1 break-all">
-                            {link.link}
+                            <a
+                              href={link.link}
+                              target="_blank"
+                              rel="noreferrer noopener"
+                              className="text-blue-600 hover:text-blue-700 underline"
+                            >
+                              {link.link}
+                            </a>
                           </p>
                         </div>
 

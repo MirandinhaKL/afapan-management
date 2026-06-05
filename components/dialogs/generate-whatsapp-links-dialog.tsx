@@ -7,33 +7,35 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Badge } from "@/components/ui/badge"
 import { Spinner } from "@/components/ui/spinner"
 import {
-  Copy,
-  Download,
-  ExternalLink,
   AlertCircle,
   CheckCircle2,
   MessageCircle,
+  Send,
 } from "lucide-react"
-import {
-  generateWhatsAppLink,
-  generateWhatsAppMessage,
-  copyWhatsAppLinkToClipboard,
-  openWhatsAppWeb,
-  downloadBucketLinksCSV,
-} from "@/lib/whatsapp-utils"
-import { generateBucketLinksForPeriod } from "@/lib/supabase-queries"
 
-interface BucketLink {
+interface CampaignResult {
   participanteId: string
-  participanteNome: string
-  token: string
-  link: string
+  participanteNome?: string
+  telefone?: string
+  link?: string
+  status: "sent" | "skipped" | "error" | "not_configured"
+  error?: string
+  messageId?: string
+}
+
+interface CampaignResponse {
+  success: boolean
+  configured: boolean
+  total: number
+  sent: number
+  skipped: number
+  errors: number
+  notConfigured: number
+  results: CampaignResult[]
 }
 
 interface GenerateWhatsAppLinksDialogProps {
@@ -42,7 +44,20 @@ interface GenerateWhatsAppLinksDialogProps {
   turmaId: string
   turmaBucketPeriodId: string
   periodoLabel: string
-  onLinksGenerated?: (links: BucketLink[]) => void
+}
+
+const statusLabel: Record<CampaignResult["status"], string> = {
+  sent: "Enviado",
+  skipped: "Ignorado",
+  error: "Erro",
+  not_configured: "Não configurado",
+}
+
+const statusVariant: Record<CampaignResult["status"], "default" | "secondary" | "destructive" | "outline"> = {
+  sent: "default",
+  skipped: "secondary",
+  error: "destructive",
+  not_configured: "outline",
 }
 
 export function GenerateWhatsAppLinksDialog({
@@ -51,231 +66,164 @@ export function GenerateWhatsAppLinksDialog({
   turmaId,
   turmaBucketPeriodId,
   periodoLabel,
-  onLinksGenerated,
 }: GenerateWhatsAppLinksDialogProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [links, setLinks] = useState<BucketLink[]>([])
-  const [selectedLink, setSelectedLink] = useState<BucketLink | null>(null)
-  const [copied, setCopied] = useState(false)
+  const [campaign, setCampaign] = useState<CampaignResponse | null>(null)
 
-  const handleGenerateLinks = async () => {
+  const handleSendCampaign = async () => {
     try {
       setLoading(true)
       setError(null)
+      setCampaign(null)
 
-      const generatedLinks = await generateBucketLinksForPeriod(
-        turmaId,
-        turmaBucketPeriodId,
-        30
-      )
+      const response = await fetch("/api/whatsapp/campaign", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          turmaId,
+          turmaBucketPeriodId,
+          expiresInDays: 30,
+        }),
+      })
 
-      const formattedLinks = generatedLinks.map((link) => ({
-        participanteId: link.participanteId,
-        participanteNome: link.participanteNome,
-        token: link.token,
-        link: link.link,
-      }))
+      const result = await response.json().catch(() => null)
 
-      setLinks(formattedLinks)
-      onLinksGenerated?.(formattedLinks)
+      if (!response.ok) {
+        throw new Error(result?.error || "Erro ao enviar campanha")
+      }
+
+      setCampaign(result)
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Erro ao gerar links"
-      )
-      console.error("Erro ao gerar links:", err)
+      setError(err instanceof Error ? err.message : "Erro ao enviar campanha")
+      console.error("Erro ao enviar campanha:", err)
     } finally {
       setLoading(false)
     }
   }
 
-  const handleCopyMessage = async (link: BucketLink) => {
-    const success = await copyWhatsAppLinkToClipboard(
-      link.token,
-      link.participanteNome,
-      periodoLabel
-    )
-
-    if (success) {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    }
-  }
-
-  const handleDownloadCSV = () => {
-    const csvData = links.map((link) => ({
-      participanteNome: link.participanteNome,
-      token: link.token,
-      periodLabel: periodoLabel,
-      link: link.link,
-    }))
-
-    downloadBucketLinksCSV(
-      csvData,
-      `bucket-links-${periodoLabel.replace(/\s+/g, "-")}.csv`
-    )
-  }
+  const hasMissingConfig = campaign && !campaign.configured
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[82vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <MessageCircle className="w-5 h-5 text-green-600" />
-            Gerar Links de WhatsApp para Coleta de Baldes
+            Campanha de WhatsApp para Coleta de Baldes
           </DialogTitle>
           <DialogDescription>
-            Crie links únicos para cada participante registrar a quantidade de baldes no período {periodoLabel}
+            Envie uma mensagem para todos os participantes da turma no período {periodoLabel}.
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="generate" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="generate">Gerar</TabsTrigger>
-            <TabsTrigger value="links" disabled={links.length === 0}>
-              Links Gerados ({links.length})
-            </TabsTrigger>
-          </TabsList>
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
 
-          <TabsContent value="generate" className="space-y-4 mt-4">
-            {error && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
+        <div className="rounded-md border bg-muted/30 p-4 space-y-2">
+          <p className="text-sm font-medium text-foreground">Como funciona</p>
+          <p className="text-sm text-muted-foreground">
+            O sistema gera ou reutiliza um link único por participante e dispara o template
+            oficial pelo WhatsApp Cloud API. O participante clica no link e informa apenas
+            a quantidade de baldes.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Para enviar de verdade, configure `WHATSAPP_ACCESS_TOKEN`,
+            `WHATSAPP_PHONE_NUMBER_ID` e `WHATSAPP_TEMPLATE_NAME` no ambiente do servidor.
+          </p>
+        </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
-              <p className="font-semibold text-sm text-blue-900">
-                Como funciona:
-              </p>
-              <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
-                <li>
-                  Um link único será criado para cada participante da turma
-                </li>
-                <li>
-                  O link permite que o participante registre a quantidade de baldes
-                </li>
-                <li>
-                  Os dados são salvos automaticamente no banco de dados
-                </li>
-                <li>
-                  Cada link expira em 30 dias (pode ser customizado)
-                </li>
-              </ul>
+        <Button
+          onClick={handleSendCampaign}
+          disabled={loading || !turmaId || !turmaBucketPeriodId}
+          className="w-full bg-green-600 hover:bg-green-700 text-white h-11 text-base"
+        >
+          {loading ? (
+            <>
+              <Spinner className="w-4 h-4 mr-2" />
+              Enviando campanha...
+            </>
+          ) : (
+            <>
+              <Send className="w-4 h-4 mr-2" />
+              Enviar Campanha Para Todos
+            </>
+          )}
+        </Button>
+
+        {campaign && (
+          <div className="space-y-4">
+            <Alert className={hasMissingConfig ? "border-amber-200 bg-amber-50" : "border-green-200 bg-green-50"}>
+              <CheckCircle2 className={`h-4 w-4 ${hasMissingConfig ? "text-amber-600" : "text-green-600"}`} />
+              <AlertDescription className={hasMissingConfig ? "text-amber-900" : "text-green-800"}>
+                {hasMissingConfig
+                  ? "Links preparados, mas as credenciais do WhatsApp ainda não estão configuradas."
+                  : "Campanha processada."}
+              </AlertDescription>
+            </Alert>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              <div className="rounded-md border p-3">
+                <p className="text-xs text-muted-foreground">Total</p>
+                <p className="text-xl font-semibold">{campaign.total}</p>
+              </div>
+              <div className="rounded-md border p-3">
+                <p className="text-xs text-muted-foreground">Enviados</p>
+                <p className="text-xl font-semibold text-green-700">{campaign.sent}</p>
+              </div>
+              <div className="rounded-md border p-3">
+                <p className="text-xs text-muted-foreground">Sem config.</p>
+                <p className="text-xl font-semibold text-amber-700">{campaign.notConfigured}</p>
+              </div>
+              <div className="rounded-md border p-3">
+                <p className="text-xs text-muted-foreground">Erros</p>
+                <p className="text-xl font-semibold text-red-700">{campaign.errors}</p>
+              </div>
             </div>
 
-            <Button
-              onClick={handleGenerateLinks}
-              disabled={loading}
-              className="w-full bg-green-600 hover:bg-green-700 text-white h-11 text-base"
-            >
-              {loading ? (
-                <>
-                  <Spinner className="w-4 h-4 mr-2" />
-                  Gerando links...
-                </>
-              ) : (
-                "Gerar Links Para Todos os Participantes"
-              )}
-            </Button>
-
-            {links.length > 0 && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-start gap-2">
-                <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
-                <div className="text-sm text-green-800">
-                  <p className="font-semibold">
-                    {links.length} link(s) gerado(s) com sucesso!
-                  </p>
-                  <p className="text-xs mt-1">
-                    Vá para a aba "Links Gerados" para enviar via WhatsApp
-                  </p>
-                </div>
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="links" className="space-y-4 mt-4">
-            {links.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">
-                Nenhum link gerado ainda. Gere os links primeiro.
-              </p>
-            ) : (
-              <>
-                <div className="flex gap-2 mb-4">
-                  <Button
-                    onClick={handleDownloadCSV}
-                    variant="outline"
-                    size="sm"
-                    className="flex items-center gap-2"
-                  >
-                    <Download className="w-4 h-4" />
-                    Baixar CSV
-                  </Button>
-                </div>
-
-                <div className="space-y-2 max-h-96 overflow-y-auto">
-                  {links.map((link) => (
-                    <div
-                      key={link.token}
-                      className="border rounded-lg p-3 hover:bg-gray-50 transition"
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm truncate">
-                            {link.participanteNome}
-                          </p>
-                          <p className="text-xs text-muted-foreground font-mono truncate">
-                            {link.token}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1 break-all">
-                            <a
-                              href={link.link}
-                              target="_blank"
-                              rel="noreferrer noopener"
-                              className="text-blue-600 hover:text-blue-700 underline"
-                            >
-                              {link.link}
-                            </a>
-                          </p>
-                        </div>
-
-                        <div className="flex gap-2 shrink-0">
-                          <Button
-                            onClick={() => handleCopyMessage(link)}
-                            size="sm"
-                            variant="ghost"
-                            title="Copiar mensagem"
-                          >
-                            <Copy className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            onClick={() => openWhatsAppWeb(link.token, link.participanteNome, periodoLabel)}
-                            size="sm"
-                            variant="ghost"
-                            className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                            title="Abrir WhatsApp"
-                          >
-                            <ExternalLink className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
+            <div className="space-y-2 max-h-80 overflow-y-auto">
+              {campaign.results.map((item) => (
+                <div
+                  key={`${item.participanteId}-${item.status}`}
+                  className="rounded-md border p-3"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">
+                        {item.participanteNome || item.participanteId}
+                      </p>
+                      {item.telefone && (
+                        <p className="text-xs text-muted-foreground">{item.telefone}</p>
+                      )}
+                      {item.error && (
+                        <p className="text-xs text-destructive mt-1">{item.error}</p>
+                      )}
+                      {item.link && (
+                        <a
+                          href={item.link}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                          className="text-xs text-blue-600 underline break-all"
+                        >
+                          {item.link}
+                        </a>
+                      )}
                     </div>
-                  ))}
+                    <Badge variant={statusVariant[item.status]}>
+                      {statusLabel[item.status]}
+                    </Badge>
+                  </div>
                 </div>
-
-                {copied && (
-                  <Alert className="bg-green-50 border-green-200">
-                    <CheckCircle2 className="h-4 w-4 text-green-600" />
-                    <AlertDescription className="text-green-800">
-                      Mensagem copiada para a área de transferência!
-                    </AlertDescription>
-                  </Alert>
-                )}
-              </>
-            )}
-          </TabsContent>
-        </Tabs>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="flex justify-end gap-2 pt-4 border-t">
           <Button

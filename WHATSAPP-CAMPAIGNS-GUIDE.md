@@ -53,3 +53,44 @@ Mapeamento usado pelo sistema:
 - O número de origem pode ser trocado depois alterando `WHATSAPP_PHONE_NUMBER_ID`.
 - Os telefones dos participantes devem estar com DDD; o sistema adiciona `55` quando necessário.
 - A página pública de preenchimento não insere mais diretamente no Supabase.
+
+## Webhook pela Supabase Edge Function
+
+Foi criada a Edge Function `whatsapp-webhook` para receber eventos da Meta.
+
+URL após deploy:
+
+```text
+https://<PROJECT_REF>.supabase.co/functions/v1/whatsapp-webhook
+```
+
+Execute no SQL Editor:
+
+```text
+create-whatsapp-webhook-events-table.sql
+```
+
+Configure os secrets da função:
+
+```bash
+supabase secrets set WHATSAPP_WEBHOOK_VERIFY_TOKEN=um-texto-secreto-qualquer
+supabase secrets set WHATSAPP_APP_SECRET=app-secret-da-meta
+```
+
+`WHATSAPP_APP_SECRET` é opcional, mas recomendado. Se não for configurado, a função aceita o `POST` sem validar a assinatura `x-hub-signature-256`.
+
+Deploy:
+
+```bash
+supabase functions deploy whatsapp-webhook --no-verify-jwt
+```
+
+No painel da Meta:
+
+1. Acesse `WhatsApp > Configuração`.
+2. Em `URL de callback`, informe a URL da função.
+3. Em `Token de verificação`, informe o mesmo valor de `WHATSAPP_WEBHOOK_VERIFY_TOKEN`.
+4. Clique em verificar e salvar.
+5. Em campos do webhook, assine `messages`.
+
+Os eventos recebidos serão gravados em `whatsapp_webhook_events`.

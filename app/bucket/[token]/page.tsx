@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
-import { fetchParticipanteBucketLinkByToken } from "@/lib/supabase-queries"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -45,24 +44,6 @@ export default function BucketForm() {
   const [submittedBuckets, setSubmittedBuckets] = useState<number | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
-  const buildWhatsAppUrl = (quantidade: number) => {
-    const reportPhone = "5554997020020"
-    const participanteName = (linkData?.participantes as any)?.nome || "Participante"
-    const participanteId = linkData?.participante_id || ""
-    const periodoLabel = (linkData?.turma_bucket_periods as any)?.periodo_label || "Este período"
-    const periodoId = linkData?.turma_bucket_period_id || ""
-    const message = `Registro de baldes AFAPAN
-
-Participante: ${participanteName}
-Participante ID: ${participanteId}
-Período: ${periodoLabel}
-Período ID: ${periodoId}
-Token do link: ${token}
-Quantidade de baldes: ${quantidade}`
-
-    return `https://wa.me/${reportPhone}?text=${encodeURIComponent(message)}`
-  }
-
   useEffect(() => {
     const loadLinkData = async () => {
       try {
@@ -74,10 +55,11 @@ Quantidade de baldes: ${quantidade}`
           return
         }
 
-        const data = await fetchParticipanteBucketLinkByToken(token as string)
+        const response = await fetch(`/api/bucket/link/${token}`)
+        const data = await response.json().catch(() => null)
         
-        if (!data) {
-          setError("Link inválido, expirado ou já foi utilizado.")
+        if (!response.ok || !data) {
+          setError(data?.error || "Link inválido, expirado ou já foi utilizado.")
           return
         }
 
@@ -111,14 +93,29 @@ Quantidade de baldes: ${quantidade}`
       setSubmitting(true)
       setSubmitError(null)
 
-      window.open(buildWhatsAppUrl(quantidade), "_blank", "noopener,noreferrer")
+      const response = await fetch("/api/bucket/submit", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          token,
+          quantidade,
+        }),
+      })
+      const result = await response.json().catch(() => null)
+
+      if (!response.ok) {
+        throw new Error(result?.error || "Erro ao salvar os dados. Tente novamente.")
+      }
+
       setSubmittedBuckets(quantidade)
       setSubmitSuccess(true)
       setBucketsInput("")
     } catch (err) {
       console.error("Erro ao enviar dados:", err)
       setSubmitError(
-        err instanceof Error ? err.message : "Erro ao abrir o WhatsApp. Tente novamente."
+        err instanceof Error ? err.message : "Erro ao salvar os dados. Tente novamente."
       )
     } finally {
       setSubmitting(false)
@@ -174,7 +171,7 @@ Quantidade de baldes: ${quantidade}`
               Obrigado, {participanteName}!
             </p>
             <p className="text-center text-sm">
-              Abrimos o WhatsApp com a mensagem preenchida. Envie a mensagem para concluir o registro.
+              Registramos a quantidade de baldes coletados neste período. Sua contribuição é importante para o programa AFAPAN!
             </p>
             <div className="bg-green-50 p-3 rounded-md text-center">
               <p className="text-sm font-semibold text-green-700">
@@ -255,17 +252,17 @@ Quantidade de baldes: ${quantidade}`
               {submitting ? (
                 <div className="flex items-center gap-2">
                   <Spinner className="w-4 h-4" />
-                  Abrindo WhatsApp...
+                  Enviando...
                 </div>
               ) : (
-                "Enviar pelo WhatsApp"
+                "Enviar"
               )}
             </Button>
 
             {/* Footer Info */}
             <div className="text-center space-y-1 pt-4 border-t">
               <p className="text-xs text-muted-foreground">
-                O registro será enviado por mensagem de WhatsApp
+                Seus dados serão salvos com segurança
               </p>
               <p className="text-xs text-muted-foreground">
                 AFAPAN - Gestão de Compostagem

@@ -149,7 +149,7 @@ export function TurmaDetailDialog({
                               onClick={() => handleGenerateLinksForPeriod(period)}
                             >
                               <MessageCircle size={12} className="mr-1" />
-                              Campanha
+                              Mensagens
                             </Button>
                           </div>
                         </div>

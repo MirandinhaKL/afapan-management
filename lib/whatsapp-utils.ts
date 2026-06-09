@@ -50,7 +50,7 @@ Obrigado por contribuir com o programa AFAPAN de compostagem!`
 
   // Se houver número de telefone, criar link direto
   if (config?.phoneNumber) {
-    const phoneNumber = config.phoneNumber.replace(/\D/g, '') // Remover caracteres especiais
+    const phoneNumber = formatPhoneForWhatsApp(config.phoneNumber)
     return `https://wa.me/${phoneNumber}?text=${encodedMessage}`
   }
 

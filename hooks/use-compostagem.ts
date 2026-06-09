@@ -19,7 +19,10 @@ import {
   createParticipanteBucketLink,
   fetchTurmaBucketPeriods,
 } from "@/lib/supabase-queries"
-import { generateWhatsAppMessage } from "@/lib/whatsapp-utils"
+import {
+  formatPhoneForWhatsApp,
+  generateWhatsAppMessage,
+} from "@/lib/whatsapp-utils"
 import { toast } from "sonner"
 
 const TRIMESTRE_ATUAL = "2026-Q1"
@@ -264,16 +267,14 @@ export function useCompostagem() {
         return dataMonitoramento > new Date()
       }) || periodos[0]
 
-      // Criar o link
       const linkData = await createParticipanteBucketLink(
         participante.id,
         periodoAtual.id
       )
 
-      // Gerar a mensagem
       const baseUrl =
         process.env.NEXT_PUBLIC_BASE_URL ||
-        (typeof window !== 'undefined' ? window.location.origin : undefined)
+        (typeof window !== "undefined" ? window.location.origin : undefined)
       const mensagem = generateWhatsAppMessage(
         linkData.token,
         participante.nome,
@@ -282,8 +283,7 @@ export function useCompostagem() {
       )
 
       // Criar URL do WhatsApp com telefone do participante
-      const telefoneClean = participante.telefone.replace(/\D/g, "")
-      const telefoneWhatsApp = telefoneClean.startsWith("55") ? telefoneClean : `55${telefoneClean}`
+      const telefoneWhatsApp = formatPhoneForWhatsApp(participante.telefone)
       const whatsappUrl = `https://wa.me/${telefoneWhatsApp}?text=${encodeURIComponent(mensagem)}`
 
       if (whatsappWindow) {
@@ -291,7 +291,7 @@ export function useCompostagem() {
       } else {
         window.location.href = whatsappUrl
       }
-      toast.success(`Link gerado para ${participante.nome}`, {
+      toast.success(`Link único gerado para ${participante.nome}`, {
         description: "A janela do WhatsApp foi aberta.",
       })
     } catch (error) {

@@ -1082,12 +1082,12 @@ export async function generateBucketLinksForPeriod(
   turmaId: string,
   turmaBucketPeriodId: string,
   expiresInDays: number = 30
-): Promise<Array<{ participanteId: string; participanteNome: string; token: string; link: string }>> {
+): Promise<Array<{ participanteId: string; participanteNome: string; telefone?: string; token: string; link: string }>> {
   try {
     // Buscar todos os participantes ativos da turma
     const { data: participantesTurma, error: errorPT } = await supabase
       .from('participantes_turmas')
-      .select('participante_id, participantes(id, nome)')
+      .select('participante_id, participantes(id, nome, telefone)')
       .eq('turma_id', turmaId)
 
     if (errorPT) throw errorPT
@@ -1096,11 +1096,15 @@ export async function generateBucketLinksForPeriod(
     const expiresAt = new Date()
     expiresAt.setDate(expiresAt.getDate() + expiresInDays)
 
-    const linksGerados: Array<{ participanteId: string; participanteNome: string; token: string; link: string }> = []
+    const linksGerados: Array<{ participanteId: string; participanteNome: string; telefone?: string; token: string; link: string }> = []
 
     for (const rel of participantesTurma || []) {
       const participanteId = rel.participante_id
-      const participanteNome = (rel.participantes as any)?.nome || 'Participante'
+      const participante = Array.isArray(rel.participantes)
+        ? rel.participantes[0]
+        : rel.participantes
+      const participanteNome = (participante as any)?.nome || 'Participante'
+      const telefone = (participante as any)?.telefone || ''
 
       // Verificar se já existe um link ativo para este participante e período
       const { data: existingLink } = await supabase
@@ -1133,6 +1137,7 @@ export async function generateBucketLinksForPeriod(
       linksGerados.push({
         participanteId,
         participanteNome,
+        telefone,
         token,
         link: linkUrl
       })
@@ -1195,6 +1200,38 @@ export async function revokeBucketLink(token: string): Promise<void> {
     if (error) throw error
   } catch (error) {
     console.error('Erro ao revogar link:', error)
+    throw error
+  }
+}
+
+export async function fetchWhatsAppRecipientsForTurma(
+  turmaId: string
+): Promise<Array<{ participanteId: string; participanteNome: string; telefone?: string }>> {
+  try {
+    const { data, error } = await supabase
+      .from('participantes_turmas')
+      .select('participante_id, participantes(id, nome, telefone, ativo)')
+      .eq('turma_id', turmaId)
+
+    if (error) throw error
+
+    return (data || [])
+      .map((rel: any) => {
+        const participante = Array.isArray(rel.participantes)
+          ? rel.participantes[0]
+          : rel.participantes
+
+        return {
+          participanteId: rel.participante_id,
+          participanteNome: participante?.nome || 'Participante',
+          telefone: participante?.telefone || '',
+          ativo: participante?.ativo,
+        }
+      })
+      .filter((item) => item.ativo !== false)
+      .map(({ ativo, ...item }) => item)
+  } catch (error) {
+    console.error('Erro ao buscar destinatários de WhatsApp:', error)
     throw error
   }
 }

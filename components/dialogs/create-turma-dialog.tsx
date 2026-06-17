@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
@@ -32,14 +32,26 @@ export function CreateTurmaDialog({
 }: CreateTurmaDialogProps) {
   const [submitted, setSubmitted] = useState(false)
   const periodos = [
-    { key: "data1", label: "Periodo 1", numero: 1 },
-    { key: "data2", label: "Periodo 2", numero: 2 },
-    { key: "data3", label: "Periodo 3", numero: 3 },
-    { key: "data4", label: "Periodo 4", numero: 4 },
+    { key: "data1", label: "Período 1", numero: 1 },
+    { key: "data2", label: "Período 2", numero: 2 },
+    { key: "data3", label: "Período 3", numero: 3 },
+    { key: "data4", label: "Período 4", numero: 4 },
   ]
+  const datasMonitoramento = periodos.map((periodo) => datas[periodo.key]?.trim() || "")
+  const datasPreenchidas = datasMonitoramento.every((data) => data !== "")
+  const datasEmOrdem = datasMonitoramento.every((data, index) => (
+    index === 0 || data > datasMonitoramento[index - 1]
+  ))
 
   const nomeInvalido = submitted && !nome.trim()
-  const datasInvalidas = submitted && periodos.some((periodo) => !datas[periodo.key]?.trim())
+  const datasInvalidas = submitted && !datasPreenchidas
+  const datasForaDeOrdem = submitted && datasPreenchidas && !datasEmOrdem
+
+  useEffect(() => {
+    if (open) {
+      setSubmitted(false)
+    }
+  }, [open])
 
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
@@ -50,6 +62,9 @@ export function CreateTurmaDialog({
 
   const handleCreate = async () => {
     setSubmitted(true)
+    if (!nome.trim() || !datasPreenchidas || !datasEmOrdem) {
+      return
+    }
     await onCreateTurma()
   }
 
@@ -79,12 +94,12 @@ export function CreateTurmaDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="turma-description">Descricao</Label>
+            <Label htmlFor="turma-description">Descrição</Label>
             <Input
               id="turma-description"
               value={descricao}
               onChange={(event) => onDescricaoChange(event.target.value)}
-              placeholder="Descricao opcional da turma"
+              placeholder="Descrição opcional da turma"
             />
           </div>
 
@@ -98,6 +113,11 @@ export function CreateTurmaDialog({
                 Informe as 4 datas de monitoramento antes de criar a turma.
               </p>
             )}
+            {datasForaDeOrdem && (
+              <p className="mb-3 text-xs text-destructive">
+                As datas devem estar em ordem crescente: Período 1, Período 2, Período 3 e Período 4.
+              </p>
+            )}
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               {periodos.map((periodo) => (
                 <div key={periodo.key} className="space-y-1">
@@ -109,7 +129,7 @@ export function CreateTurmaDialog({
                     type="date"
                     value={datas[periodo.key] || ""}
                     onChange={(event) => onDataChange(periodo.key, event.target.value)}
-                    aria-invalid={submitted && !datas[periodo.key]?.trim()}
+                    aria-invalid={submitted && (!datas[periodo.key]?.trim() || datasForaDeOrdem)}
                   />
                 </div>
               ))}

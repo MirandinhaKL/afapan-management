@@ -34,7 +34,7 @@ interface DashboardLayoutProps {
 
 const navItems: { id: Page; label: string; icon: React.ElementType }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { id: "usuarios", label: "Usuarios", icon: Users },
+  { id: "usuarios", label: "Usuários", icon: Users },
   { id: "compostagem", label: "Compostagem", icon: Recycle },
 ]
 

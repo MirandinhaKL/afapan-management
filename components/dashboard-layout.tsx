@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { AfapanLogo } from "./afapan-logo"
 import { Button } from "@/components/ui/button"
@@ -40,7 +41,9 @@ const navItems: { id: Page; label: string; icon: React.ElementType }[] = [
 
 export function DashboardLayout({ currentPage, onNavigate, children }: DashboardLayoutProps) {
   const { user, logout } = useAuth()
+  const router = useRouter()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
 
   const initials = user?.nome
     .split(" ")
@@ -48,6 +51,14 @@ export function DashboardLayout({ currentPage, onNavigate, children }: Dashboard
     .join("")
     .slice(0, 2)
     .toUpperCase()
+
+  const handleLogout = async () => {
+    if (isLoggingOut) return
+
+    setIsLoggingOut(true)
+    await logout()
+    router.replace("/")
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -175,9 +186,9 @@ export function DashboardLayout({ currentPage, onNavigate, children }: Dashboard
                 <p className="text-xs text-muted-foreground">{user?.email}</p>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={logout} className="text-destructive">
+              <DropdownMenuItem onClick={handleLogout} disabled={isLoggingOut} className="text-destructive">
                 <LogOut size={16} className="mr-2" />
-                Sair
+                {isLoggingOut ? "Saindo..." : "Sair"}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

@@ -8,7 +8,7 @@ interface AuthContextType {
   user: User | null
   isAuthenticated: boolean
   login: (email: string, password: string) => Promise<boolean>
-  logout: () => void
+  logout: () => Promise<void>
   loading: boolean
   setIsCreatingUser: (value: boolean) => void
 }
@@ -126,11 +126,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const logout = async () => {
+    setUser(null)
     const { error } = await supabase.auth.signOut()
     if (error) {
       console.error('Erro no logout:', error.message)
     }
-    setUser(null)
   }
 
   const setIsCreatingUser = (value: boolean) => {

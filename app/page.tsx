@@ -11,7 +11,7 @@ import { CompostagemPage } from "@/components/compostagem-page"
 type Page = "dashboard" | "usuarios" | "compostagem"
 
 function AppContent() {
-  const { isAuthenticated, loading } = useAuth()
+  const { isAuthenticated, isPasswordRecovery, loading } = useAuth()
   const [currentPage, setCurrentPage] = useState<Page>("dashboard")
 
   if (loading) {
@@ -25,7 +25,7 @@ function AppContent() {
     )
   }
 
-  if (!isAuthenticated) {
+  if (isPasswordRecovery || !isAuthenticated) {
     return <LoginForm />
   }
 

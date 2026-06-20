@@ -59,6 +59,7 @@ interface ParticipantesTabProps {
   onGerarLink: (participante: Participante) => void
   onCreateParticipante: () => void
   onEditParticipante: (participante: Participante) => void
+  onDeleteParticipante: (participante: Participante) => void
   trimestre: string
 }
 
@@ -79,6 +80,7 @@ export function ParticipantesTab({
   onGerarLink,
   onCreateParticipante,
   onEditParticipante,
+  onDeleteParticipante,
   trimestre,
 }: ParticipantesTabProps) {
   const getRegistrosBaldes = (participante: Participante) => {
@@ -475,6 +477,22 @@ export function ParticipantesTab({
                                 </TooltipContent>
                               </Tooltip>
                             )}
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-destructive hover:text-destructive"
+                                  onClick={() => onDeleteParticipante(participante)}
+                                >
+                                  <Trash2 size={14} />
+                                  <span className="sr-only">Excluir {participante.nome}</span>
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Excluir participante</p>
+                              </TooltipContent>
+                            </Tooltip>
                           </div>
                         </TableCell>
                       </TableRow>

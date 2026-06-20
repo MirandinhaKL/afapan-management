@@ -11,6 +11,7 @@ import {
   addParticipanteToTurma,
   removeParticipanteFromTurma,
   createParticipante,
+  deleteParticipante,
    updateParticipante,
   fetchBaldesForParticipant,
   createBaldeRecord,
@@ -722,6 +723,58 @@ export function useCompostagem() {
     setIsEditParticipanteOpen(true)
   }
 
+  const handleDeleteParticipante = async (participanteId: string) => {
+    try {
+      const participanteRemovido = participantes.find((participante) => participante.id === participanteId)
+
+      await deleteParticipante(participanteId)
+      setParticipantes((prev) => prev.filter((participante) => participante.id !== participanteId))
+      setTurmasCompostagem((prev) =>
+        prev.map((turma) => {
+          const pertenceATurma = turma.participantes.some(
+            (participante) => participante.id === participanteId
+          )
+
+          if (!pertenceATurma) return turma
+
+          return {
+            ...turma,
+            participantes: turma.participantes.filter(
+              (participante) => participante.id !== participanteId
+            ),
+            totalParticipantes: Math.max(
+              0,
+              (turma.totalParticipantes ?? turma.participantes.length) - 1
+            ),
+          }
+        })
+      )
+
+      if (selectedParticipante?.id === participanteId) {
+        setSelectedParticipante(null)
+        setIsDetailOpen(false)
+        setIsRegisterOpen(false)
+      }
+
+      if (editingParticipante?.id === participanteId) {
+        setEditingParticipante(null)
+        setIsEditParticipanteOpen(false)
+      }
+
+      toast.success(
+        participanteRemovido
+          ? `Participante "${participanteRemovido.nome}" excluído com sucesso`
+          : "Participante excluído com sucesso"
+      )
+    } catch (error) {
+      console.error("Erro ao excluir participante:", error)
+      toast.error("Erro ao excluir participante", {
+        description: error instanceof Error ? error.message : "Tente novamente",
+      })
+      throw error
+    }
+  }
+
   // Turma handlers
   const handleCreateTurma = async () => {
     if (isCreatingTurma) {
@@ -1081,6 +1134,7 @@ export function useCompostagem() {
     editingParticipante,
     handleCreateParticipante,
     handleEditParticipante,
+    handleDeleteParticipante,
     openEditParticipante,
 
     // Turma states

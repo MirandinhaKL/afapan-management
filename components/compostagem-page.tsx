@@ -13,10 +13,14 @@ import { EditParticipanteDialog } from "@/components/dialogs/edit-participante-d
 import { TurmaDetailDialog } from "@/components/dialogs/turma-detail-dialog"
 import { AddParticipantDialog } from "@/components/dialogs/add-participant-dialog"
 import { DeleteTurmaDialog } from "@/components/dialogs/delete-turma-dialog"
+import { DeleteParticipanteDialog } from "@/components/dialogs/delete-participante-dialog"
+import { type Participante } from "@/lib/mock-data"
 
 export function CompostagemPage() {
   const [turmaToDelete, setTurmaToDelete] = useState<string | null>(null)
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
+  const [participanteToDelete, setParticipanteToDelete] = useState<Participante | null>(null)
+  const [isDeleteParticipanteOpen, setIsDeleteParticipanteOpen] = useState(false)
   const {
     // Participant states
     participantes,
@@ -46,6 +50,7 @@ export function CompostagemPage() {
     editingParticipante,
     handleCreateParticipante,
     handleEditParticipante,
+    handleDeleteParticipante,
     openEditParticipante,
 
     // Turma states
@@ -102,6 +107,18 @@ export function CompostagemPage() {
   const handleDeleteTurmaClick = (turmaId: string) => {
     setTurmaToDelete(turmaId)
     setIsDeleteConfirmOpen(true)
+  }
+
+  const handleDeleteParticipanteClick = (participante: Participante) => {
+    setParticipanteToDelete(participante)
+    setIsDeleteParticipanteOpen(true)
+  }
+
+  const handleDeleteParticipanteOpenChange = (open: boolean) => {
+    setIsDeleteParticipanteOpen(open)
+    if (!open) {
+      setParticipanteToDelete(null)
+    }
   }
 
   const handleConfirmDeleteTurma = async (turmaId: string) => {
@@ -163,6 +180,7 @@ export function CompostagemPage() {
             onGerarLink={handleGerarLink}
             onCreateParticipante={() => setIsCreateParticipanteOpen(true)}
             onEditParticipante={openEditParticipante}
+            onDeleteParticipante={handleDeleteParticipanteClick}
             trimestre={TRIMESTRE_ATUAL}
           />
         </TabsContent>
@@ -253,6 +271,13 @@ export function CompostagemPage() {
         onOpenChange={setIsDeleteConfirmOpen}
         turma={turmaToDeleteObject}
         onConfirmDelete={handleConfirmDeleteTurma}
+      />
+
+      <DeleteParticipanteDialog
+        open={isDeleteParticipanteOpen}
+        onOpenChange={handleDeleteParticipanteOpenChange}
+        participante={participanteToDelete}
+        onConfirmDelete={handleDeleteParticipante}
       />
     </div>
   )

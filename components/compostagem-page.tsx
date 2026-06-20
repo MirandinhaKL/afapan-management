@@ -104,8 +104,26 @@ export function CompostagemPage() {
     setIsDeleteConfirmOpen(true)
   }
 
-  const handleConfirmDeleteTurma = (turmaId: string) => {
-    handleDeleteTurma(turmaId)
+  const handleConfirmDeleteTurma = async (turmaId: string) => {
+    await handleDeleteTurma(turmaId)
+  }
+
+  const resetCreateTurmaForm = () => {
+    setNewTurmaName("")
+    setNewTurmaDescription("")
+    setNewTurmaDatas({ data1: "", data2: "", data3: "", data4: "" })
+  }
+
+  const handleCreateTurmaOpenChange = (open: boolean) => {
+    if (!open) {
+      resetCreateTurmaForm()
+    }
+    setIsCreateTurmaOpen(open)
+  }
+
+  const handleOpenCreateTurma = () => {
+    resetCreateTurmaForm()
+    setIsCreateTurmaOpen(true)
   }
 
   const turmaToDeleteObject = turmasCompostagem.find((t) => t.id === turmaToDelete) || null
@@ -153,7 +171,7 @@ export function CompostagemPage() {
           <TurmasTab
             turmasCompostagem={turmasCompostagem}
             loading={loading}
-            onCreateTurma={() => setIsCreateTurmaOpen(true)}
+            onCreateTurma={handleOpenCreateTurma}
             onDeleteTurma={handleDeleteTurmaClick}
             onOpenTurmaDetail={openTurmaDetail}
             onOpenAddParticipant={openAddParticipant}
@@ -185,7 +203,7 @@ export function CompostagemPage() {
 
       <CreateTurmaDialog
         open={isCreateTurmaOpen}
-        onOpenChange={setIsCreateTurmaOpen}
+        onOpenChange={handleCreateTurmaOpenChange}
         nome={newTurmaName}
         onNomeChange={setNewTurmaName}
         descricao={newTurmaDescription}

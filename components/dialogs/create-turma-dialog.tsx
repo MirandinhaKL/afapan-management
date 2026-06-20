@@ -4,6 +4,7 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "lucide-react"
+import { hasFourDigitYear } from "@/lib/date-utils"
 
 interface CreateTurmaDialogProps {
   open: boolean
@@ -39,12 +40,14 @@ export function CreateTurmaDialog({
   ]
   const datasMonitoramento = periodos.map((periodo) => datas[periodo.key]?.trim() || "")
   const datasPreenchidas = datasMonitoramento.every((data) => data !== "")
+  const datasComAnoValido = datasMonitoramento.every((data) => !data || hasFourDigitYear(data))
   const datasEmOrdem = datasMonitoramento.every((data, index) => (
     index === 0 || data > datasMonitoramento[index - 1]
   ))
 
   const nomeInvalido = submitted && !nome.trim()
   const datasInvalidas = submitted && !datasPreenchidas
+  const anosInvalidos = submitted && datasPreenchidas && !datasComAnoValido
   const datasForaDeOrdem = submitted && datasPreenchidas && !datasEmOrdem
 
   useEffect(() => {
@@ -62,7 +65,7 @@ export function CreateTurmaDialog({
 
   const handleCreate = async () => {
     setSubmitted(true)
-    if (!nome.trim() || !datasPreenchidas || !datasEmOrdem) {
+    if (!nome.trim() || !datasPreenchidas || !datasComAnoValido || !datasEmOrdem) {
       return
     }
     await onCreateTurma()
@@ -118,6 +121,11 @@ export function CreateTurmaDialog({
                 As datas devem estar em ordem crescente: Período 1, Período 2, Período 3 e Período 4.
               </p>
             )}
+            {anosInvalidos && (
+              <p className="mb-3 text-xs text-destructive">
+                O ano deve possuir exatamente 4 dígitos.
+              </p>
+            )}
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               {periodos.map((periodo) => (
                 <div key={periodo.key} className="space-y-1">
@@ -127,9 +135,21 @@ export function CreateTurmaDialog({
                   <Input
                     id={`data-${periodo.numero}`}
                     type="date"
+                    max="9999-12-31"
                     value={datas[periodo.key] || ""}
-                    onChange={(event) => onDataChange(periodo.key, event.target.value)}
-                    aria-invalid={submitted && (!datas[periodo.key]?.trim() || datasForaDeOrdem)}
+                    onChange={(event) => {
+                      const value = event.target.value
+                      if (!value || hasFourDigitYear(value)) {
+                        onDataChange(periodo.key, value)
+                      } else {
+                        event.currentTarget.value = datas[periodo.key] || ""
+                      }
+                    }}
+                    aria-invalid={submitted && (
+                      !datas[periodo.key]?.trim()
+                      || !hasFourDigitYear(datas[periodo.key])
+                      || datasForaDeOrdem
+                    )}
                   />
                 </div>
               ))}

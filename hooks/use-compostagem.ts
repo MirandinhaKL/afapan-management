@@ -24,6 +24,7 @@ import {
   generateWhatsAppMessage,
 } from "@/lib/whatsapp-utils"
 import { toast } from "sonner"
+import { hasFourDigitYear } from "@/lib/date-utils"
 
 const TRIMESTRE_ATUAL = "2026-Q1"
 const TOTAL_REGISTROS_CAMPANHA = 4
@@ -738,6 +739,11 @@ export function useCompostagem() {
     const datasPreenchidas = datasMonitoramento.every((data) => data !== "")
     if (!datasPreenchidas) {
       toast.error("Todas as 4 datas de monitoramento são obrigatórias")
+      return
+    }
+    const datasComAnoValido = datasMonitoramento.every(hasFourDigitYear)
+    if (!datasComAnoValido) {
+      toast.error("O ano das datas de monitoramento deve possuir exatamente 4 dígitos")
       return
     }
     const datasEmOrdem = datasMonitoramento.every((data, index) => (

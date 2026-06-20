@@ -1,6 +1,7 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, useRef, type ReactNode } from "react"
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react"
+import type { Session } from "@supabase/supabase-js"
 import { supabase } from "./supabase"
 import type { User } from "./mock-data"
 
@@ -18,43 +19,119 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
+const AUTH_LOADING_FALLBACK_MS = 8000
+const PROFILE_TIMEOUT_MS = 8000
+
+function withTimeout<T>(promise: PromiseLike<T>, timeoutMs: number, label: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timeout = window.setTimeout(() => {
+      reject(new Error(`${label} demorou mais que ${timeoutMs}ms`))
+    }, timeoutMs)
+
+    Promise.resolve(promise)
+      .then(resolve)
+      .catch(reject)
+      .finally(() => window.clearTimeout(timeout))
+  })
+}
+
+function isInvalidRefreshTokenError(error: unknown) {
+  return error instanceof Error && error.message.toLowerCase().includes("invalid refresh token")
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUserState] = useState<User | null>(null)
+  const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [isPasswordRecovery, setIsPasswordRecovery] = useState(false)
   const isCreatingUserRef = useRef(false)
+  const authRequestIdRef = useRef(0)
 
-  // Wrapper para controlar setUser
-  const setUser = (userData: User | null) => {
-    setUserState(userData)
+  const fetchUserProfile = async (userId: string) => {
+    const { data, error } = await withTimeout(
+      supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", userId)
+        .single(),
+      PROFILE_TIMEOUT_MS,
+      "Busca do perfil"
+    )
+
+    if (error || !data) {
+      throw error || new Error("Perfil não encontrado")
+    }
+
+    return data as User
   }
 
   useEffect(() => {
-    // Verifica se há uma sessão ativa ao carregar
     let mounted = true
-
-    const getSession = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (mounted && session?.user) {
-          await fetchUserProfile(session.user.id)
-        }
-      } catch (error) {
-        console.warn("Falha ao obter sessão do Supabase:", error)
-      }
-      
+    let initialSessionResolved = false
+    const loadingFallback = window.setTimeout(() => {
       if (mounted) {
         setLoading(false)
       }
+    }, AUTH_LOADING_FALLBACK_MS)
+
+    const applySession = async (session: Session | null) => {
+      const requestId = ++authRequestIdRef.current
+
+      if (!session?.user) {
+        if (mounted) {
+          setUser(null)
+        }
+        return
+      }
+
+      try {
+        const profile = await fetchUserProfile(session.user.id)
+        if (mounted && requestId === authRequestIdRef.current) {
+          setUser(profile)
+        }
+      } catch (error) {
+        console.warn("Falha ao buscar perfil do usuário:", error)
+        if (mounted && requestId === authRequestIdRef.current) {
+          setUser(null)
+        }
+      }
     }
 
-    getSession()
+    const loadInitialSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        await applySession(session)
+      } catch (error) {
+        if (isInvalidRefreshTokenError(error)) {
+          console.warn("Sessão local inválida. Limpando sessão do navegador.")
+          await supabase.auth.signOut({ scope: "local" })
+        } else {
+          console.warn("Falha ao obter sessão do Supabase:", error)
+        }
 
-    // Escuta mudanças na autenticação
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      // Ignore auth changes while creating a user (prevents new user from becoming logged-in user)
+        if (mounted) {
+          setUser(null)
+        }
+      } finally {
+        initialSessionResolved = true
+        window.clearTimeout(loadingFallback)
+        if (mounted) {
+          setLoading(false)
+        }
+      }
+    }
+
+    void loadInitialSession()
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (isCreatingUserRef.current) {
+        return
+      }
+
+      // getSession() já resolve a sessão usada na primeira renderização.
+      // Processar INITIAL_SESSION em paralelo inicia uma segunda busca do perfil
+      // e pode liberar o loading antes de essa busca terminar, exibindo o login
+      // por um instante durante o F5.
+      if (event === "INITIAL_SESSION" && !initialSessionResolved) {
         return
       }
 
@@ -62,34 +139,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsPasswordRecovery(true)
       }
 
-      try {
-        if (session?.user) {
-          await fetchUserProfile(session.user.id)
-        } else {
-          setUser(null)
+      window.setTimeout(() => {
+        if (mounted) {
+          void applySession(session)
         }
-      } catch (error) {
-        console.warn("Erro ao processar mudança de estado de autenticação:", error)
-      }
+      }, 0)
     })
 
     return () => {
       mounted = false
+      window.clearTimeout(loadingFallback)
       subscription.unsubscribe()
     }
   }, [])
-
-  const fetchUserProfile = async (userId: string) => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single()
-
-    if (!error && data) {
-      setUser(data)
-    }
-  }
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
@@ -99,38 +161,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
 
       if (error) {
-        // Supabase pode falhar com AbortError quando há um lock concorrente
-        if ((error as any)?.name === 'AbortError') {
-          console.warn('AbortError ao tentar logar (locking). Tentando novamente...')
+        if ((error as any)?.name === "AbortError") {
+          console.warn("AbortError ao tentar logar (locking). Tentando novamente...")
           return false
         }
 
-        // Log específico do erro do Supabase para debug
-        console.error('Erro de autenticação Supabase:', {
+        console.error("Erro de autenticação Supabase:", {
           message: error.message,
           status: error.status,
-          name: error.name
+          name: error.name,
         })
 
         return false
       }
 
-      // Verifica se o usuário foi retornado (autenticação bem-sucedida)
       if (!data.user) {
-        console.error('Login falhou: nenhum usuário retornado')
+        console.error("Login falhou: nenhum usuário retornado")
         return false
       }
 
-      console.log('Login bem-sucedido para:', data.user.email)
+      console.log("Login bem-sucedido para:", data.user.email)
       return true
     } catch (error: any) {
-      // Se o erro for AbortError, a mensagem é genérica mas não quebra a UI
-      if (error?.name === 'AbortError') {
-        console.warn('AbortError no login (lock).', error)
+      if (error?.name === "AbortError") {
+        console.warn("AbortError no login (lock).", error)
         return false
       }
 
-      console.error('Erro inesperado no login:', error)
+      console.error("Erro inesperado no login:", error)
       return false
     }
   }
@@ -138,9 +196,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     setUser(null)
     setIsPasswordRecovery(false)
+
     const { error } = await supabase.auth.signOut()
     if (error) {
-      console.error('Erro no logout:', error.message)
+      console.error("Erro no logout:", error.message)
     }
   }
 

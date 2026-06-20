@@ -29,7 +29,7 @@ export function AfapanLogo({ className = "", size = "default" }: { className?: s
           AFAPAN
         </span>
         <span className="text-xs font-medium tracking-wide text-muted-foreground">
-          Gestao Administrativa
+          Gestão Administrativa
         </span>
       </div>
     </div>

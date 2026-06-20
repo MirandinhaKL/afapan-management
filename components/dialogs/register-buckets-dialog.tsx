@@ -151,9 +151,6 @@ export function RegisterBucketsDialog({
               <div>
                 <Label className="text-xs text-muted-foreground sm:hidden">Registro</Label>
                 <p className="text-sm font-medium text-foreground">Registro {registro.index + 1}</p>
-                {registro.periodo?.periodo_label && (
-                  <p className="text-xs text-muted-foreground">{registro.periodo.periodo_label}</p>
-                )}
               </div>
 
               <div className="space-y-1">

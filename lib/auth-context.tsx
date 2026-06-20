@@ -7,8 +7,12 @@ import type { User } from "./mock-data"
 interface AuthContextType {
   user: User | null
   isAuthenticated: boolean
+  isPasswordRecovery: boolean
   login: (email: string, password: string) => Promise<boolean>
-  logout: () => void
+  logout: () => Promise<void>
+  requestPasswordReset: (email: string) => Promise<boolean>
+  updatePassword: (password: string) => Promise<boolean>
+  cancelPasswordRecovery: () => Promise<void>
   loading: boolean
   setIsCreatingUser: (value: boolean) => void
 }
@@ -18,6 +22,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUserState] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false)
   const isCreatingUserRef = useRef(false)
 
   // Wrapper para controlar setUser
@@ -52,6 +57,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (isCreatingUserRef.current) {
         return
       }
+
+      if (event === "PASSWORD_RECOVERY") {
+        setIsPasswordRecovery(true)
+      }
+
       try {
         if (session?.user) {
           await fetchUserProfile(session.user.id)
@@ -126,11 +136,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const logout = async () => {
+    setUser(null)
+    setIsPasswordRecovery(false)
     const { error } = await supabase.auth.signOut()
     if (error) {
       console.error('Erro no logout:', error.message)
     }
-    setUser(null)
+  }
+
+  const requestPasswordReset = async (email: string): Promise<boolean> => {
+    const redirectTo = typeof window !== "undefined" ? window.location.origin : undefined
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo,
+    })
+
+    if (error) {
+      console.error("Erro ao solicitar recuperação de senha:", error.message)
+      return false
+    }
+
+    return true
+  }
+
+  const updatePassword = async (password: string): Promise<boolean> => {
+    const { error } = await supabase.auth.updateUser({ password })
+
+    if (error) {
+      console.error("Erro ao atualizar senha:", error.message)
+      return false
+    }
+
+    await logout()
+    return true
+  }
+
+  const cancelPasswordRecovery = async () => {
+    await logout()
   }
 
   const setIsCreatingUser = (value: boolean) => {
@@ -138,7 +179,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, login, logout, loading, setIsCreatingUser }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isAuthenticated: !!user,
+        isPasswordRecovery,
+        login,
+        logout,
+        requestPasswordReset,
+        updatePassword,
+        cancelPasswordRecovery,
+        loading,
+        setIsCreatingUser,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   )

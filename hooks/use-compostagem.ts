@@ -733,10 +733,18 @@ export function useCompostagem() {
     }
 
     // Validar que todas as 4 datas foram preenchidas
-    const datasMonitoramento = Object.values(newTurmaDatas).map((data) => data.trim())
+    const datasKeys = ["data1", "data2", "data3", "data4"] as const
+    const datasMonitoramento = datasKeys.map((key) => newTurmaDatas[key].trim())
     const datasPreenchidas = datasMonitoramento.every((data) => data !== "")
     if (!datasPreenchidas) {
       toast.error("Todas as 4 datas de monitoramento são obrigatórias")
+      return
+    }
+    const datasEmOrdem = datasMonitoramento.every((data, index) => (
+      index === 0 || data > datasMonitoramento[index - 1]
+    ))
+    if (!datasEmOrdem) {
+      toast.error("As datas devem estar em ordem crescente: Período 1, Período 2, Período 3 e Período 4")
       return
     }
 

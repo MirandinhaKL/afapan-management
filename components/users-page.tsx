@@ -50,7 +50,7 @@ import { toast } from "sonner"
 const USERS_PER_PAGE = 20
 
 export function UsersPage() {
-  const { setIsCreatingUser } = useAuth()
+  const { user: authenticatedUser, setIsCreatingUser } = useAuth()
   const [users, setUsers] = useState<User[]>([])
   const [totalUsers, setTotalUsers] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -130,6 +130,11 @@ export function UsersPage() {
   }
 
   const openDeleteDialog = (user: User) => {
+    if (user.id === authenticatedUser?.id) {
+      toast.error("Você não pode excluir o usuário que está logado")
+      return
+    }
+
     setDeletingUser(user)
     setIsDeleteDialogOpen(true)
   }
@@ -193,6 +198,12 @@ export function UsersPage() {
 
   const handleDelete = async () => {
     if (!deletingUser) return
+    if (deletingUser.id === authenticatedUser?.id) {
+      toast.error("Você não pode excluir o usuário que está logado")
+      setIsDeleteDialogOpen(false)
+      setDeletingUser(null)
+      return
+    }
 
     setIsDeleting(true)
     try {
@@ -378,6 +389,12 @@ export function UsersPage() {
                               variant="ghost"
                               size="icon"
                               onClick={() => openDeleteDialog(user)}
+                              disabled={user.id === authenticatedUser?.id}
+                              title={
+                                user.id === authenticatedUser?.id
+                                  ? "O usuário logado não pode ser excluído"
+                                  : `Excluir ${user.nome}`
+                              }
                               className="h-8 w-8 text-destructive hover:text-destructive"
                             >
                               <Trash2 size={14} />

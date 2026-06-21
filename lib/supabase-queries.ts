@@ -36,6 +36,8 @@ export interface TurmaBucketPeriod {
   periodo_numero: number
   periodo_label: string
   data_monitoramento: string
+  data_inicio?: string
+  data_fim?: string
   criado_em?: string
   atualizado_em?: string
 }
@@ -688,12 +690,17 @@ export async function createTurmaBucketPeriods(turmaId: string, dataInicio?: Dat
       if (month >= 3 && month <= 5) periodoLabel = 'Apr-Jun'
       else if (month >= 6 && month <= 8) periodoLabel = 'Jul-Sep'
       else if (month >= 9 && month <= 11) periodoLabel = 'Oct-Dec'
+
+      const intervalStart = new Date(startDate)
+      intervalStart.setMonth(intervalStart.getMonth() + (i * 3))
       
       periods.push({
         turma_id: turmaId,
         periodo_numero: i + 1,
         periodo_label: periodoLabel,
-        data_monitoramento: periodDate.toISOString().split('T')[0]
+        data_monitoramento: periodDate.toISOString().split('T')[0],
+        data_inicio: intervalStart.toISOString().split('T')[0],
+        data_fim: periodDate.toISOString().split('T')[0],
       })
     }
     
@@ -752,11 +759,26 @@ export async function createTurmaBucketPeriodsWithDates(turmaId: string, datas: 
       else if (month >= 6 && month <= 8) periodoLabel = periodLabels[2]
       else if (month >= 9 && month <= 11) periodoLabel = periodLabels[3]
 
+      const dataInicio = index > 0
+        ? datas[index - 1]
+        : (() => {
+            const [year, monthNumber, day] = dataStr.split("-").map(Number)
+            const start = new Date(year, monthNumber - 1, day)
+            start.setMonth(start.getMonth() - 3)
+            return [
+              start.getFullYear(),
+              String(start.getMonth() + 1).padStart(2, "0"),
+              String(start.getDate()).padStart(2, "0"),
+            ].join("-")
+          })()
+
       periods.push({
         turma_id: turmaId,
         periodo_numero: index + 1,
         periodo_label: periodoLabel,
-        data_monitoramento: dataStr
+        data_monitoramento: dataStr,
+        data_inicio: dataInicio,
+        data_fim: dataStr,
       })
     })
 
@@ -1046,7 +1068,13 @@ export async function fetchParticipanteBucketLinkByToken(token: string): Promise
       .select(`
         *,
         participantes:participante_id (id, nome, email, telefone),
-        turma_bucket_periods:turma_bucket_period_id (id, periodo_label, data_monitoramento)
+        turma_bucket_periods:turma_bucket_period_id (
+          id,
+          periodo_label,
+          data_monitoramento,
+          data_inicio,
+          data_fim
+        )
       `)
       .eq('token', token)
       .eq('is_active', true)

@@ -29,7 +29,13 @@ export async function GET(_request: Request, { params }: RouteParams) {
           submitted_at,
           expires_at,
           participantes:participante_id (id, nome, email, telefone),
-          turma_bucket_periods:turma_bucket_period_id (id, periodo_label, data_monitoramento)
+          turma_bucket_periods:turma_bucket_period_id (
+            id,
+            periodo_label,
+            data_monitoramento,
+            data_inicio,
+            data_fim
+          )
         `
       )
       .eq("token", token)

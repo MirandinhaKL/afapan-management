@@ -47,7 +47,7 @@ export async function POST(request: Request) {
 
     const { data: period, error: periodError } = await supabase
       .from("turma_bucket_periods")
-      .select("id, turma_id, periodo_label, data_monitoramento")
+      .select("id, turma_id, periodo_label, data_monitoramento, data_inicio, data_fim")
       .eq("id", turmaBucketPeriodId)
       .eq("turma_id", turmaId)
       .single()
@@ -146,7 +146,10 @@ export async function POST(request: Request) {
         const sendResult = await sendBucketCollectionTemplate(whatsappConfig, {
           to: formattedPhone,
           participanteNome: participante.nome,
-          periodoLabel: period.periodo_label,
+          periodoLabel:
+            period.data_inicio && period.data_fim
+              ? `de ${period.data_inicio.split("-").reverse().join("/")} a ${period.data_fim.split("-").reverse().join("/")}`
+              : period.periodo_label,
           link,
         })
 

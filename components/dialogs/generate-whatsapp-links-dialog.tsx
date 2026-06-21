@@ -61,6 +61,11 @@ export function GenerateWhatsAppLinksDialog({
   }, [open])
 
   const handleGenerateLinks = async () => {
+    if (!dataInicio || !dataFim) {
+      setError("Configure o início e o fim do trimestre antes de gerar as mensagens.")
+      return
+    }
+
     try {
       setLoading(true)
       setError(null)
@@ -81,6 +86,11 @@ export function GenerateWhatsAppLinksDialog({
   }
 
   const handleOpenWhatsApp = (link: BucketLink) => {
+    if (!dataInicio || !dataFim) {
+      setError("Configure o início e o fim do trimestre antes de abrir o WhatsApp.")
+      return
+    }
+
     const whatsappUrl = generateWhatsAppLink(
       link.token,
       link.participanteNome,
@@ -96,14 +106,16 @@ export function GenerateWhatsAppLinksDialog({
 
   const openedCount = links.filter((link) => openedIds.has(link.participanteId)).length
   const nextLink = links.find((link) => !openedIds.has(link.participanteId))
-  const previewMessage = generateWhatsAppMessage(
-    "link-do-participante",
-    "Nome do participante",
-    periodoLabel,
-    typeof window !== "undefined" ? window.location.origin : undefined,
-    dataInicio,
-    dataFim
-  )
+  const previewMessage = dataInicio && dataFim
+    ? generateWhatsAppMessage(
+        "link-do-participante",
+        "Nome do participante",
+        periodoLabel,
+        typeof window !== "undefined" ? window.location.origin : undefined,
+        dataInicio,
+        dataFim
+      )
+    : "Configure o início e o fim do trimestre na tela de Monitoramento."
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -137,7 +149,7 @@ export function GenerateWhatsAppLinksDialog({
         <div className="space-y-2 rounded-md border p-4">
           <p className="text-sm font-medium">Trimestre informado ao participante:</p>
           <p className="text-sm font-medium text-green-700">
-            {formatPeriodRange(dataInicio, dataFim, periodoLabel)}
+            {formatPeriodRange(dataInicio, dataFim, "Datas não configuradas")}
           </p>
         </div>
 
@@ -150,7 +162,7 @@ export function GenerateWhatsAppLinksDialog({
 
         <Button
           onClick={handleGenerateLinks}
-          disabled={loading || !turmaId || !turmaBucketPeriodId}
+          disabled={loading || !turmaId || !turmaBucketPeriodId || !dataInicio || !dataFim}
           className="w-full bg-green-600 hover:bg-green-700 text-white h-11 text-base"
         >
           {loading ? (

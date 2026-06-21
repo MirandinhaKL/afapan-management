@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Spinner } from "@/components/ui/spinner"
 import { CheckCircle, AlertTriangle } from "lucide-react"
+import { formatPeriodRange } from "@/lib/date-utils"
 
 interface LinkData {
   id: string
@@ -28,6 +29,8 @@ interface LinkData {
     id: string
     periodo_label: string
     data_monitoramento: string
+    data_inicio?: string
+    data_fim?: string
   }
 }
 
@@ -154,7 +157,12 @@ export default function BucketForm() {
   }
 
   const participanteName = (linkData?.participantes as any)?.nome || "Participante"
-  const periodoLabel = (linkData?.turma_bucket_periods as any)?.periodo_label || "Este período"
+  const periodo = linkData?.turma_bucket_periods as any
+  const periodoLabel = formatPeriodRange(
+    periodo?.data_inicio,
+    periodo?.data_fim,
+    periodo?.periodo_label || "Este período"
+  )
 
   if (submitSuccess) {
     return (
@@ -171,7 +179,7 @@ export default function BucketForm() {
               Obrigado, {participanteName}!
             </p>
             <p className="text-center text-sm">
-              Registramos a quantidade de baldes coletados neste período. Sua contribuição é importante para o programa AFAPAN!
+              Registramos a quantidade de baldes coletados neste trimestre. Sua contribuição é importante para o programa AFAPAN!
             </p>
             <div className="bg-green-50 p-3 rounded-md text-center">
               <p className="text-sm font-semibold text-green-700">
@@ -194,7 +202,7 @@ export default function BucketForm() {
         <CardHeader className="bg-linear-to-r from-green-600 to-green-700 text-white rounded-t-lg">
           <CardTitle className="text-2xl">AFAPAN - Registro de Baldes</CardTitle>
           <CardDescription className="text-green-100">
-            Período: {periodoLabel}
+            Trimestre: {periodoLabel}
           </CardDescription>
         </CardHeader>
 
@@ -213,7 +221,7 @@ export default function BucketForm() {
             {/* Question */}
             <div className="space-y-3">
               <Label htmlFor="buckets" className="text-base font-semibold text-gray-700">
-                Quantos baldes foram coletados neste período?
+                Quantos baldes foram coletados neste trimestre?
               </Label>
               <Input
                 id="buckets"

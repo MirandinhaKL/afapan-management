@@ -1,7 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Plus, CircleUser, UserPlus, Trash2, Group } from "lucide-react"
+import { Plus, CircleUser, UserPlus, Trash2, Group, CalendarRange } from "lucide-react"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { type Participante, type TurmaCompostagem } from "@/lib/mock-data"
 
@@ -11,6 +11,7 @@ interface TurmasTabProps {
   onCreateTurma: () => void
   onDeleteTurma: (turmaId: string) => void
   onOpenTurmaDetail: (turma: TurmaCompostagem & { participantes: Participante[]; totalParticipantes?: number }) => void
+  onOpenMonitoramento: (turma: TurmaCompostagem & { participantes: Participante[]; totalParticipantes?: number }) => void
   onOpenAddParticipant: (turma: TurmaCompostagem & { participantes: Participante[]; totalParticipantes?: number }) => void
 }
 
@@ -20,6 +21,7 @@ export function TurmasTab({
   onCreateTurma,
   onDeleteTurma,
   onOpenTurmaDetail,
+  onOpenMonitoramento,
   onOpenAddParticipant,
 }: TurmasTabProps) {
   const turmasOrdenadas = [...turmasCompostagem].sort((a, b) => {
@@ -74,13 +76,13 @@ export function TurmasTab({
                     <span className="text-xs text-muted-foreground">Participantes:</span>
                     <Badge variant="secondary">{turma.totalParticipantes ?? turma.participantes.length}</Badge>
                   </div>
-                  <div className="flex gap-2 pt-2">
+                  <div className="grid grid-cols-3 gap-2 pt-2">
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
                           variant="outline"
                           size="sm"
-                          className="flex-1"
+                          className="min-w-0 px-2"
                           onClick={() => onOpenTurmaDetail(turma)}
                         >
                           <CircleUser size={14} className="mr-1" />
@@ -91,10 +93,26 @@ export function TurmasTab({
                         <p>Detalhes do Participante</p>
                       </TooltipContent>
                     </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="min-w-0 px-2 text-xs"
+                          onClick={() => onOpenMonitoramento(turma)}
+                        >
+                          <CalendarRange size={14} className="mr-1" />
+                          Monitoramento
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Editar datas de monitoramento</p>
+                      </TooltipContent>
+                    </Tooltip>
                     <Button
                       variant="outline"
                       size="sm"
-                      className="flex-1"
+                      className="min-w-0 px-2"
                       onClick={() => onOpenAddParticipant(turma)}
                     >
                       <UserPlus size={14} className="mr-1" />

@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   Dialog,
   DialogContent,
@@ -15,9 +15,11 @@ import {
   CheckCircle2,
   ExternalLink,
   MessageCircle,
+  Send,
 } from "lucide-react"
 import { generateBucketLinksForPeriod } from "@/lib/supabase-queries"
-import { generateWhatsAppLink } from "@/lib/whatsapp-utils"
+import { generateWhatsAppLink, generateWhatsAppMessage } from "@/lib/whatsapp-utils"
+import { formatPeriodRange } from "@/lib/date-utils"
 
 interface BucketLink {
   participanteId: string
@@ -33,6 +35,8 @@ interface GenerateWhatsAppLinksDialogProps {
   turmaId: string
   turmaBucketPeriodId: string
   periodoLabel: string
+  dataInicio?: string
+  dataFim?: string
 }
 
 export function GenerateWhatsAppLinksDialog({
@@ -41,11 +45,20 @@ export function GenerateWhatsAppLinksDialog({
   turmaId,
   turmaBucketPeriodId,
   periodoLabel,
+  dataInicio,
+  dataFim,
 }: GenerateWhatsAppLinksDialogProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [links, setLinks] = useState<BucketLink[]>([])
   const [openedIds, setOpenedIds] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    if (!open) return
+    setLinks([])
+    setOpenedIds(new Set())
+    setError(null)
+  }, [open])
 
   const handleGenerateLinks = async () => {
     try {
@@ -72,15 +85,25 @@ export function GenerateWhatsAppLinksDialog({
       link.token,
       link.participanteNome,
       periodoLabel,
-      { phoneNumber: link.telefone }
+      { phoneNumber: link.telefone },
+      dataInicio,
+      dataFim
     )
 
     window.open(whatsappUrl, "_blank", "noopener,noreferrer")
     setOpenedIds((prev) => new Set(prev).add(link.participanteId))
   }
 
-  const linksWithPhone = links.filter((link) => link.telefone?.trim())
-  const linksWithoutPhone = links.length - linksWithPhone.length
+  const openedCount = links.filter((link) => openedIds.has(link.participanteId)).length
+  const nextLink = links.find((link) => !openedIds.has(link.participanteId))
+  const previewMessage = generateWhatsAppMessage(
+    "link-do-participante",
+    "Nome do participante",
+    periodoLabel,
+    typeof window !== "undefined" ? window.location.origin : undefined,
+    dataInicio,
+    dataFim
+  )
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -91,7 +114,7 @@ export function GenerateWhatsAppLinksDialog({
             Mensagens Individuais de WhatsApp
           </DialogTitle>
           <DialogDescription>
-            Gere links únicos para o período {periodoLabel} e abra uma conversa por participante.
+            Gere links únicos para o trimestre e abra uma conversa por participante.
           </DialogDescription>
         </DialogHeader>
 
@@ -107,8 +130,22 @@ export function GenerateWhatsAppLinksDialog({
           <p className="text-sm text-muted-foreground">
             O sistema cria ou reutiliza um link único para cada participante. Quando a pessoa
             abrir o link, verá o formulário interno da AFAPAN e a quantidade informada será salva
-            no Supabase.
+            no banco de dados.
           </p>
+        </div>
+
+        <div className="space-y-2 rounded-md border p-4">
+          <p className="text-sm font-medium">Trimestre informado ao participante:</p>
+          <p className="text-sm font-medium text-green-700">
+            {formatPeriodRange(dataInicio, dataFim, periodoLabel)}
+          </p>
+        </div>
+
+        <div className="space-y-2 rounded-md border bg-muted/20 p-4">
+          <p className="text-sm font-medium">Prévia da mensagem</p>
+          <pre className="whitespace-pre-wrap font-sans text-sm text-muted-foreground">
+            {previewMessage}
+          </pre>
         </div>
 
         <Button
@@ -122,22 +159,53 @@ export function GenerateWhatsAppLinksDialog({
               Gerando links...
             </>
           ) : (
-            "Gerar Links Únicos"
+            "Gerar links"
           )}
         </Button>
 
         {links.length > 0 && (
           <div className="space-y-4">
-            <Alert className="border-green-200 bg-green-50">
-              <CheckCircle2 className="h-4 w-4 text-green-600" />
-              <AlertDescription className="text-green-800">
-                {linksWithPhone.length} participante(s) com telefone. {linksWithoutPhone} sem telefone.
-              </AlertDescription>
-            </Alert>
+            <div className="space-y-3 rounded-md border border-green-200 bg-green-50/60 p-4">
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-medium text-green-900">Envio sequencial</p>
+                  <p className="text-xs text-green-800">
+                    {openedCount} de {links.length} conversa(s) aberta(s)
+                  </p>
+                </div>
+                {nextLink && (
+                  <p className="text-sm text-green-800">
+                    Próximo: <strong>{nextLink.participanteNome}</strong>
+                  </p>
+                )}
+              </div>
+
+              <Button
+                className="w-full bg-green-600 text-white hover:bg-green-700"
+                disabled={!nextLink}
+                onClick={() => nextLink && handleOpenWhatsApp(nextLink)}
+              >
+                {nextLink ? (
+                  <>
+                    <Send className="mr-2 size-4" />
+                    Abrir próximo WhatsApp
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="mr-2 size-4" />
+                    Todos os envios foram abertos
+                  </>
+                )}
+              </Button>
+
+              <p className="text-xs text-muted-foreground">
+                Após enviar a mensagem no WhatsApp, volte a esta tela e clique novamente para abrir
+                o próximo participante.
+              </p>
+            </div>
 
             <div className="space-y-2 max-h-96 overflow-y-auto">
               {links.map((link) => {
-                const hasPhone = Boolean(link.telefone?.trim())
                 const wasOpened = openedIds.has(link.participanteId)
 
                 return (
@@ -163,13 +231,12 @@ export function GenerateWhatsAppLinksDialog({
                         </a>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge variant={wasOpened ? "default" : hasPhone ? "outline" : "secondary"}>
-                          {wasOpened ? "Aberto" : hasPhone ? "Pendente" : "Sem telefone"}
+                        <Badge variant={wasOpened ? "default" : "outline"}>
+                          {wasOpened ? "Aberto" : "Pendente"}
                         </Badge>
                         <Button
                           size="sm"
                           variant="ghost"
-                          disabled={!hasPhone}
                           onClick={() => handleOpenWhatsApp(link)}
                           className="text-green-600 hover:text-green-700 hover:bg-green-50"
                         >

@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { type Participante } from "@/lib/mock-data"
 import { type TurmaBucketPeriod } from "@/lib/supabase-queries"
+import { hasFourDigitYear } from "@/lib/date-utils"
 import { toast } from "sonner"
 
 interface RegistroForm {
@@ -100,6 +101,16 @@ export function RegisterBucketsDialog({
     )
   }
 
+  const handleDataChange = (index: number, valor: string) => {
+    if (valor && !hasFourDigitYear(valor)) return
+
+    setRegistros((prev) =>
+      prev.map((registro) =>
+        registro.index === index ? { ...registro, data: valor } : registro
+      )
+    )
+  }
+
   const handleSalvarTodos = async () => {
     const registrosPreenchidos = registros.filter((registro) => registro.quantidade.trim() !== "")
 
@@ -112,6 +123,14 @@ export function RegisterBucketsDialog({
       const quantidade = Number(registro.quantidade)
       if (!Number.isInteger(quantidade) || quantidade < 0) {
         toast.error(`Quantidade invalida no registro ${registro.index + 1}`)
+        return
+      }
+      if (!registro.data) {
+        toast.error(`Informe a data do registro ${registro.index + 1}`)
+        return
+      }
+      if (!hasFourDigitYear(registro.data)) {
+        toast.error(`O ano do registro ${registro.index + 1} deve possuir 4 dígitos`)
         return
       }
     }
@@ -138,7 +157,7 @@ export function RegisterBucketsDialog({
 
         <div className="space-y-3">
           <div className="hidden grid-cols-[110px_1fr_140px] gap-3 px-1 text-xs font-medium text-muted-foreground sm:grid">
-            <span>Registro</span>
+            <span className="text-center">Registro</span>
             <span>Data</span>
             <span>Baldes</span>
           </div>
@@ -159,10 +178,11 @@ export function RegisterBucketsDialog({
                 </Label>
                 <Input
                   id={`data-${registro.index}`}
-                  type={registro.data ? "date" : "text"}
-                  value={registro.data || "Sem data configurada"}
-                  disabled
-                  className="h-9 bg-muted"
+                  type="date"
+                  max="9999-12-31"
+                  value={registro.data}
+                  onChange={(event) => handleDataChange(registro.index, event.target.value)}
+                  className="h-9"
                 />
               </div>
 

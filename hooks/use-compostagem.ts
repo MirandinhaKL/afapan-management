@@ -281,7 +281,9 @@ export function useCompostagem() {
         linkData.token,
         participante.nome,
         periodoAtual.periodo_label,
-        baseUrl
+        baseUrl,
+        periodoAtual.data_inicio,
+        periodoAtual.data_fim
       )
 
       // Criar URL do WhatsApp com telefone do participante

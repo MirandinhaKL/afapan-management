@@ -9,6 +9,15 @@ export interface WhatsAppLinkConfig {
   useShortUrl?: boolean
 }
 
+function getPeriodText(periodLabel: string, periodStart?: string, periodEnd?: string) {
+  if (!periodStart || !periodEnd) return periodLabel
+  const format = (date: string) => {
+    const [year, month, day] = date.split("-")
+    return year && month && day ? `${day}/${month}/${year}` : date
+  }
+  return `de ${format(periodStart)} à ${format(periodEnd)}`
+}
+
 function resolveBaseUrl(baseUrl?: string) {
   return (
     baseUrl ||
@@ -28,16 +37,19 @@ export function generateWhatsAppLink(
   token: string,
   participanteName: string,
   periodLabel: string,
-  config?: WhatsAppLinkConfig
+  config?: WhatsAppLinkConfig,
+  periodStart?: string,
+  periodEnd?: string
 ): string {
   const baseUrl = resolveBaseUrl(config?.baseUrl)
 
   const bucketFormUrl = `${baseUrl}/bucket/${token}`
+  const periodText = getPeriodText(periodLabel, periodStart, periodEnd)
 
   // Mensagem para o WhatsApp
   const message = `Olá ${participanteName}!
 
-Esta é uma solicitação para o registro de baldes coletados no período ${periodLabel}.
+Esta é uma solicitação para o registro de baldes coletados no período de ${periodText}.
 
 Clique no link abaixo para registrar a quantidade de baldes:
 
@@ -66,15 +78,18 @@ export function generateWhatsAppMessage(
   token: string,
   participanteName: string,
   periodLabel: string,
-  baseUrl?: string
+  baseUrl?: string,
+  periodStart?: string,
+  periodEnd?: string
 ): string {
   const fullBaseUrl = resolveBaseUrl(baseUrl)
 
   const bucketFormUrl = `${fullBaseUrl}/bucket/${token}`
+  const periodText = getPeriodText(periodLabel, periodStart, periodEnd)
 
   return `Olá ${participanteName}!
 
-Esta é uma solicitação para o registro de baldes coletados no período ${periodLabel}.
+Esta é uma solicitação para o registro de baldes coletados no período ${periodText}.
 
 Clique no link abaixo para registrar a quantidade de baldes:
 
@@ -142,7 +157,7 @@ export function openWhatsAppApp(
   const bucketFormUrl = `${baseUrlFinal}/bucket/${token}`
 
   // Criar mensagem
-  const message = `Olá ${participanteName}!\n\nEsta é uma solicitação para o registro de baldes coletados no período ${periodLabel}.\n\nClique no link abaixo para registrar a quantidade de baldes:\n\n${bucketFormUrl}\n\nObrigado por contribuir com o programa AFAPAN de compostagem!`
+  const message = `Olá ${participanteName}!\n\nEsta é uma solicitação para o registro de baldes coletados no trimestre ${periodLabel}.\n\nClique no link abaixo para registrar a quantidade de baldes:\n\n${bucketFormUrl}\n\nObrigado por contribuir com o programa AFAPAN de compostagem!`
   
   const encodedMessage = encodeURIComponent(message)
 

@@ -32,7 +32,9 @@ export async function POST(request: Request) {
             id,
             turma_id,
             periodo_label,
-            data_monitoramento
+            data_monitoramento,
+            data_inicio,
+            data_fim
           )
         `
       )

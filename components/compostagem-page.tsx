@@ -14,13 +14,16 @@ import { TurmaDetailDialog } from "@/components/dialogs/turma-detail-dialog"
 import { AddParticipantDialog } from "@/components/dialogs/add-participant-dialog"
 import { DeleteTurmaDialog } from "@/components/dialogs/delete-turma-dialog"
 import { DeleteParticipanteDialog } from "@/components/dialogs/delete-participante-dialog"
-import { type Participante } from "@/lib/mock-data"
+import { MonitoramentoTurmaDialog } from "@/components/dialogs/monitoramento-turma-dialog"
+import { type Participante, type TurmaCompostagem } from "@/lib/mock-data"
 
 export function CompostagemPage() {
   const [turmaToDelete, setTurmaToDelete] = useState<string | null>(null)
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
   const [participanteToDelete, setParticipanteToDelete] = useState<Participante | null>(null)
   const [isDeleteParticipanteOpen, setIsDeleteParticipanteOpen] = useState(false)
+  const [monitoramentoTurma, setMonitoramentoTurma] = useState<TurmaCompostagem | null>(null)
+  const [isMonitoramentoOpen, setIsMonitoramentoOpen] = useState(false)
   const {
     // Participant states
     participantes,
@@ -125,6 +128,16 @@ export function CompostagemPage() {
     await handleDeleteTurma(turmaId)
   }
 
+  const handleOpenMonitoramento = (turma: TurmaCompostagem) => {
+    setMonitoramentoTurma(turma)
+    setIsMonitoramentoOpen(true)
+  }
+
+  const handleMonitoramentoOpenChange = (open: boolean) => {
+    setIsMonitoramentoOpen(open)
+    if (!open) setMonitoramentoTurma(null)
+  }
+
   const resetCreateTurmaForm = () => {
     setNewTurmaName("")
     setNewTurmaDescription("")
@@ -192,6 +205,7 @@ export function CompostagemPage() {
             onCreateTurma={handleOpenCreateTurma}
             onDeleteTurma={handleDeleteTurmaClick}
             onOpenTurmaDetail={openTurmaDetail}
+            onOpenMonitoramento={handleOpenMonitoramento}
             onOpenAddParticipant={openAddParticipant}
           />
         </TabsContent>
@@ -264,6 +278,12 @@ export function CompostagemPage() {
         turma={selectedTurma}
         participantes={participantes}
         onAddParticipant={handleAddParticipantToTurma}
+      />
+
+      <MonitoramentoTurmaDialog
+        open={isMonitoramentoOpen}
+        onOpenChange={handleMonitoramentoOpenChange}
+        turma={monitoramentoTurma}
       />
 
       <DeleteTurmaDialog

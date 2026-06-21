@@ -132,17 +132,13 @@ export function EditParticipanteDialog({
       toast.error("Telefone é obrigatório")
       return
     }
-    if (!email.trim()) {
-      toast.error("E-mail é obrigatório")
-      return
-    }
     if (!isValidTelefone(telefone)) {
       toast.error("Telefone inválido", {
         description: "Informe um telefone com DDD, com 10 ou 11 dígitos.",
       })
       return
     }
-    if (!isValidEmail(email)) {
+    if (email.trim() && !isValidEmail(email)) {
       toast.error("E-mail inválido", {
         description: "Informe um e-mail no formato nome@dominio.com.",
       })
@@ -204,10 +200,9 @@ export function EditParticipanteDialog({
   const isFormValid =
     nome.trim() &&
     telefone.trim() &&
-    email.trim() &&
     turma &&
     isValidTelefone(telefone) &&
-    isValidEmail(email)
+    (!email.trim() || isValidEmail(email))
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -259,7 +254,9 @@ export function EditParticipanteDialog({
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="email">E-mail</Label>
+                    <Label htmlFor="email">
+                      E-mail <span className="text-muted-foreground">(opcional)</span>
+                    </Label>
                     <Input
                       id="email"
                       placeholder="email@example.com"

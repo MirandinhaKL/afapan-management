@@ -65,6 +65,8 @@ CREATE TABLE IF NOT EXISTS turma_bucket_periods (
   periodo_numero INTEGER NOT NULL CHECK (periodo_numero >= 1 AND periodo_numero <= 4),
   periodo_label TEXT NOT NULL,
   data_monitoramento DATE NOT NULL,
+  data_inicio DATE,
+  data_fim DATE,
   criado_em TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   atualizado_em TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   UNIQUE(turma_id, periodo_numero)

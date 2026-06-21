@@ -9,13 +9,15 @@ export interface WhatsAppLinkConfig {
   useShortUrl?: boolean
 }
 
-function getPeriodText(periodLabel: string, periodStart?: string, periodEnd?: string) {
-  if (!periodStart || !periodEnd) return periodLabel
+function getPeriodText(periodStart?: string, periodEnd?: string) {
+  if (!periodStart || !periodEnd) {
+    throw new Error("O intervalo de datas do trimestre não foi informado.")
+  }
   const format = (date: string) => {
     const [year, month, day] = date.split("-")
     return year && month && day ? `${day}/${month}/${year}` : date
   }
-  return `de ${format(periodStart)} à ${format(periodEnd)}`
+  return `de ${format(periodStart)} a ${format(periodEnd)}`
 }
 
 function resolveBaseUrl(baseUrl?: string) {
@@ -44,12 +46,12 @@ export function generateWhatsAppLink(
   const baseUrl = resolveBaseUrl(config?.baseUrl)
 
   const bucketFormUrl = `${baseUrl}/bucket/${token}`
-  const periodText = getPeriodText(periodLabel, periodStart, periodEnd)
+  const periodText = getPeriodText(periodStart, periodEnd)
 
   // Mensagem para o WhatsApp
   const message = `Olá ${participanteName}!
 
-Esta é uma solicitação para o registro de baldes de compostagem coletados no período de ${periodText}.
+Esta é uma solicitação para o registro de baldes de compostagem coletados no trimestre ${periodText}.
 
 Clique no link abaixo para registrar a quantidade de baldes:
 
@@ -85,11 +87,11 @@ export function generateWhatsAppMessage(
   const fullBaseUrl = resolveBaseUrl(baseUrl)
 
   const bucketFormUrl = `${fullBaseUrl}/bucket/${token}`
-  const periodText = getPeriodText(periodLabel, periodStart, periodEnd)
+  const periodText = getPeriodText(periodStart, periodEnd)
 
   return `Olá ${participanteName}!
 
-Esta é uma solicitação para o registro de baldes coletados no período ${periodText}.
+Esta é uma solicitação para o registro de baldes coletados no trimestre ${periodText}.
 
 Clique no link abaixo para registrar a quantidade de baldes:
 

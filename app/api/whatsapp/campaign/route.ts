@@ -59,6 +59,13 @@ export async function POST(request: Request) {
       )
     }
 
+    if (!period.data_inicio || !period.data_fim) {
+      return NextResponse.json(
+        { error: "Configure o início e o fim do trimestre antes de enviar as mensagens" },
+        { status: 400 }
+      )
+    }
+
     const { data: rels, error: relsError } = await supabase
       .from("participantes_turmas")
       .select("participante_id, participantes(id, nome, telefone, ativo)")
@@ -146,10 +153,7 @@ export async function POST(request: Request) {
         const sendResult = await sendBucketCollectionTemplate(whatsappConfig, {
           to: formattedPhone,
           participanteNome: participante.nome,
-          periodoLabel:
-            period.data_inicio && period.data_fim
-              ? `de ${period.data_inicio.split("-").reverse().join("/")} a ${period.data_fim.split("-").reverse().join("/")}`
-              : period.periodo_label,
+          periodoLabel: `de ${period.data_inicio.split("-").reverse().join("/")} a ${period.data_fim.split("-").reverse().join("/")}`,
           link,
         })
 

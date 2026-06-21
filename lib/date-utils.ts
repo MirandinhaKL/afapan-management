@@ -14,5 +14,5 @@ export function formatPeriodRange(
   fallback = "informado"
 ): string {
   if (!startDate || !endDate) return fallback
-  return `De ${formatDatePtBr(startDate)} à ${formatDatePtBr(endDate)}`
+  return `De ${formatDatePtBr(startDate)} a ${formatDatePtBr(endDate)}`
 }

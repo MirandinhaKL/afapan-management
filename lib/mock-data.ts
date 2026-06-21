@@ -157,5 +157,5 @@ export const mockBaldesTrimestral: BaldesTrimestral[] = [
 export const roleLabels: Record<UserRole, string> = {
   admin: "Administrador",
   gestor: "Gestor",
-  voluntario: "Voluntario",
+  voluntario: "Voluntário",
 }

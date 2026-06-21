@@ -4,12 +4,11 @@ import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Spinner } from "@/components/ui/spinner"
 import { CheckCircle, AlertTriangle } from "lucide-react"
-import { formatPeriodRange } from "@/lib/date-utils"
 
 interface LinkData {
   id: string
@@ -157,13 +156,6 @@ export default function BucketForm() {
   }
 
   const participanteName = (linkData?.participantes as any)?.nome || "Participante"
-  const periodo = linkData?.turma_bucket_periods as any
-  const periodoLabel = formatPeriodRange(
-    periodo?.data_inicio,
-    periodo?.data_fim,
-    periodo?.periodo_label || "Este período"
-  )
-
   if (submitSuccess) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-linear-to-b from-green-50 to-white p-4">
@@ -171,7 +163,7 @@ export default function BucketForm() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-green-600">
               <CheckCircle className="w-5 h-5" />
-              Enviado com Sucesso!
+              Enviado com sucesso!
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -179,7 +171,7 @@ export default function BucketForm() {
               Obrigado, {participanteName}!
             </p>
             <p className="text-center text-sm">
-              Registramos a quantidade de baldes coletados neste trimestre. Sua contribuição é importante para o programa AFAPAN!
+              Registramos a quantidade de baldes coletados neste trimestre. Sua contribuição é muito importante para o programa de compostagem da AFAPAN!
             </p>
             <div className="bg-green-50 p-3 rounded-md text-center">
               <p className="text-sm font-semibold text-green-700">
@@ -198,15 +190,12 @@ export default function BucketForm() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-linear-to-b from-green-50 to-white p-4">
-      <Card className="w-full max-w-md shadow-lg">
-        <CardHeader className="bg-linear-to-r from-green-600 to-green-700 text-white rounded-t-lg">
+      <Card className="w-full max-w-md gap-0 overflow-hidden py-0 shadow-lg">
+        <CardHeader className="bg-linear-to-r from-green-600 to-green-700 px-6 py-5 text-white">
           <CardTitle className="text-2xl">AFAPAN - Registro de Baldes</CardTitle>
-          <CardDescription className="text-green-100">
-            Trimestre: {periodoLabel}
-          </CardDescription>
         </CardHeader>
 
-        <CardContent className="pt-6">
+        <CardContent className="py-6">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Greeting */}
             <div className="space-y-2 p-4 bg-blue-50 rounded-lg border border-blue-200">

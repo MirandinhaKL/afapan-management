@@ -49,13 +49,13 @@ export function generateWhatsAppLink(
   // Mensagem para o WhatsApp
   const message = `Olá ${participanteName}!
 
-Esta é uma solicitação para o registro de baldes coletados no período de ${periodText}.
+Esta é uma solicitação para o registro de baldes de compostagem coletados no período de ${periodText}.
 
 Clique no link abaixo para registrar a quantidade de baldes:
 
 ${bucketFormUrl}
 
-Obrigado por contribuir com o programa AFAPAN de compostagem!`
+Muito obrigado por contribuir com o programa AFAPAN de compostagem!`
 
   // Codificar mensagem
   const encodedMessage = encodeURIComponent(message)

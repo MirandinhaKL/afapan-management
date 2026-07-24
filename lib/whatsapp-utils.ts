@@ -20,6 +20,14 @@ function getPeriodText(periodStart?: string, periodEnd?: string) {
   return `de ${format(periodStart)} a ${format(periodEnd)}`
 }
 
+function getBucketRequestText(periodLabel: string, periodText: string) {
+  if (periodLabel.toLowerCase().startsWith("registro ")) {
+    return `para o ${periodLabel} de baldes coletados no periodo ${periodText}`
+  }
+
+  return `para o registro de baldes coletados no trimestre ${periodText}`
+}
+
 function resolveBaseUrl(baseUrl?: string) {
   return (
     baseUrl ||
@@ -47,11 +55,12 @@ export function generateWhatsAppLink(
 
   const bucketFormUrl = `${baseUrl}/bucket/${token}`
   const periodText = getPeriodText(periodStart, periodEnd)
+  const requestText = getBucketRequestText(periodLabel, periodText)
 
   // Mensagem para o WhatsApp
   const message = `Olá ${participanteName}!
 
-Esta é uma solicitação para o registro de baldes de compostagem coletados no trimestre ${periodText}.
+Esta é uma solicitação ${requestText}.
 
 Clique no link abaixo para registrar a quantidade de baldes:
 
@@ -88,10 +97,11 @@ export function generateWhatsAppMessage(
 
   const bucketFormUrl = `${fullBaseUrl}/bucket/${token}`
   const periodText = getPeriodText(periodStart, periodEnd)
+  const requestText = getBucketRequestText(periodLabel, periodText)
 
   return `Olá ${participanteName}!
 
-Esta é uma solicitação para o registro de baldes coletados no trimestre ${periodText}.
+Esta é uma solicitação ${requestText}.
 
 Clique no link abaixo para registrar a quantidade de baldes:
 

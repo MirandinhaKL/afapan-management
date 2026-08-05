@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card"
-import { ArrowLeft, KeyRound, Loader2, Lock, Mail, TreePine } from "lucide-react"
+import { ArrowLeft, Eye, EyeOff, KeyRound, Loader2, Lock, Mail, TreePine } from "lucide-react"
 import { toast } from "sonner"
 
 export function LoginForm() {
@@ -19,6 +19,7 @@ export function LoginForm() {
   } = useAuth()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
   const [passwordConfirmation, setPasswordConfirmation] = useState("")
   const [isForgotPassword, setIsForgotPassword] = useState(false)
   const [resetEmailSent, setResetEmailSent] = useState(false)
@@ -307,14 +308,24 @@ export function LoginForm() {
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
                       <Input
                         id="password"
-                        type="password"
+                        type={showPassword ? "text" : "password"}
                         placeholder="Sua senha"
                         value={password}
                         onChange={(event) => setPassword(event.target.value)}
-                        className="pl-10"
+                        className="px-10"
                         disabled={isLoading}
                         autoComplete="current-password"
                       />
+                      <button
+                        type="button"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                        onClick={() => setShowPassword((visible) => !visible)}
+                        disabled={isLoading}
+                        aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                        aria-pressed={showPassword}
+                      >
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
                     </div>
                   </div>
 

@@ -25,7 +25,6 @@ import {
   generateWhatsAppMessage,
 } from "@/lib/whatsapp-utils"
 import { toast } from "sonner"
-import { hasFourDigitYear } from "@/lib/date-utils"
 
 const TRIMESTRE_ATUAL = "2026-Q1"
 const TOTAL_REGISTROS_CAMPANHA = 4
@@ -263,24 +262,43 @@ export function useCompostagem() {
         return
       }
 
-      // Encontrar o período atual ou o primeiro período disponível
-      const periodoAtual = periodos.find((p) => {
-        const dataMonitoramento = new Date(p.data_monitoramento)
-        return dataMonitoramento > new Date()
-      }) || periodos[0]
+      const registrosCampanha = getRegistrosCampanhaSlots(participante)
+      const proximoRegistroIndex = registrosCampanha.findIndex((registro) => !registro)
 
+      if (proximoRegistroIndex < 0) {
+        whatsappWindow?.close()
+        toast.info("Todos os 4 registros deste participante já foram preenchidos")
+        return
+      }
+
+      const periodoAtual = [...periodos].sort(
+        (a, b) => a.periodo_numero - b.periodo_numero
+      )[proximoRegistroIndex]
+
+      if (!periodoAtual) {
+        whatsappWindow?.close()
+        toast.error(`Período do registro ${proximoRegistroIndex + 1} não encontrado`)
+        return
+      }
+
+      if (!periodoAtual.data_inicio || !periodoAtual.data_fim) {
+        whatsappWindow?.close()
+        toast.error(`Informe o intervalo de datas do registro ${proximoRegistroIndex + 1}`)
+        return
+      }
+
+      // Criar o link
       const linkData = await createParticipanteBucketLink(
         participante.id,
         periodoAtual.id
       )
 
-      const baseUrl =
-        process.env.NEXT_PUBLIC_BASE_URL ||
-        (typeof window !== "undefined" ? window.location.origin : undefined)
+      // Gerar a mensagem
+      const baseUrl = typeof window !== 'undefined' ? window.location.origin : undefined
       const mensagem = generateWhatsAppMessage(
         linkData.token,
         participante.nome,
-        periodoAtual.periodo_label,
+        `Registro ${proximoRegistroIndex + 1}`,
         baseUrl,
         periodoAtual.data_inicio,
         periodoAtual.data_fim
@@ -295,7 +313,7 @@ export function useCompostagem() {
       } else {
         window.location.href = whatsappUrl
       }
-      toast.success(`Link único gerado para ${participante.nome}`, {
+      toast.success(`Link gerado para ${participante.nome}`, {
         description: "A janela do WhatsApp foi aberta.",
       })
     } catch (error) {
@@ -609,7 +627,7 @@ export function useCompostagem() {
     try {
       console.log("Iniciando edição do participante:", editingParticipante.id)
       console.log("Dados a atualizar:", data)
-
+      
       const updateData = {
         nome: data.nome,
         telefone: data.telefone,
@@ -621,10 +639,10 @@ export function useCompostagem() {
         estado: data.estado,
         cep: data.cep,
       }
-
+      
       console.log("Chamando updateParticipante com:", updateData)
       const updatedParticipante = await updateParticipante(editingParticipante.id, updateData)
-
+      
       console.log("Resposta do updateParticipante:", updatedParticipante)
 
       if (!updatedParticipante) {
@@ -633,82 +651,23 @@ export function useCompostagem() {
         return
       }
 
-      const participanteAtualizado = {
-        ...editingParticipante,
-        ...updatedParticipante,
-        ...data,
-        baldes: editingParticipante.baldes,
-      }
-
-      const turmaAlterada = data.turma !== editingParticipante.turma
-      const oldTurma = turmas.find((t) => t.nome === editingParticipante.turma)
-      const newTurma = turmas.find((t) => t.nome === data.turma)
-
-      if (turmaAlterada && oldTurma && newTurma) {
-        try {
-          await removeParticipanteFromTurma(editingParticipante.id, oldTurma.id)
-          await addParticipanteToTurma(editingParticipante.id, newTurma.id)
-
-          setTurmas((prev) =>
-            prev.map((t) => {
-              if (t.id === oldTurma.id) {
-                return {
-                  ...t,
-                  totalParticipantes: Math.max(0, (t.totalParticipantes || 0) - 1),
-                }
-              }
-              if (t.id === newTurma.id) {
-                return {
-                  ...t,
-                  totalParticipantes: (t.totalParticipantes || 0) + 1,
-                }
-              }
-              return t
-            })
-          )
-
-          setTurmasCompostagem((prev) =>
-            prev.map((t) => {
-              if (t.id === oldTurma.id) {
-                return {
-                  ...t,
-                  participantes: t.participantes.filter((p) => p.id !== editingParticipante.id),
-                  totalParticipantes: Math.max(0, (t.totalParticipantes || t.participantes.length) - 1),
-                }
-              }
-              if (t.id === newTurma.id) {
-                const alreadyInNew = t.participantes.some((p) => p.id === editingParticipante.id)
-                return {
-                  ...t,
-                  participantes: alreadyInNew
-                    ? t.participantes.map((p) =>
-                        p.id === editingParticipante.id ? participanteAtualizado : p
-                      )
-                    : [...t.participantes, participanteAtualizado],
-                  totalParticipantes: (t.totalParticipantes || t.participantes.length) + (alreadyInNew ? 0 : 1),
-                }
-              }
-              return t
-            })
-          )
-        } catch (relationError) {
-          console.error("Erro ao atualizar relacionamento de turma:", relationError)
-        }
-      }
-
-      setParticipantes((prev) =>
-        prev.map((p) =>
-          p.id === editingParticipante.id
-            ? {
-                ...p,
-                ...updatedParticipante,
-                ...data,
-                baldes: p.baldes,
-              }
-            : p
-        )
-      )
-
+      setParticipantes((prev) => {
+        const newList = prev.map((p) => {
+          if (p.id === editingParticipante.id) {
+            const merged = {
+              ...p,
+              ...updatedParticipante,
+              baldes: p.baldes, // Preservar baldes do participante anterior
+            }
+            console.log("Participante mergeado:", merged)
+            return merged
+          }
+          return p
+        })
+        console.log("Nova lista de participantes:", newList)
+        return newList
+      })
+      
       toast.success(`Participante "${data.nome}" atualizado com sucesso`)
       setIsEditParticipanteOpen(false)
       setEditingParticipante(null)
@@ -789,23 +748,10 @@ export function useCompostagem() {
     }
 
     // Validar que todas as 4 datas foram preenchidas
-    const datasKeys = ["data1", "data2", "data3", "data4"] as const
-    const datasMonitoramento = datasKeys.map((key) => newTurmaDatas[key].trim())
+    const datasMonitoramento = Object.values(newTurmaDatas).map((data) => data.trim())
     const datasPreenchidas = datasMonitoramento.every((data) => data !== "")
     if (!datasPreenchidas) {
       toast.error("Todas as 4 datas de monitoramento são obrigatórias")
-      return
-    }
-    const datasComAnoValido = datasMonitoramento.every(hasFourDigitYear)
-    if (!datasComAnoValido) {
-      toast.error("O ano das datas de monitoramento deve possuir exatamente 4 dígitos")
-      return
-    }
-    const datasEmOrdem = datasMonitoramento.every((data, index) => (
-      index === 0 || data > datasMonitoramento[index - 1]
-    ))
-    if (!datasEmOrdem) {
-      toast.error("As datas devem estar em ordem crescente: Período 1, Período 2, Período 3 e Período 4")
       return
     }
 

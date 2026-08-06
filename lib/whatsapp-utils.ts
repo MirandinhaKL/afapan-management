@@ -20,12 +20,36 @@ function getPeriodText(periodStart?: string, periodEnd?: string) {
   return `de ${format(periodStart)} a ${format(periodEnd)}`
 }
 
-function getBucketRequestText(periodLabel: string, periodText: string) {
-  if (periodLabel.toLowerCase().startsWith("registro ")) {
-    return `para o ${periodLabel} de baldes coletados no periodo ${periodText}`
-  }
+function getFormOrdinal(periodLabel: string) {
+  const periodNumber = periodLabel.match(/[1-4]/)?.[0]
+  return periodNumber ? `${periodNumber}º` : periodLabel
+}
 
-  return `para o registro de baldes coletados no trimestre ${periodText}`
+function buildBucketRequestMessage(
+  token: string,
+  participanteName: string,
+  periodLabel: string,
+  baseUrl: string,
+  periodStart?: string,
+  periodEnd?: string
+) {
+  const bucketFormUrl = `${baseUrl}/bucket/${token}`
+  const periodText = getPeriodText(periodStart, periodEnd)
+  const formOrdinal = getFormOrdinal(periodLabel)
+
+  return `Olá ${participanteName}!
+
+Este é o ${formOrdinal} formulário para registro da quantidade de baldes destinados à composteira.
+
+O preenchimento faz parte do compromisso assumido no projeto e é essencial para acompanharmos os resultados do Compostando Juntos.
+
+*Informe a quantidade de baldes destinados à composteira no período ${periodText}.*
+
+Clique no link abaixo para registrar a quantidade de baldes:
+
+${bucketFormUrl}
+
+Obrigado por contribuir com a compostagem e fortalecer essa iniciativa!`
 }
 
 function resolveBaseUrl(baseUrl?: string) {
@@ -53,20 +77,14 @@ export function generateWhatsAppLink(
 ): string {
   const baseUrl = resolveBaseUrl(config?.baseUrl)
 
-  const bucketFormUrl = `${baseUrl}/bucket/${token}`
-  const periodText = getPeriodText(periodStart, periodEnd)
-  const requestText = getBucketRequestText(periodLabel, periodText)
-
-  // Mensagem para o WhatsApp
-  const message = `Olá ${participanteName}!
-
-Esta é uma solicitação ${requestText}.
-
-Clique no link abaixo para registrar a quantidade de baldes:
-
-${bucketFormUrl}
-
-Muito obrigado por contribuir com o programa AFAPAN de compostagem!`
+  const message = buildBucketRequestMessage(
+    token,
+    participanteName,
+    periodLabel,
+    baseUrl,
+    periodStart,
+    periodEnd
+  )
 
   // Codificar mensagem
   const encodedMessage = encodeURIComponent(message)
@@ -95,19 +113,14 @@ export function generateWhatsAppMessage(
 ): string {
   const fullBaseUrl = resolveBaseUrl(baseUrl)
 
-  const bucketFormUrl = `${fullBaseUrl}/bucket/${token}`
-  const periodText = getPeriodText(periodStart, periodEnd)
-  const requestText = getBucketRequestText(periodLabel, periodText)
-
-  return `Olá ${participanteName}!
-
-Esta é uma solicitação ${requestText}.
-
-Clique no link abaixo para registrar a quantidade de baldes:
-
-${bucketFormUrl}
-
-Obrigado por contribuir com o programa AFAPAN de compostagem!`
+  return buildBucketRequestMessage(
+    token,
+    participanteName,
+    periodLabel,
+    fullBaseUrl,
+    periodStart,
+    periodEnd
+  )
 }
 
 /**

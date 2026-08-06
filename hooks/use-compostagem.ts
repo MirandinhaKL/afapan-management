@@ -12,7 +12,7 @@ import {
   removeParticipanteFromTurma,
   createParticipante,
   deleteParticipante,
-   updateParticipante,
+  updateParticipante,
   fetchBaldesForParticipant,
   createBaldeRecord,
   updateBaldeRecord,
@@ -24,50 +24,15 @@ import {
   formatPhoneForWhatsApp,
   generateWhatsAppMessage,
 } from "@/lib/whatsapp-utils"
+import {
+  getRegistrosCampanha,
+  getRegistrosCampanhaSlots,
+  isCampanhaBaldesPreenchida,
+  TOTAL_REGISTROS_CAMPANHA,
+} from "@/lib/bucket-campaign"
 import { toast } from "sonner"
 
 const TRIMESTRE_ATUAL = "2026-Q1"
-const TOTAL_REGISTROS_CAMPANHA = 4
-
-const getRegistrosCampanhaSlots = (participante: Participante) => {
-  const slots: Array<Participante["baldes"][number] | undefined> = Array.from(
-    { length: TOTAL_REGISTROS_CAMPANHA },
-    () => undefined
-  )
-
-  const registrosOrdenados = [...participante.baldes]
-    .sort((a, b) => {
-      const dataA = a.dataRegistro || a.trimestre
-      const dataB = b.dataRegistro || b.trimestre
-      return `${dataA}-${a.trimestre}`.localeCompare(`${dataB}-${b.trimestre}`)
-    })
-
-  const registrosSemSlot: Participante["baldes"] = []
-
-  registrosOrdenados.forEach((registro) => {
-    const slotMatch = registro.trimestre.match(/-R([1-4])$/)
-    const slotIndex = slotMatch ? Number(slotMatch[1]) - 1 : -1
-
-    if (slotIndex >= 0 && !slots[slotIndex]) {
-      slots[slotIndex] = registro
-    } else {
-      registrosSemSlot.push(registro)
-    }
-  })
-
-  registrosSemSlot.forEach((registro) => {
-    const slotIndex = slots.findIndex((slot) => !slot)
-    if (slotIndex >= 0) {
-      slots[slotIndex] = registro
-    }
-  })
-
-  return slots
-}
-
-const getRegistrosCampanha = (participante: Participante) => {
-  return getRegistrosCampanhaSlots(participante).filter(Boolean) as Participante["baldes"]
-}
 
 export function useCompostagem() {
   // Participant states
@@ -172,7 +137,7 @@ export function useCompostagem() {
       )
       .filter((p) => {
         if (statusFilter === "todos") return true
-        const campanhaCompleta = getRegistrosCampanha(p).length >= TOTAL_REGISTROS_CAMPANHA
+        const campanhaCompleta = isCampanhaBaldesPreenchida(p)
         return statusFilter === "preenchido" ? campanhaCompleta : !campanhaCompleta
       })
   }, [participantes, searchTerm, statusFilter, turmaFilter])
@@ -180,7 +145,7 @@ export function useCompostagem() {
   const stats = useMemo(() => {
     const turmaParticipantes = participantes.filter((p) => p.turma === turmaFilter)
     const preenchidos = turmaParticipantes.filter(
-      (p) => getRegistrosCampanha(p).length >= TOTAL_REGISTROS_CAMPANHA
+      (p) => isCampanhaBaldesPreenchida(p)
     )
     const totalBaldes = turmaParticipantes.reduce((acc, p) => {
       return acc + getRegistrosCampanha(p).reduce((total, balde) => total + (balde.quantidade || 0), 0)
@@ -195,7 +160,7 @@ export function useCompostagem() {
   }, [participantes, turmaFilter])
 
   const getStatus = (participante: Participante) =>
-    getRegistrosCampanha(participante).length >= TOTAL_REGISTROS_CAMPANHA
+    isCampanhaBaldesPreenchida(participante)
 
   const loadParticipantesDaTurma = async (turmaId: string) => {
     const participantesData = await fetchParticipantesWithBaldes(turmaId)

@@ -27,6 +27,7 @@ import {
 import {
   getRegistrosCampanha,
   getRegistrosCampanhaSlots,
+  getPrimeiroRegistroPendenteIndex,
   isCampanhaBaldesPreenchida,
   TOTAL_REGISTROS_CAMPANHA,
 } from "@/lib/bucket-campaign"
@@ -227,8 +228,7 @@ export function useCompostagem() {
         return
       }
 
-      const registrosCampanha = getRegistrosCampanhaSlots(participante)
-      const proximoRegistroIndex = registrosCampanha.findIndex((registro) => !registro)
+      const proximoRegistroIndex = getPrimeiroRegistroPendenteIndex(participante)
 
       if (proximoRegistroIndex < 0) {
         whatsappWindow?.close()
@@ -382,11 +382,8 @@ export function useCompostagem() {
   const openRegister = (participante: Participante) => {
     setSelectedParticipante(participante)
     const registrosCampanha = getRegistrosCampanhaSlots(participante)
-    const primeiroRegistroPendente = Array.from(
-      { length: TOTAL_REGISTROS_CAMPANHA },
-      (_, index) => index
-    ).find((index) => !registrosCampanha[index])
-    const registroIndex = primeiroRegistroPendente ?? 0
+    const primeiroRegistroPendente = getPrimeiroRegistroPendenteIndex(participante)
+    const registroIndex = primeiroRegistroPendente >= 0 ? primeiroRegistroPendente : 0
 
     setSelectedRegistroIndex(registroIndex)
     setRegisterQuantidade(registrosCampanha[registroIndex] ? String(registrosCampanha[registroIndex].quantidade) : "")
@@ -426,7 +423,6 @@ export function useCompostagem() {
 
     try {
       const baldesAtualizados = [...selectedParticipante.baldes]
-      let savednCount = 0
 
       for (const registro of registros) {
         if (registro.quantidade.trim() === "") continue
@@ -473,7 +469,6 @@ export function useCompostagem() {
         } else {
           baldesAtualizados.push(registroAtualizado)
         }
-        savednCount++
       }
 
       setParticipantes((prev) =>
@@ -486,7 +481,7 @@ export function useCompostagem() {
 
       setSelectedParticipante({ ...selectedParticipante, baldes: baldesAtualizados })
 
-      toast.success(`${savednCount} registro(s) salvo(s) com sucesso!`, {
+      toast.success("Salvo com sucesso!", {
         description: `Baldes registrados para ${selectedParticipante.nome}.`,
       })
       setIsRegisterOpen(false)

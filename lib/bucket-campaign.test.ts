@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest"
 import { type Participante, type RegistroBalde } from "@/lib/mock-data"
-import { isCampanhaBaldesPreenchida } from "@/lib/bucket-campaign"
+import {
+  getPrimeiroRegistroPendenteIndex,
+  isCampanhaBaldesPreenchida,
+} from "@/lib/bucket-campaign"
 
 function criarParticipante(quantidades: number[]): Participante {
   const baldes: RegistroBalde[] = quantidades.map((quantidade, index) => ({
@@ -31,5 +34,13 @@ describe("isCampanhaBaldesPreenchida", () => {
 
   it("considera pendente enquanto não houver quatro registros", () => {
     expect(isCampanhaBaldesPreenchida(criarParticipante([1, 2, 3]))).toBe(false)
+  })
+
+  it("seleciona para o WhatsApp o primeiro registro com valor zero", () => {
+    expect(getPrimeiroRegistroPendenteIndex(criarParticipante([1, 2, 0, 0]))).toBe(2)
+  })
+
+  it("informa que não há registro pendente quando os quatro são maiores que zero", () => {
+    expect(getPrimeiroRegistroPendenteIndex(criarParticipante([1, 2, 3, 4]))).toBe(-1)
   })
 })

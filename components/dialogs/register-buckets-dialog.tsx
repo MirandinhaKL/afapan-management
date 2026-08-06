@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
@@ -72,25 +72,37 @@ export function RegisterBucketsDialog({
 }: RegisterBucketsDialogProps) {
   const [registros, setRegistros] = useState<RegistroForm[]>([])
   const [isSaving, setIsSaving] = useState(false)
+  const participanteInicializadoRef = useRef<string | null>(null)
 
   useEffect(() => {
-    if (!open || !participante) return
+    if (!open || !participante) {
+      participanteInicializadoRef.current = null
+      return
+    }
 
     const registrosExistentes = getRegistrosCampanhaSlots(participante)
+    const deveInicializar = participanteInicializadoRef.current !== participante.id
 
-    setRegistros(
+    setRegistros((registrosAtuais) =>
       Array.from({ length: 4 }, (_, index) => {
         const periodo = turmaPeriodos[index]
         const registroExistente = registrosExistentes[index]
+        const registroAtual = registrosAtuais[index]
 
         return {
           index,
-          quantidade: registroExistente?.quantidade.toString() || "",
-          data: registroExistente?.dataRegistro || periodo?.data_monitoramento || "",
+          quantidade: deveInicializar
+            ? registroExistente?.quantidade.toString() || ""
+            : registroAtual?.quantidade ?? registroExistente?.quantidade.toString() ?? "",
+          data: deveInicializar
+            ? registroExistente?.dataRegistro || periodo?.data_monitoramento || ""
+            : registroAtual?.data || registroExistente?.dataRegistro || periodo?.data_monitoramento || "",
           periodo,
         }
       })
     )
+
+    participanteInicializadoRef.current = participante.id
   }, [open, participante, turmaPeriodos])
 
   const handleQuantidadeChange = (index: number, valor: string) => {

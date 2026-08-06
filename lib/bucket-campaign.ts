@@ -50,3 +50,9 @@ export function isCampanhaBaldesPreenchida(participante: Participante) {
     (registro) => registro !== undefined && registro.quantidade > 0
   )
 }
+
+export function getPrimeiroRegistroPendenteIndex(participante: Participante) {
+  return getRegistrosCampanhaSlots(participante).findIndex(
+    (registro) => registro === undefined || registro.quantidade <= 0
+  )
+}

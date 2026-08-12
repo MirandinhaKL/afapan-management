@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { AfapanLogo } from "./afapan-logo"
@@ -22,10 +23,11 @@ import {
   Menu,
   X,
   ChevronRight,
+  Truck,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-type Page = "dashboard" | "usuarios" | "compostagem"
+type Page = "dashboard" | "usuarios" | "compostagem" | "eco-drive"
 
 interface DashboardLayoutProps {
   currentPage: Page
@@ -37,6 +39,7 @@ const navItems: { id: Page; label: string; icon: React.ElementType }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "usuarios", label: "Usuários", icon: Users },
   { id: "compostagem", label: "Compostagem", icon: Recycle },
+  { id: "eco-drive", label: "Eco Drive", icon: Truck },
 ]
 
 export function DashboardLayout({ currentPage, onNavigate, children }: DashboardLayoutProps) {
@@ -81,8 +84,14 @@ export function DashboardLayout({ currentPage, onNavigate, children }: Dashboard
         {/* Sidebar Header */}
         <div className="flex items-center justify-between border-b border-sidebar-border px-6 py-5">
           <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center rounded-lg bg-sidebar-primary p-1.5">
-              <Recycle className="text-sidebar-primary-foreground" size={20} />
+            <div className="flex items-center justify-center">
+              <Image
+                src="/icon-dark-32x32.png"
+                alt="Símbolo da AFAPAN"
+                width={32}
+                height={32}
+                priority
+              />
             </div>
             <div>
               <p className="text-sm font-bold tracking-tight text-sidebar-foreground">AFAPAN</p>

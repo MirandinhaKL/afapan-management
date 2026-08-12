@@ -7,8 +7,9 @@ import { DashboardLayout } from "@/components/dashboard-layout"
 import { DashboardPage } from "@/components/dashboard-page"
 import { UsersPage } from "@/components/users-page"
 import { CompostagemPage } from "@/components/compostagem-page"
+import { EcoDrivePage } from "@/components/eco-drive-page"
 
-type Page = "dashboard" | "usuarios" | "compostagem"
+type Page = "dashboard" | "usuarios" | "compostagem" | "eco-drive"
 
 function AppContent() {
   const { isAuthenticated, isPasswordRecovery, loading } = useAuth()
@@ -34,6 +35,7 @@ function AppContent() {
       {currentPage === "dashboard" && <DashboardPage />}
       {currentPage === "usuarios" && <UsersPage />}
       {currentPage === "compostagem" && <CompostagemPage />}
+      {currentPage === "eco-drive" && <EcoDrivePage />}
     </DashboardLayout>
   )
 }

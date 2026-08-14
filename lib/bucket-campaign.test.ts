@@ -59,4 +59,34 @@ describe("isCampanhaBaldesPreenchida", () => {
       )
     ).toEqual([1, 2, 8, 4])
   })
+
+  it("prioriza uma nova submissão positiva quando há dois registros para o mesmo campo", () => {
+    const participante = criarParticipante([0, 2, 3, 4])
+    participante.baldes.push({
+      trimestre: "2026-Q1-R1",
+      quantidade: 23,
+      dataRegistro: "2026-08-14",
+    })
+
+    expect(
+      getRegistrosCampanhaSlots(participante).map((registro) =>
+        registro?.quantidade
+      )
+    ).toEqual([23, 2, 3, 4])
+  })
+
+  it("mantém a nova submissão no mesmo campo quando a duplicidade não é R1", () => {
+    const participante = criarParticipante([0, 0, 3, 4])
+    participante.baldes.push({
+      trimestre: "2026-Q1-R2",
+      quantidade: 23,
+      dataRegistro: "2026-08-14",
+    })
+
+    expect(
+      getRegistrosCampanhaSlots(participante).map((registro) =>
+        registro?.quantidade
+      )
+    ).toEqual([0, 23, 3, 4])
+  })
 })

@@ -20,11 +20,19 @@ export function getRegistrosCampanhaSlots(participante: Participante) {
     const slotMatch = registro.trimestre.match(/-R([1-4])$/)
     const slotIndex = slotMatch ? Number(slotMatch[1]) - 1 : -1
 
-    if (slotIndex >= 0 && !slots[slotIndex]) {
-      slots[slotIndex] = registro
-    } else {
+    if (slotIndex < 0) {
       registrosSemSlot.push(registro)
+      return
     }
+
+    const registroAtual = slots[slotIndex]
+
+    if (!registroAtual || (registroAtual.quantidade <= 0 && registro.quantidade > 0)) {
+      slots[slotIndex] = registro
+      return
+    }
+
+    registrosSemSlot.push(registro)
   })
 
   registrosSemSlot.forEach((registro) => {

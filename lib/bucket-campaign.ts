@@ -28,7 +28,15 @@ export function getRegistrosCampanhaSlots(participante: Participante) {
   })
 
   registrosSemSlot.forEach((registro) => {
-    const slotIndex = slots.findIndex((slot) => !slot)
+    let slotIndex = slots.findIndex((slot) => !slot)
+
+    // O fluxo público antigo salvava sem o sufixo -RN. Se os quatro campos
+    // já existirem, aproveitamos esse registro para preencher o primeiro
+    // campo ainda pendente, preservando submissões realizadas antes da correção.
+    if (slotIndex < 0 && registro.quantidade > 0) {
+      slotIndex = slots.findIndex((slot) => slot?.quantidade === 0)
+    }
+
     if (slotIndex >= 0) {
       slots[slotIndex] = registro
     }

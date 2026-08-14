@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import { type Participante, type RegistroBalde } from "@/lib/mock-data"
 import {
   getPrimeiroRegistroPendenteIndex,
+  getRegistrosCampanhaSlots,
   isCampanhaBaldesPreenchida,
 } from "@/lib/bucket-campaign"
 
@@ -42,5 +43,20 @@ describe("isCampanhaBaldesPreenchida", () => {
 
   it("informa que não há registro pendente quando os quatro são maiores que zero", () => {
     expect(getPrimeiroRegistroPendenteIndex(criarParticipante([1, 2, 3, 4]))).toBe(-1)
+  })
+
+  it("recupera uma submissão antiga sem sufixo no primeiro campo pendente", () => {
+    const participante = criarParticipante([1, 2, 0, 4])
+    participante.baldes.push({
+      trimestre: "2026-Q1",
+      quantidade: 8,
+      dataRegistro: "2026-03-20",
+    })
+
+    expect(
+      getRegistrosCampanhaSlots(participante).map((registro) =>
+        registro?.quantidade
+      )
+    ).toEqual([1, 2, 8, 4])
   })
 })

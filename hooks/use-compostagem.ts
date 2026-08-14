@@ -875,7 +875,7 @@ export function useCompostagem() {
   const openTurmaDetail = async (turma: TurmaCompostagem & { participantes: Participante[]; totalParticipantes?: number }) => {
     let turmaAtualizada = turma
 
-    if (turma.participantes.length === 0 && (turma.totalParticipantes || 0) > 0) {
+    if ((turma.totalParticipantes || turma.participantes.length) > 0) {
       try {
         const participantesData = await loadParticipantesDaTurma(turma.id)
         turmaAtualizada = { ...turma, participantes: participantesData }

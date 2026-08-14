@@ -1,13 +1,7 @@
 import { NextResponse } from "next/server"
 import { createSupabaseServiceClient } from "@/lib/supabase-server"
 import { getBucketLinkAccessError } from "@/lib/bucket-link-validation"
-
-function getQuarterLabel(dateValue: string) {
-  const date = new Date(`${dateValue}T00:00:00`)
-  const year = date.getFullYear()
-  const quarter = Math.ceil((date.getMonth() + 1) / 3)
-  return `${year}-Q${quarter}`
-}
+import { getBucketPeriodRecordKey } from "@/lib/bucket-record"
 
 export async function POST(request: Request) {
   try {
@@ -35,7 +29,8 @@ export async function POST(request: Request) {
             periodo_label,
             data_monitoramento,
             data_inicio,
-            data_fim
+            data_fim,
+            periodo_numero
           )
         `
       )
@@ -58,7 +53,7 @@ export async function POST(request: Request) {
       ? linkData.turma_bucket_periods[0]
       : linkData.turma_bucket_periods
 
-    if (!period?.data_monitoramento) {
+    if (!period?.data_monitoramento || !period?.periodo_numero) {
       return NextResponse.json(
         { error: "Período de monitoramento não encontrado" },
         { status: 404 }
@@ -66,16 +61,52 @@ export async function POST(request: Request) {
     }
 
     const today = new Date().toISOString().split("T")[0]
-    const { error: baldeError } = await supabase.from("baldes").insert([
-      {
-        participante_id: linkData.participante_id,
-        turma_id: period.turma_id,
-        turma_bucket_period_id: linkData.turma_bucket_period_id,
-        trimestre: getQuarterLabel(period.data_monitoramento),
-        quantidade: parsedQuantidade,
-        data_registro: today,
-      },
-    ])
+    const trimestre = getBucketPeriodRecordKey(
+      period.data_monitoramento,
+      period.periodo_numero
+    )
+    const baldePayload = {
+      participante_id: linkData.participante_id,
+      turma_id: period.turma_id,
+      turma_bucket_period_id: linkData.turma_bucket_period_id,
+      trimestre,
+      quantidade: parsedQuantidade,
+      data_registro: today,
+    }
+
+    const { data: baldeDoPeriodo, error: baldeLookupError } = await supabase
+      .from("baldes")
+      .select("id")
+      .eq("participante_id", linkData.participante_id)
+      .eq("turma_bucket_period_id", linkData.turma_bucket_period_id)
+      .limit(1)
+      .maybeSingle()
+
+    if (baldeLookupError) throw baldeLookupError
+
+    let baldeExistente = baldeDoPeriodo
+
+    // Registros antigos não possuíam turma_bucket_period_id. Nesse caso,
+    // localizamos o campo da campanha pela chave YYYY-QN-RN.
+    if (!baldeExistente) {
+      const { data: baldeLegado, error: baldeLegadoError } = await supabase
+        .from("baldes")
+        .select("id")
+        .eq("participante_id", linkData.participante_id)
+        .eq("trimestre", trimestre)
+        .limit(1)
+        .maybeSingle()
+
+      if (baldeLegadoError) throw baldeLegadoError
+      baldeExistente = baldeLegado
+    }
+
+    const { error: baldeError } = baldeExistente
+      ? await supabase
+          .from("baldes")
+          .update(baldePayload)
+          .eq("id", baldeExistente.id)
+      : await supabase.from("baldes").insert([baldePayload])
 
     if (baldeError) {
       throw baldeError

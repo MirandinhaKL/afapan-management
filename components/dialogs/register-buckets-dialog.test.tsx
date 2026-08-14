@@ -42,6 +42,36 @@ const propsBase = {
 }
 
 describe("RegisterBucketsDialog", () => {
+  it("carrega o valor positivo mais recente quando há dois registros para o mesmo campo", () => {
+    const participanteComDuplicidade: Participante = {
+      ...participante,
+      baldes: [
+        ...participante.baldes.map((registro, index) =>
+          index === 0 ? { ...registro, quantidade: 0 } : registro
+        ),
+        {
+          id: "balde-r1-atualizado",
+          trimestre: "2026-Q1-R1",
+          quantidade: 23,
+          dataRegistro: "2026-08-14",
+        },
+      ],
+    }
+
+    render(
+      <RegisterBucketsDialog
+        {...propsBase}
+        participante={participanteComDuplicidade}
+        turmaPeriodos={periodos}
+        onSalvarTodos={vi.fn().mockResolvedValue(undefined)}
+      />
+    )
+
+    expect(
+      screen.getByLabelText("Baldes", { selector: "#quantidade-0" })
+    ).toHaveValue(23)
+  })
+
   it("preserva o valor editado quando os períodos são carregados", async () => {
     const user = userEvent.setup()
     const onSalvarTodos = vi.fn().mockResolvedValue(undefined)

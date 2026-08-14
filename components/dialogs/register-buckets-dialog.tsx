@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { type Participante } from "@/lib/mock-data"
 import { type TurmaBucketPeriod } from "@/lib/supabase-queries"
 import { hasFourDigitYear } from "@/lib/date-utils"
+import { getRegistrosCampanhaSlots } from "@/lib/bucket-campaign"
 import { toast } from "sonner"
 
 interface RegistroForm {
@@ -27,40 +28,6 @@ interface RegisterBucketsDialogProps {
   trimestre: string
   turmaPeriodos?: TurmaBucketPeriod[]
   onSalvarTodos?: (registros: RegistroForm[]) => Promise<void>
-}
-
-function getRegistrosCampanhaSlots(participante: Participante) {
-  const slots: Array<Participante["baldes"][number] | undefined> = Array.from(
-    { length: 4 },
-    () => undefined
-  )
-  const registrosSemSlot: Participante["baldes"] = []
-
-  ;[...participante.baldes]
-    .sort((a, b) => {
-      const dataA = a.dataRegistro || a.trimestre
-      const dataB = b.dataRegistro || b.trimestre
-      return `${dataA}-${a.trimestre}`.localeCompare(`${dataB}-${b.trimestre}`)
-    })
-    .forEach((registro) => {
-      const slotMatch = registro.trimestre.match(/-R([1-4])$/)
-      const slotIndex = slotMatch ? Number(slotMatch[1]) - 1 : -1
-
-      if (slotIndex >= 0 && !slots[slotIndex]) {
-        slots[slotIndex] = registro
-      } else {
-        registrosSemSlot.push(registro)
-      }
-    })
-
-  registrosSemSlot.forEach((registro) => {
-    const slotIndex = slots.findIndex((slot) => !slot)
-    if (slotIndex >= 0) {
-      slots[slotIndex] = registro
-    }
-  })
-
-  return slots
 }
 
 export function RegisterBucketsDialog({

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createSupabaseServiceClient } from "@/lib/supabase-server"
+import { getBucketLinkAccessError } from "@/lib/bucket-link-validation"
 
 interface RouteParams {
   params: Promise<{
@@ -39,15 +40,18 @@ export async function GET(_request: Request, { params }: RouteParams) {
         `
       )
       .eq("token", token)
-      .eq("is_active", true)
       .single()
 
     if (error || !data) {
       return NextResponse.json({ error: "Link inválido ou expirado" }, { status: 404 })
     }
 
-    if (data.expires_at && new Date(data.expires_at) < new Date()) {
-      return NextResponse.json({ error: "Link expirado" }, { status: 410 })
+    const accessError = getBucketLinkAccessError(data)
+    if (accessError) {
+      return NextResponse.json(
+        { error: accessError.message },
+        { status: accessError.status }
+      )
     }
 
     return NextResponse.json(data)

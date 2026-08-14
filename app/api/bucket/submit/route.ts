@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createSupabaseServiceClient } from "@/lib/supabase-server"
+import { getBucketLinkAccessError } from "@/lib/bucket-link-validation"
 
 function getQuarterLabel(dateValue: string) {
   const date = new Date(`${dateValue}T00:00:00`)
@@ -39,19 +40,18 @@ export async function POST(request: Request) {
         `
       )
       .eq("token", token)
-      .eq("is_active", true)
       .single()
 
     if (linkError || !linkData) {
       return NextResponse.json({ error: "Link inválido ou expirado" }, { status: 404 })
     }
 
-    if (linkData.submitted) {
-      return NextResponse.json({ error: "Este link já foi utilizado" }, { status: 409 })
-    }
-
-    if (linkData.expires_at && new Date(linkData.expires_at) < new Date()) {
-      return NextResponse.json({ error: "Link expirado" }, { status: 410 })
+    const accessError = getBucketLinkAccessError(linkData)
+    if (accessError) {
+      return NextResponse.json(
+        { error: accessError.message },
+        { status: accessError.status }
+      )
     }
 
     const period = Array.isArray(linkData.turma_bucket_periods)
@@ -86,6 +86,7 @@ export async function POST(request: Request) {
       .update({
         submitted: true,
         submitted_at: new Date().toISOString(),
+        is_active: false,
       })
       .eq("id", linkData.id)
 

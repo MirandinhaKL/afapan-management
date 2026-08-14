@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Spinner } from "@/components/ui/spinner"
 import { CheckCircle, AlertTriangle } from "lucide-react"
+import { formatBucketPeriodRange } from "@/lib/bucket-period"
 
 interface LinkData {
   id: string
@@ -156,6 +157,10 @@ export default function BucketForm() {
   }
 
   const participanteName = (linkData?.participantes as any)?.nome || "Participante"
+  const periodRange = formatBucketPeriodRange(
+    linkData?.turma_bucket_periods?.data_inicio,
+    linkData?.turma_bucket_periods?.data_fim
+  )
   if (submitSuccess) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-linear-to-b from-green-50 to-white p-4">
@@ -210,8 +215,13 @@ export default function BucketForm() {
             {/* Question */}
             <div className="space-y-3">
               <Label htmlFor="buckets" className="text-base font-semibold text-gray-700">
-                Quantos baldes foram coletados neste trimestre?
+                Quantos baldes foram destinados à composteira?
               </Label>
+              {periodRange && (
+                <p className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm font-medium text-green-800">
+                  Período a informar: {periodRange}
+                </p>
+              )}
               <Input
                 id="buckets"
                 type="number"

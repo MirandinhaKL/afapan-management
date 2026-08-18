@@ -1,6 +1,6 @@
 export const ECO_DRIVE_MATERIALS = [
   { type: "tampinhas", label: "Tampinhas de garrafa", unit: "kg" },
-  { type: "cartelas_remedios", label: "Cartelas de remédios vazias", unit: "kg" },
+  { type: "cartelas_remedios", label: "Cartelas de remédios", unit: "kg" },
   { type: "embalagens_pet", label: "Embalagens de torta (PET)", unit: "kg" },
   { type: "embalagens_laminadas", label: "Embalagens laminadas", unit: "kg" },
   { type: "isopor", label: "Isopor", unit: "kg" },

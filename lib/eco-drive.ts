@@ -23,12 +23,15 @@ export interface EcoDriveCampaign {
   id: string
   name: string
   eventDate: string
-  location: string
+  location?: string
   volunteerCount: number
   status: EcoDriveCampaignStatus
   notes?: string
   materials: EcoDriveMaterial[]
   createdAt?: string
+  updatedAt?: string
+  archivedAt?: string
+  archivedBy?: string
 }
 
 export interface CreateEcoDriveCampaignInput {
@@ -39,6 +42,60 @@ export interface CreateEcoDriveCampaignInput {
   status: EcoDriveCampaignStatus
   notes?: string
   materials: Array<Pick<EcoDriveMaterial, "type" | "quantity" | "unit">>
+}
+
+export interface UpdateEcoDriveCampaignInput extends CreateEcoDriveCampaignInput {
+  id: string
+  expectedUpdatedAt: string
+}
+
+export type EcoDriveArchiveFilter = "active" | "archived" | "all"
+
+export interface EcoDriveCampaignFilters {
+  search?: string
+  status?: EcoDriveCampaignStatus | "all"
+  year?: number
+  dateFrom?: string
+  dateTo?: string
+  archive?: EcoDriveArchiveFilter
+}
+
+export interface EcoDriveCampaignPage {
+  campaigns: EcoDriveCampaign[]
+  total: number
+  page: number
+  pageSize: number
+}
+
+export interface EcoDriveValidationError {
+  field: string
+  message: string
+}
+
+export function getEcoDriveLocationLabel(location?: string | null) {
+  return location?.trim() || "Não informado"
+}
+
+export function validateEcoDriveCampaignInput(
+  input: CreateEcoDriveCampaignInput
+): EcoDriveValidationError[] {
+  const errors: EcoDriveValidationError[] = []
+  if (!input.name.trim()) errors.push({ field: "name", message: "Informe o nome da campanha." })
+  if (!input.eventDate) errors.push({ field: "eventDate", message: "Informe a data do evento." })
+  if (!Number.isInteger(input.volunteerCount) || input.volunteerCount < 0) {
+    errors.push({ field: "volunteerCount", message: "O número de voluntários deve ser inteiro e não negativo." })
+  }
+
+  for (const material of input.materials) {
+    if (!Number.isFinite(material.quantity) || material.quantity < 0) {
+      errors.push({ field: material.type, message: "A quantidade não pode ser negativa." })
+    } else if (material.unit === "unidade" && !Number.isInteger(material.quantity)) {
+      errors.push({ field: material.type, message: "Materiais por unidade devem usar números inteiros." })
+    } else if (material.unit === "kg" && Math.abs(Math.round(material.quantity * 10) - material.quantity * 10) > Number.EPSILON) {
+      errors.push({ field: material.type, message: "O peso deve possuir no máximo uma casa decimal." })
+    }
+  }
+  return errors
 }
 
 export function getEcoDriveCampaignTotals(campaign: EcoDriveCampaign) {
@@ -53,7 +110,8 @@ export function getEcoDriveCampaignTotals(campaign: EcoDriveCampaign) {
 }
 
 export function calculateEcoDriveStats(campaigns: EcoDriveCampaign[]) {
-  const completedCampaigns = campaigns.filter(
+  const activeCampaigns = campaigns.filter((campaign) => !campaign.archivedAt)
+  const completedCampaigns = activeCampaigns.filter(
     (campaign) => campaign.status === "concluida"
   )
   const totalKg = completedCampaigns.reduce(
@@ -70,7 +128,7 @@ export function calculateEcoDriveStats(campaigns: EcoDriveCampaign[]) {
   )
 
   return {
-    campaigns: campaigns.length,
+    campaigns: activeCampaigns.length,
     completedCampaigns: completedCampaigns.length,
     totalKg,
     totalUnits,

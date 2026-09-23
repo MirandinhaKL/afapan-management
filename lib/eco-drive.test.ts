@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest"
 import {
   calculateEcoDriveStats,
+  getEcoDriveLocationLabel,
   getEcoDriveCampaignTotals,
+  validateEcoDriveCampaignInput,
   type EcoDriveCampaign,
 } from "@/lib/eco-drive"
 
@@ -64,5 +66,34 @@ describe("estatísticas do Eco Drive", () => {
       totalKg: 0,
       totalUnits: 0,
     })
+  })
+
+  it("ignora campanhas arquivadas nos indicadores", () => {
+    expect(calculateEcoDriveStats([{ ...campaigns[0], archivedAt: "2026-09-22T12:00:00Z" }])).toEqual({
+      campaigns: 0,
+      completedCampaigns: 0,
+      totalKg: 0,
+      totalUnits: 0,
+      totalVolunteers: 0,
+    })
+  })
+
+  it("apresenta local não informado quando o campo está vazio", () => {
+    expect(getEcoDriveLocationLabel(" ")).toBe("Não informado")
+  })
+
+  it("valida uma casa decimal para peso e inteiro para unidade", () => {
+    const errors = validateEcoDriveCampaignInput({
+      name: "Eco Drive",
+      eventDate: "2026-09-22",
+      location: "",
+      volunteerCount: 1,
+      status: "concluida",
+      materials: [
+        { type: "tampinhas", quantity: 1.25, unit: "kg" },
+        { type: "esponjas", quantity: 1.5, unit: "unidade" },
+      ],
+    })
+    expect(errors.map((error) => error.field)).toEqual(["tampinhas", "esponjas"])
   })
 })

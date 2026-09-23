@@ -25,14 +25,18 @@ import { Truck } from "lucide-react"
 import {
   ECO_DRIVE_MATERIALS,
   type CreateEcoDriveCampaignInput,
+  type EcoDriveCampaign,
   type EcoDriveCampaignStatus,
   type EcoDriveMaterialType,
+  validateEcoDriveCampaignInput,
 } from "@/lib/eco-drive"
 
 interface CreateEcoDriveCampaignDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onCreate: (input: CreateEcoDriveCampaignInput) => Promise<boolean>
+  onSave?: (input: CreateEcoDriveCampaignInput) => Promise<boolean>
+  campaign?: EcoDriveCampaign | null
   isSaving?: boolean
 }
 
@@ -44,6 +48,8 @@ export function CreateEcoDriveCampaignDialog({
   open,
   onOpenChange,
   onCreate,
+  onSave,
+  campaign,
   isSaving = false,
 }: CreateEcoDriveCampaignDialogProps) {
   const [name, setName] = useState("")
@@ -57,18 +63,21 @@ export function CreateEcoDriveCampaignDialog({
 
   useEffect(() => {
     if (!open) return
-    setName("")
-    setEventDate("")
-    setLocation("")
-    setVolunteerCount("0")
-    setStatus("planejada")
-    setNotes("")
-    setMaterials(initialMaterialValues())
+    setName(campaign?.name || "")
+    setEventDate(campaign?.eventDate || "")
+    setLocation(campaign?.location || "")
+    setVolunteerCount(String(campaign?.volunteerCount ?? 0))
+    setStatus(campaign?.status || "planejada")
+    setNotes(campaign?.notes || "")
+    setMaterials(Object.fromEntries(ECO_DRIVE_MATERIALS.map((material) => [
+      material.type,
+      String(campaign?.materials.find((saved) => saved.type === material.type)?.quantity ?? ""),
+    ])) as Record<EcoDriveMaterialType, string>)
     setSubmitted(false)
-  }, [open])
+  }, [open, campaign])
 
   const volunteerNumber = Number(volunteerCount)
-  const basicFieldsInvalid = !name.trim() || !eventDate || !location.trim()
+  const basicFieldsInvalid = !name.trim() || !eventDate
   const volunteersInvalid = !Number.isInteger(volunteerNumber) || volunteerNumber < 0
   const hasNegativeValue = volunteerNumber < 0 || ECO_DRIVE_MATERIALS.some((material) => {
     const value = materials[material.type]
@@ -81,13 +90,14 @@ export function CreateEcoDriveCampaignDialog({
     return !Number.isFinite(quantity)
       || quantity < 0
       || (material.unit === "unidade" && !Number.isInteger(quantity))
+      || (material.unit === "kg" && Math.abs(Math.round(quantity * 10) - quantity * 10) > Number.EPSILON)
   })
 
   const handleCreate = async () => {
     setSubmitted(true)
     if (basicFieldsInvalid || volunteersInvalid || materialsInvalid) return
 
-    const created = await onCreate({
+    const input: CreateEcoDriveCampaignInput = {
       name,
       eventDate,
       location,
@@ -99,7 +109,9 @@ export function CreateEcoDriveCampaignDialog({
         quantity: Number(materials[material.type] || 0),
         unit: material.unit,
       })),
-    })
+    }
+    if (validateEcoDriveCampaignInput(input).length > 0) return
+    const created = await (onSave || onCreate)(input)
 
     if (created) onOpenChange(false)
   }
@@ -110,10 +122,12 @@ export function CreateEcoDriveCampaignDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Truck className="h-5 w-5 text-primary" aria-hidden="true" />
-            Nova campanha Eco Drive
+            {campaign ? "Editar campanha Eco Drive" : "Nova campanha Eco Drive"}
           </DialogTitle>
           <DialogDescription>
-            Cadastre o evento mensal e as quantidades de materiais recebidos.
+            {campaign
+              ? "Atualize os dados e as quantidades de materiais recebidos."
+              : "Cadastre o evento mensal e as quantidades de materiais recebidos."}
           </DialogDescription>
         </DialogHeader>
 
@@ -145,13 +159,12 @@ export function CreateEcoDriveCampaignDialog({
                 />
               </div>
               <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="eco-drive-location">Local *</Label>
+                <Label htmlFor="eco-drive-location">Local (opcional)</Label>
                 <Input
                   id="eco-drive-location"
                   value={location}
                   onChange={(event) => setLocation(event.target.value)}
                   placeholder="Ex: Praça da Matriz"
-                  aria-invalid={submitted && !location.trim()}
                 />
               </div>
               <div className="space-y-2">
@@ -197,7 +210,7 @@ export function CreateEcoDriveCampaignDialog({
                     id={`eco-drive-material-${material.type}`}
                     type="number"
                     min="0"
-                    step="0.01"
+                    step="0.1"
                     value={materials[material.type]}
                     onChange={(event) => setMaterials((current) => ({
                       ...current,
@@ -274,7 +287,7 @@ export function CreateEcoDriveCampaignDialog({
             Cancelar
           </Button>
           <Button onClick={handleCreate} disabled={isSaving}>
-            {isSaving ? "Salvando..." : "Salvar campanha"}
+            {isSaving ? "Salvando..." : campaign ? "Salvar alterações" : "Salvar campanha"}
           </Button>
         </DialogFooter>
       </DialogContent>

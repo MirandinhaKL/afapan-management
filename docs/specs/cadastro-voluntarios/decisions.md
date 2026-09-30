@@ -1,0 +1,21 @@
+# Decisões — Cadastro e confirmação de voluntários AFAPAN
+
+- **DEC-001:** será criada uma página integrada ao sistema, não um Google Forms.
+- **DEC-002:** haverá um único link compartilhado no grupo de WhatsApp.
+- **DEC-003:** telefone com WhatsApp será obrigatório e e-mail será opcional.
+- **DEC-004:** telefone duplicado será bloqueado e a pessoa será orientada a procurar a AFAPAN.
+- **DEC-005:** bairro e cidade serão obrigatórios; demais campos de endereço serão opcionais; CEP não será coletado.
+- **DEC-006:** escolaridade não será coletada; profissão e habilidades serão opcionais.
+- **DEC-007:** disponibilidade será informada por dias, turnos, frequência e observações, sem horários exatos.
+- **DEC-008:** atividades aceitarão múltipla escolha, `outras` e `ainda não sei`.
+- **DEC-009:** envio público inicia como `Aguardando validação`; cadastro assistido pode iniciar como `Ativo`.
+- **DEC-010:** qualquer usuário autenticado poderá alterar o prazo padrão de sete dias.
+- **DEC-011:** após o prazo, pendências passam automaticamente para `Sem confirmação`.
+- **DEC-012:** menores exigirão nome, telefone e autorização do responsável.
+- **DEC-013:** cadastros arquivados serão mantidos indefinidamente e ocultos por padrão.
+- **DEC-014:** listagem principal exibirá telefone, idade e dia/mês do aniversário.
+- **DEC-015:** correções serão orientadas pelo e-mail e WhatsApp oficiais registrados na especificação.
+- **DEC-016:** os dois textos de confirmação serão separados, obrigatórios e versionados.
+- **DEC-017:** a primeira versão não integrará nem administrará grupos do WhatsApp.
+- **DEC-018:** o envio público usará API de servidor e RPC transacional, sem acesso anônimo direto às tabelas.
+- **DEC-019:** mês e ano de início das atividades na AFAPAN serão opcionais, validados em conjunto, não poderão ser futuros e aparecerão na listagem como `MM/AAAA`.

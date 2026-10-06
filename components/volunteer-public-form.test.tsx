@@ -22,6 +22,13 @@ describe("formulário público de voluntários", () => {
     expect(screen.getByRole("button", { name: "Enviar cadastro" }).closest("form")).toHaveClass("[&_[data-slot=label]]:mb-2")
   })
 
+  it("centraliza o conteúdo do cabeçalho verde", () => {
+    render(<VolunteerPublicForm campaign={campaign} />)
+    const header = screen.getByText("Voluntariado AFAPAN").closest('[data-slot="card-header"]')
+    expect(header).toHaveClass("text-center")
+    expect(screen.getByText("Voluntariado AFAPAN").parentElement?.parentElement).toHaveClass("justify-center")
+  })
+
   it("diferencia campos obrigatórios sem escrever opcional nos demais", () => {
     render(<VolunteerPublicForm campaign={campaign} />)
     expect(screen.getByText("Nome *")).toHaveClass("font-bold")
@@ -38,6 +45,22 @@ describe("formulário público de voluntários", () => {
     expect(phone).toHaveAttribute("maxlength", "15")
   })
 
+  it("valida o e-mail preenchido ao sair do campo e aceita o campo vazio", () => {
+    render(<VolunteerPublicForm campaign={campaign} />)
+    const email = screen.getByLabelText("E-mail")
+    fireEvent.change(email, { target: { value: "karine@afapan" } })
+    fireEvent.blur(email)
+    expect(screen.getByRole("alert")).toHaveTextContent("Informe um e-mail válido.")
+    fireEvent.change(email, { target: { value: "karine@afapan.com.br" } })
+    expect(screen.queryByText("Informe um e-mail válido.")).not.toBeInTheDocument()
+  })
+
+  it("usa o título Endereço", () => {
+    render(<VolunteerPublicForm campaign={campaign} />)
+    expect(screen.getByRole("heading", { name: "Endereço" })).toBeInTheDocument()
+    expect(screen.queryByText("Onde você mora?")).not.toBeInTheDocument()
+  })
+
   it("permite marcar e desmarcar todas as atividades", async () => {
     const user = userEvent.setup()
     render(<VolunteerPublicForm campaign={campaign} />)
@@ -48,6 +71,14 @@ describe("formulário público de voluntários", () => {
 
     await user.click(markAll)
     for (const activity of VOLUNTEER_ACTIVITIES) expect(screen.getByLabelText(activity.label)).not.toBeChecked()
+  })
+
+  it("não apresenta a descrição de outras atividades como obrigatória", async () => {
+    const user = userEvent.setup()
+    render(<VolunteerPublicForm campaign={campaign} />)
+    await user.click(screen.getByLabelText("Outras atividades"))
+    expect(screen.getByLabelText("Quais outras atividades?")).toBeInTheDocument()
+    expect(screen.queryByLabelText("Quais outras atividades? *")).not.toBeInTheDocument()
   })
 
   it("valida a data de nascimento assim que o preenchimento termina", () => {

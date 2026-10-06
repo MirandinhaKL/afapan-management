@@ -6,6 +6,7 @@ import {
   formatBirthday,
   isoDateToBrazilian,
   getBirthDateValidationError,
+  getEmailValidationError,
   maskBrazilianDate,
   maskBrazilianPhone,
   maskMonthYear,
@@ -59,6 +60,12 @@ describe("domínio de voluntários", () => {
     expect(getBirthDateValidationError("05/10/2000", today)).toBeNull()
   })
 
+  it("aceita e-mail vazio, mas rejeita formato preenchido inválido", () => {
+    expect(getEmailValidationError("")).toBeNull()
+    expect(getEmailValidationError("ana@afapan.com.br")).toBeNull()
+    expect(getEmailValidationError("ana@afapan")).toBe("Informe um e-mail válido.")
+  })
+
   it("formata aniversário sem revelar o ano", () => {
     expect(formatBirthday("03/02/1990")).toBe("03/02")
   })
@@ -79,6 +86,10 @@ describe("domínio de voluntários", () => {
 
   it("aceita os novos campos de perfil vazios e exige somente frequência", () => {
     expect(validateVolunteerInput(validInput, new Date(2026, 8, 29))).toEqual([])
+  })
+
+  it("não exige descrição quando outras atividades está selecionada", () => {
+    expect(validateVolunteerInput({ ...validInput, activities: ["outras"], otherActivityDescription: "" }, new Date(2026, 8, 29))).toEqual([])
   })
 
   it("aceita recusa expressa de uso da imagem", () => {

@@ -18,6 +18,7 @@ import {
   VOLUNTEER_COMMUNICATION_CHANNELS,
   VOLUNTEER_FREQUENCIES,
   getBirthDateValidationError,
+  getEmailValidationError,
   isMinor,
   maskBrazilianDate,
   maskBrazilianPhone,
@@ -58,6 +59,7 @@ export function VolunteerPublicForm({ campaign }: { campaign: CampaignData }) {
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [birthDateError, setBirthDateError] = useState<string | null>(null)
+  const [emailError, setEmailError] = useState<string | null>(null)
   const [invalidFields, setInvalidFields] = useState<string[]>([])
   const minor = useMemo(() => Boolean(value.birthDate && isMinor(value.birthDate)), [value.birthDate])
   const allActivitiesSelected = VOLUNTEER_ACTIVITIES.every((item) => value.activities.includes(item.value))
@@ -96,6 +98,17 @@ export function VolunteerPublicForm({ campaign }: { campaign: CampaignData }) {
     else setBirthDateError(null)
   }
 
+  const validateEmail = (email: string) => {
+    const validationError = getEmailValidationError(email)
+    setEmailError(validationError)
+    setInvalidFields((fields) => validationError ? Array.from(new Set([...fields, "email"])) : fields.filter((item) => item !== "email"))
+  }
+
+  const handleEmail = (next: string) => {
+    update("email", next)
+    if (emailError || !next.trim()) validateEmail(next)
+  }
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
     const errors = validateVolunteerInput(value)
@@ -126,8 +139,8 @@ export function VolunteerPublicForm({ campaign }: { campaign: CampaignData }) {
   if (submitted) return <Card className="w-full max-w-2xl"><CardContent className="space-y-4 py-10 text-center"><CheckCircle2 className="mx-auto h-12 w-12 text-green-600" /><h1 className="text-2xl font-bold">Cadastro recebido!</h1><p className="text-muted-foreground">A AFAPAN fará a validação dos seus dados antes de confirmar sua participação como voluntário(a).</p></CardContent></Card>
 
   return <Card className="w-full max-w-4xl overflow-hidden py-0 shadow-lg">
-    <CardHeader className="border-b bg-primary text-primary-foreground">
-      <div className="flex items-center gap-3"><HeartHandshake className="h-8 w-8" /><div><CardTitle className="text-2xl">Voluntariado AFAPAN</CardTitle><CardDescription className="text-primary-foreground/80">{campaign.name} · Responda até {new Date(campaign.deadline).toLocaleDateString("pt-BR")}</CardDescription></div></div>
+    <CardHeader className="border-b bg-primary text-center text-primary-foreground">
+      <div className="flex items-center justify-center gap-3"><HeartHandshake className="h-8 w-8" /><div><CardTitle className="text-2xl">Voluntariado AFAPAN</CardTitle><CardDescription className="text-primary-foreground/80">{campaign.name} · Responda até {new Date(campaign.deadline).toLocaleDateString("pt-BR")}</CardDescription></div></div>
     </CardHeader>
     <div className="relative aspect-[4/3] w-full bg-muted sm:aspect-[16/7]"><Image src="/voluntarios-afapan-rosto-crianca-desfocado.png" alt="Voluntários da AFAPAN reunidos" fill priority sizes="(max-width: 896px) 100vw, 896px" className="object-cover object-center" /></div>
     <CardContent className="p-5 sm:p-8">
@@ -144,11 +157,11 @@ export function VolunteerPublicForm({ campaign }: { campaign: CampaignData }) {
           <div><Label className="font-bold" htmlFor="lastName">Sobrenome *</Label><Input id="lastName" autoComplete="family-name" value={value.lastName} onChange={(event) => update("lastName", event.target.value)} aria-invalid={invalidFields.includes("lastName")} /></div>
           <div><Label className="font-bold" htmlFor="birthDate">Data de nascimento *</Label><Input id="birthDate" inputMode="numeric" placeholder="dd/mm/aaaa" maxLength={10} value={value.birthDate} onChange={(event) => handleBirthDate(event.target.value)} onBlur={() => validateBirthDate(value.birthDate)} aria-invalid={Boolean(birthDateError) || invalidFields.includes("birthDate")} aria-describedby={birthDateError ? "birthDate-error" : undefined} />{birthDateError && <p id="birthDate-error" role="alert" className="mt-2 text-sm text-destructive">{birthDateError}</p>}</div>
           <div><Label className="font-bold" htmlFor="phone">Telefone com WhatsApp *</Label><Input id="phone" inputMode="tel" autoComplete="tel" placeholder="(54) 99999-9999" maxLength={15} value={value.phone} onChange={(event) => update("phone", maskBrazilianPhone(event.target.value))} aria-invalid={invalidFields.includes("phone")} /></div>
-          <div><Label htmlFor="email">E-mail</Label><Input id="email" type="email" value={value.email} onChange={(event) => update("email", event.target.value)} /></div>
+          <div><Label htmlFor="email">E-mail</Label><Input id="email" type="email" autoComplete="email" value={value.email} onChange={(event) => handleEmail(event.target.value)} onBlur={() => validateEmail(value.email || "")} aria-invalid={Boolean(emailError)} aria-describedby={emailError ? "email-error" : undefined} />{emailError && <p id="email-error" role="alert" className="mt-2 text-sm text-destructive">{emailError}</p>}</div>
           <div><Label htmlFor="activityStart">Início das atividades na AFAPAN</Label><Input id="activityStart" inputMode="numeric" placeholder="MM/AAAA" maxLength={7} value={startMonth} onChange={(event) => handleStartMonth(event.target.value)} aria-invalid={invalidFields.includes("activityStartMonth")} /></div>
         </div></section>
 
-        <section className="space-y-4 border-t pt-6"><h2 className="text-xl font-semibold">Onde você mora?</h2><div className="grid gap-4 sm:grid-cols-2">
+        <section className="space-y-4 border-t pt-6"><h2 className="text-xl font-semibold">Endereço</h2><div className="grid gap-4 sm:grid-cols-2">
           <div><Label className="font-bold" htmlFor="neighborhood">Bairro *</Label><Input id="neighborhood" value={value.neighborhood} onChange={(event) => update("neighborhood", event.target.value)} aria-invalid={invalidFields.includes("neighborhood")} /></div>
           <div><Label className="font-bold" htmlFor="city">Cidade *</Label><Input id="city" value={value.city} onChange={(event) => update("city", event.target.value)} aria-invalid={invalidFields.includes("city")} /></div>
           <div><Label htmlFor="street">Rua</Label><Input id="street" value={value.street} onChange={(event) => update("street", event.target.value)} /></div>
@@ -160,7 +173,7 @@ export function VolunteerPublicForm({ campaign }: { campaign: CampaignData }) {
         <section className="space-y-4 border-t pt-6"><h2 className="text-xl font-semibold">Como você gostaria de contribuir?</h2><div className="grid gap-4 sm:grid-cols-2">
           <div><Label htmlFor="profession">Profissão</Label><Input id="profession" value={value.profession} onChange={(event) => update("profession", event.target.value)} /></div>
           <div><Label htmlFor="skills">Habilidades e experiências</Label><Textarea id="skills" value={value.skills} onChange={(event) => update("skills", event.target.value)} /></div>
-        </div><fieldset><legend className="mb-3 font-bold">Atividades de interesse *</legend><div className="mb-3"><CheckOption label="Marcar todas as atividades" checked={allActivitiesSelected} onChange={toggleAllActivities} /></div><div id="activities" tabIndex={-1} className="grid gap-2 sm:grid-cols-2">{VOLUNTEER_ACTIVITIES.map((item) => <CheckOption key={item.value} label={item.label} checked={value.activities.includes(item.value)} onChange={(checked) => toggleActivity(item.value, checked)} />)}</div></fieldset>{value.activities.includes("outras") && <div><Label className="font-bold" htmlFor="otherActivityDescription">Quais outras atividades? *</Label><Textarea id="otherActivityDescription" value={value.otherActivityDescription} onChange={(event) => update("otherActivityDescription", event.target.value)} /></div>}</section>
+        </div><fieldset><legend className="mb-3 font-bold">Atividades de interesse *</legend><div className="mb-3"><CheckOption label="Marcar todas as atividades" checked={allActivitiesSelected} onChange={toggleAllActivities} /></div><div id="activities" tabIndex={-1} className="grid gap-2 sm:grid-cols-2">{VOLUNTEER_ACTIVITIES.map((item) => <CheckOption key={item.value} label={item.label} checked={value.activities.includes(item.value)} onChange={(checked) => toggleActivity(item.value, checked)} />)}</div></fieldset>{value.activities.includes("outras") && <div><Label htmlFor="otherActivityDescription">Quais outras atividades?</Label><Textarea id="otherActivityDescription" value={value.otherActivityDescription} onChange={(event) => update("otherActivityDescription", event.target.value)} /></div>}</section>
 
         <section className="space-y-4 border-t pt-6"><h2 className="text-xl font-semibold">Disponibilidade</h2><div><Label className="font-bold" htmlFor="frequency">Com que frequência você poderia participar? *</Label><Select value={value.frequency} onValueChange={(next: VolunteerFrequency) => update("frequency", next)}><SelectTrigger id="frequency"><SelectValue /></SelectTrigger><SelectContent>{VOLUNTEER_FREQUENCIES.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent></Select></div></section>
 

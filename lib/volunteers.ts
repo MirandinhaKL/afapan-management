@@ -209,6 +209,11 @@ export function getBirthDateValidationError(birthDate: string, today = new Date(
   return null
 }
 
+export function getEmailValidationError(email?: string) {
+  if (!email?.trim()) return null
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) ? null : "Informe um e-mail válido."
+}
+
 export function formatBirthday(birthDate: string) {
   const birth = parseLocalDate(birthDate)
   if (!birth) return "Não informado"
@@ -239,12 +244,12 @@ export function validateVolunteerInput(input: VolunteerInput, today = new Date()
   const birthDateError = getBirthDateValidationError(input.birthDate, today)
   if (birthDateError) errors.push({ field: "birthDate", message: birthDateError })
   if (!isValidBrazilianPhone(input.phone)) errors.push({ field: "phone", message: "Informe um telefone com DDD válido." })
-  if (input.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email.trim())) errors.push({ field: "email", message: "Informe um e-mail válido." })
+  const emailError = getEmailValidationError(input.email)
+  if (emailError) errors.push({ field: "email", message: emailError })
   if (!input.neighborhood?.trim()) errors.push({ field: "neighborhood", message: "Informe o bairro." })
   if (!input.city?.trim()) errors.push({ field: "city", message: "Informe a cidade." })
   if (!VOLUNTEER_FREQUENCIES.some((item) => item.value === input.frequency)) errors.push({ field: "frequency", message: "Selecione uma frequência válida." })
   if (!Array.isArray(input.activities) || input.activities.length === 0) errors.push({ field: "activities", message: "Selecione ao menos uma atividade." })
-  if (input.activities?.includes("outras") && !input.otherActivityDescription?.trim()) errors.push({ field: "otherActivityDescription", message: "Descreva as outras atividades." })
   if (!validateActivityStart(input.activityStartMonth, input.activityStartYear, today)) errors.push({ field: "activityStartMonth", message: "Informe mês e ano válidos e não futuros." })
   if (input.previousVolunteering && !PREVIOUS_VOLUNTEERING_OPTIONS.some((item) => item.value === input.previousVolunteering)) errors.push({ field: "previousVolunteering", message: "Selecione uma opção válida." })
   if (input.communicationChannels?.some((channel) => !VOLUNTEER_COMMUNICATION_CHANNELS.some((item) => item.value === channel))) errors.push({ field: "communicationChannels", message: "Selecione canais válidos." })

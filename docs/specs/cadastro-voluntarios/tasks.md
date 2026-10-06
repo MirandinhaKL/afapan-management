@@ -106,6 +106,12 @@
   - Adicionar e testar a seleção ou remoção de todas as atividades.
   - Validar e testar a data de nascimento ao concluir o preenchimento do campo.
 
+- [x] **T-021 — Refinar validações e textos do formulário público** (`RF-052`–`RF-055`, `CA-047`–`CA-050`)
+  - Validar junto ao campo somente e-mails preenchidos.
+  - Centralizar o conteúdo do cabeçalho e renomear a seção de localização para `Endereço`.
+  - Tornar facultativa a descrição de `Outras atividades` no domínio e na interface.
+  - Cobrir os quatro comportamentos com testes unitários e de componente.
+
 ## Dependências entre tarefas
 
 As tarefas `T-001` a `T-010` foram implementadas localmente conforme o plano anterior. `T-013` a `T-018` compõem a revisão atual. A migração incremental `003` foi aplicada e verificada no Supabase em 2026-10-01. `T-011` e a parte remota de `T-012` permanecem parcialmente pendentes até a validação completa de permissões, aplicação do agendamento e publicação controlada.

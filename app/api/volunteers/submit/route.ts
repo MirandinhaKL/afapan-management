@@ -12,9 +12,6 @@ export async function POST(request: Request) {
   try {
     const input = await request.json() as PublicVolunteerPayload
     if (input.website) return NextResponse.json({ success: true }, { status: 200 })
-    if (!input.token || !/^[0-9a-f-]{36}$/i.test(input.token)) {
-      return NextResponse.json({ error: "Formulário indisponível." }, { status: 400 })
-    }
     const errors = validateVolunteerInput(input)
     if (errors.length > 0) return NextResponse.json({ error: errors[0].message, fields: errors.map((item) => item.field) }, { status: 400 })
     const secret = process.env.VOLUNTEER_FORM_RATE_LIMIT_SECRET
@@ -39,7 +36,6 @@ export async function POST(request: Request) {
       .insert({ source_hash: sourceHash, phone_hash: phoneHash })
     if (attemptInsertError) throw attemptInsertError
     const { error } = await supabase.rpc("submit_volunteer_registration", {
-      p_campaign_token: input.token,
       p_payload: payload,
       p_source_hash: sourceHash,
       p_phone_hash: phoneHash,

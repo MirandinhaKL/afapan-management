@@ -41,6 +41,13 @@ create table if not exists public.volunteers (
   estado text,
   profissao text,
   habilidades text,
+  expectativas text,
+  como_conheceu text,
+  experiencia_voluntariado text,
+  canais_comunicacao text[] not null default '{}',
+  ideia_projeto text,
+  uso_imagem_autorizado boolean,
+  historia_afapan text,
   inicio_atividades_mes smallint,
   inicio_atividades_ano smallint,
   responsavel_nome text,
@@ -61,6 +68,8 @@ create table if not exists public.volunteers (
   check (btrim(bairro) <> '' and btrim(cidade) <> ''),
   check (status in ('aguardando_validacao','ativo','sem_confirmacao','inativo')),
   check (origem in ('publico','assistido')),
+  check (experiencia_voluntariado is null or experiencia_voluntariado in ('atualmente','anteriormente','nunca')),
+  check (canais_comunicacao <@ array['instagram','facebook','radio_tv_jornal','site','whatsapp','nao_acompanho']::text[]),
   check (
     (inicio_atividades_mes is null and inicio_atividades_ano is null)
     or (
@@ -85,16 +94,28 @@ create index if not exists volunteers_status_idx on public.volunteers (status) w
 create index if not exists volunteers_location_idx on public.volunteers (cidade, bairro) where arquivado_em is null;
 create index if not exists volunteers_name_idx on public.volunteers (sobrenome, nome);
 
+alter table public.volunteers add column if not exists expectativas text;
+alter table public.volunteers add column if not exists como_conheceu text;
+alter table public.volunteers add column if not exists experiencia_voluntariado text;
+alter table public.volunteers add column if not exists canais_comunicacao text[] not null default '{}';
+alter table public.volunteers add column if not exists ideia_projeto text;
+alter table public.volunteers add column if not exists uso_imagem_autorizado boolean;
+alter table public.volunteers add column if not exists historia_afapan text;
+
 create table if not exists public.volunteer_availability (
   volunteer_id uuid primary key references public.volunteers(id) on delete cascade,
-  dias text[] not null,
-  turnos text[] not null,
+  dias text[],
+  turnos text[],
   frequencia text not null,
   observacoes text,
-  check (cardinality(dias) > 0 and dias <@ array['segunda','terca','quarta','quinta','sexta','sabado','domingo']::text[]),
-  check (cardinality(turnos) > 0 and turnos <@ array['manha','tarde','noite']::text[]),
-  check (frequencia in ('eventual','semanal','quinzenal','mensal'))
+  check (frequencia in ('diaria','semanal','quinzenal','mensal','eventual'))
 );
+
+alter table public.volunteer_availability alter column dias drop not null;
+alter table public.volunteer_availability alter column turnos drop not null;
+alter table public.volunteer_availability drop constraint if exists volunteer_availability_frequencia_check;
+alter table public.volunteer_availability add constraint volunteer_availability_frequencia_check
+  check (frequencia in ('diaria','semanal','quinzenal','mensal','eventual'));
 
 create table if not exists public.volunteer_interests (
   volunteer_id uuid not null references public.volunteers(id) on delete cascade,
@@ -190,13 +211,14 @@ drop trigger if exists volunteers_audit on public.volunteers;
 create trigger volunteers_audit after insert or update on public.volunteers
 for each row execute function public.volunteer_audit_changes();
 
+drop function if exists public.submit_volunteer_registration(uuid,jsonb,text,text);
 create or replace function public.submit_volunteer_registration(
-  p_campaign_token uuid, p_payload jsonb, p_source_hash text, p_phone_hash text
+  p_payload jsonb, p_source_hash text, p_phone_hash text
 ) returns uuid security definer language plpgsql set search_path = '' as $$
 declare v_campaign public.volunteer_campaigns%rowtype; v_id uuid; v_birth date; v_phone text; v_origin text := 'publico';
 begin
   select * into v_campaign from public.volunteer_campaigns
-  where public_token=p_campaign_token and ativa and prazo >= now() for update;
+  where ativa and prazo >= now() for update;
   if not found then raise exception 'FORM_UNAVAILABLE' using errcode='P0002'; end if;
   v_birth := (p_payload->>'birthDate')::date;
   v_phone := p_payload->>'normalizedPhone';
@@ -205,19 +227,22 @@ begin
   end if;
   insert into public.volunteers(
     campaign_id,nome,sobrenome,data_nascimento,telefone,telefone_normalizado,email,rua,numero,complemento,bairro,cidade,estado,
-    profissao,habilidades,inicio_atividades_mes,inicio_atividades_ano,responsavel_nome,responsavel_telefone,
+    profissao,habilidades,expectativas,como_conheceu,experiencia_voluntariado,canais_comunicacao,ideia_projeto,
+    uso_imagem_autorizado,historia_afapan,inicio_atividades_mes,inicio_atividades_ano,responsavel_nome,responsavel_telefone,
     responsavel_telefone_normalizado,responsavel_autorizou,status,origem
   ) values (
     v_campaign.id,btrim(p_payload->>'firstName'),btrim(p_payload->>'lastName'),v_birth,p_payload->>'phone',v_phone,
     nullif(btrim(p_payload->>'email'),''),nullif(btrim(p_payload->>'street'),''),nullif(btrim(p_payload->>'number'),''),
     nullif(btrim(p_payload->>'complement'),''),btrim(p_payload->>'neighborhood'),btrim(p_payload->>'city'),nullif(btrim(p_payload->>'state'),''),
-    nullif(btrim(p_payload->>'profession'),''),nullif(btrim(p_payload->>'skills'),''),(p_payload->>'activityStartMonth')::smallint,
+    nullif(btrim(p_payload->>'profession'),''),nullif(btrim(p_payload->>'skills'),''),nullif(btrim(p_payload->>'expectations'),''),
+    nullif(btrim(p_payload->>'discoverySource'),''),nullif(p_payload->>'previousVolunteering',''),
+    array(select jsonb_array_elements_text(coalesce(p_payload->'communicationChannels','[]'::jsonb))),nullif(btrim(p_payload->>'projectIdea'),''),
+    case when p_payload->'imageUseAuthorized' is null or p_payload->'imageUseAuthorized'='null'::jsonb then null else (p_payload->>'imageUseAuthorized')::boolean end,
+    nullif(btrim(p_payload->>'afapanStory'),''),(p_payload->>'activityStartMonth')::smallint,
     (p_payload->>'activityStartYear')::smallint,nullif(btrim(p_payload->>'guardianName'),''),nullif(btrim(p_payload->>'guardianPhone'),''),
     nullif(btrim(p_payload->>'normalizedGuardianPhone'),''),coalesce((p_payload->>'guardianAuthorized')::boolean,false),'aguardando_validacao',v_origin
   ) returning id into v_id;
-  insert into public.volunteer_availability(volunteer_id,dias,turnos,frequencia,observacoes)
-  values(v_id,array(select jsonb_array_elements_text(p_payload->'availableDays')),array(select jsonb_array_elements_text(p_payload->'availableShifts')),
-    p_payload->>'frequency',nullif(btrim(p_payload->>'availabilityNotes'),''));
+  insert into public.volunteer_availability(volunteer_id,frequencia) values(v_id,p_payload->>'frequency');
   insert into public.volunteer_interests(volunteer_id,atividade,outra_descricao)
   select v_id,value,nullif(btrim(p_payload->>'otherActivityDescription'),'') from jsonb_array_elements_text(p_payload->'activities');
   insert into public.volunteer_consents(volunteer_id,tipo,versao,texto,origem) values
@@ -238,12 +263,16 @@ begin
   if auth.uid() is null then raise exception 'AUTH_REQUIRED' using errcode='42501'; end if;
   if v_is_new then
     insert into public.volunteers(nome,sobrenome,data_nascimento,telefone,telefone_normalizado,email,rua,numero,complemento,bairro,cidade,estado,
-      profissao,habilidades,inicio_atividades_mes,inicio_atividades_ano,responsavel_nome,responsavel_telefone,responsavel_telefone_normalizado,
+      profissao,habilidades,expectativas,como_conheceu,experiencia_voluntariado,canais_comunicacao,ideia_projeto,uso_imagem_autorizado,
+      historia_afapan,inicio_atividades_mes,inicio_atividades_ano,responsavel_nome,responsavel_telefone,responsavel_telefone_normalizado,
       responsavel_autorizou,status,origem,criado_por,validado_por,validado_em)
     values(btrim(p_payload->>'firstName'),btrim(p_payload->>'lastName'),(p_payload->>'birthDate')::date,p_payload->>'phone',p_payload->>'normalizedPhone',
       nullif(btrim(p_payload->>'email'),''),nullif(btrim(p_payload->>'street'),''),nullif(btrim(p_payload->>'number'),''),nullif(btrim(p_payload->>'complement'),''),
       btrim(p_payload->>'neighborhood'),btrim(p_payload->>'city'),nullif(btrim(p_payload->>'state'),''),nullif(btrim(p_payload->>'profession'),''),
-      nullif(btrim(p_payload->>'skills'),''),(p_payload->>'activityStartMonth')::smallint,(p_payload->>'activityStartYear')::smallint,
+      nullif(btrim(p_payload->>'skills'),''),nullif(btrim(p_payload->>'expectations'),''),nullif(btrim(p_payload->>'discoverySource'),''),
+      nullif(p_payload->>'previousVolunteering',''),array(select jsonb_array_elements_text(coalesce(p_payload->'communicationChannels','[]'::jsonb))),
+      nullif(btrim(p_payload->>'projectIdea'),''),case when p_payload->'imageUseAuthorized' is null or p_payload->'imageUseAuthorized'='null'::jsonb then null else (p_payload->>'imageUseAuthorized')::boolean end,
+      nullif(btrim(p_payload->>'afapanStory'),''),(p_payload->>'activityStartMonth')::smallint,(p_payload->>'activityStartYear')::smallint,
       nullif(btrim(p_payload->>'guardianName'),''),nullif(btrim(p_payload->>'guardianPhone'),''),nullif(btrim(p_payload->>'normalizedGuardianPhone'),''),
       coalesce((p_payload->>'guardianAuthorized')::boolean,false),coalesce(p_payload->>'status','ativo'),'assistido',auth.uid(),auth.uid(),now()) returning id into v_id;
   else
@@ -254,6 +283,12 @@ begin
       telefone=p_payload->>'phone',telefone_normalizado=p_payload->>'normalizedPhone',email=nullif(btrim(p_payload->>'email'),''),rua=nullif(btrim(p_payload->>'street'),''),
       numero=nullif(btrim(p_payload->>'number'),''),complemento=nullif(btrim(p_payload->>'complement'),''),bairro=btrim(p_payload->>'neighborhood'),
       cidade=btrim(p_payload->>'city'),estado=nullif(btrim(p_payload->>'state'),''),profissao=nullif(btrim(p_payload->>'profession'),''),habilidades=nullif(btrim(p_payload->>'skills'),''),
+      expectativas=nullif(btrim(p_payload->>'expectations'),''),como_conheceu=nullif(btrim(p_payload->>'discoverySource'),''),
+      experiencia_voluntariado=nullif(p_payload->>'previousVolunteering',''),
+      canais_comunicacao=array(select jsonb_array_elements_text(coalesce(p_payload->'communicationChannels','[]'::jsonb))),
+      ideia_projeto=nullif(btrim(p_payload->>'projectIdea'),''),
+      uso_imagem_autorizado=case when p_payload->'imageUseAuthorized' is null or p_payload->'imageUseAuthorized'='null'::jsonb then null else (p_payload->>'imageUseAuthorized')::boolean end,
+      historia_afapan=nullif(btrim(p_payload->>'afapanStory'),''),
       inicio_atividades_mes=(p_payload->>'activityStartMonth')::smallint,inicio_atividades_ano=(p_payload->>'activityStartYear')::smallint,
       responsavel_nome=nullif(btrim(p_payload->>'guardianName'),''),responsavel_telefone=nullif(btrim(p_payload->>'guardianPhone'),''),
       responsavel_telefone_normalizado=nullif(btrim(p_payload->>'normalizedGuardianPhone'),''),responsavel_autorizou=coalesce((p_payload->>'guardianAuthorized')::boolean,false),
@@ -261,9 +296,9 @@ begin
       validado_em=case when p_payload->>'status'='ativo' then now() else validado_em end
     where id=p_id returning id into v_id;
   end if;
-  insert into public.volunteer_availability(volunteer_id,dias,turnos,frequencia,observacoes)
-  values(v_id,array(select jsonb_array_elements_text(p_payload->'availableDays')),array(select jsonb_array_elements_text(p_payload->'availableShifts')),p_payload->>'frequency',nullif(btrim(p_payload->>'availabilityNotes'),''))
-  on conflict(volunteer_id) do update set dias=excluded.dias,turnos=excluded.turnos,frequencia=excluded.frequencia,observacoes=excluded.observacoes;
+  insert into public.volunteer_availability(volunteer_id,frequencia)
+  values(v_id,p_payload->>'frequency')
+  on conflict(volunteer_id) do update set frequencia=excluded.frequencia,dias=null,turnos=null,observacoes=null;
   delete from public.volunteer_interests where volunteer_id=v_id;
   insert into public.volunteer_interests(volunteer_id,atividade,outra_descricao)
   select v_id,value,nullif(btrim(p_payload->>'otherActivityDescription'),'') from jsonb_array_elements_text(p_payload->'activities');
@@ -362,8 +397,8 @@ create policy "Authenticated users can view volunteer consents" on public.volunt
 create policy "Authenticated users can view volunteer status history" on public.volunteer_status_history for select to authenticated using (true);
 create policy "Authenticated users can view volunteer audit" on public.volunteer_audit_log for select to authenticated using (true);
 
-revoke all on function public.submit_volunteer_registration(uuid,jsonb,text,text) from public,anon,authenticated;
-grant execute on function public.submit_volunteer_registration(uuid,jsonb,text,text) to service_role;
+revoke all on function public.submit_volunteer_registration(jsonb,text,text) from public,anon,authenticated;
+grant execute on function public.submit_volunteer_registration(jsonb,text,text) to service_role;
 revoke all on function public.save_assisted_volunteer(uuid,timestamptz,jsonb) from public,anon;
 revoke all on function public.set_volunteer_status(uuid,timestamptz,text) from public,anon;
 revoke all on function public.set_volunteer_archived(uuid,timestamptz,boolean) from public,anon;

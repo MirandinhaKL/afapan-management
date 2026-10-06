@@ -9,13 +9,14 @@ describe("envio público de voluntários", () => {
     expect(hash).not.toContain("192.0.2.1")
   })
 
-  it("normaliza os telefones antes da RPC", () => {
+  it("normaliza telefones e converte data brasileira antes da RPC", () => {
     const payload = prepareVolunteerRpcPayload({
-      firstName: "Ana", lastName: "Silva", birthDate: "1990-01-01", phone: "(54) 99999-1234",
-      neighborhood: "Centro", city: "Farroupilha", availableDays: ["sabado"], availableShifts: ["manha"],
-      frequency: "mensal", activities: ["plantio_mudas"], privacyAccepted: true, participationAccepted: true,
+      firstName: "Ana", lastName: "Silva", birthDate: "15/03/1990", phone: "(54) 99999-1234",
+      neighborhood: "Centro", city: "Farroupilha", frequency: "mensal", activities: ["plantio_mudas"],
+      privacyAccepted: true, participationAccepted: true,
     })
     expect(payload.normalizedPhone).toBe("5554999991234")
+    expect(payload.birthDate).toBe("1990-03-15")
     expect(payload.activityStartMonth).toBeNull()
   })
 

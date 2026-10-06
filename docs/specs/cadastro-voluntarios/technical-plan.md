@@ -1,15 +1,16 @@
 # Plano técnico — Cadastro e confirmação de voluntários AFAPAN
 
-- **Status:** Aprovado
-- **Data de aprovação:** 2026-09-29
+- **Status:** Aprovado e implementado localmente; migração `003` validada no Supabase e demais etapas remotas pendentes
+- **Aprovação anterior:** 2026-09-29
 - **Especificação:** `./specification.md`
-- **Data:** 2026-09-29
+- **Última atualização:** 2026-10-01
+- **Aprovação da revisão:** 2026-10-01
 
 ## 1. Resumo da solução
 
 O módulo será dividido em duas superfícies:
 
-1. uma página pública, acessada por um único link de campanha, para o voluntário preencher o formulário sem login;
+1. uma página pública, acessada pelo endereço fixo `/voluntariado/cadastro`, para o voluntário preencher o formulário sem login; a campanha ativa será localizada internamente;
 2. uma página interna no painel atual para usuários autenticados cadastrarem, validarem, consultarem, editarem, arquivarem e restaurarem voluntários.
 
 O envio público passará por uma rota de API do Next.js e por uma função transacional do PostgreSQL. O navegador público não terá acesso direto às tabelas. O telefone será normalizado e terá unicidade garantida no banco. Auditoria, consentimentos e mudanças de situação serão persistidos separadamente.
@@ -17,22 +18,23 @@ O envio público passará por uma rota de API do Next.js e por uma função tran
 ## 2. Impacto no sistema atual
 
 - **Navegação:** novo item `Voluntários` no menu autenticado.
-- **Página pública:** nova rota `app/voluntariado/[token]/page.tsx`.
-- **APIs:** endpoints públicos para consultar os dados mínimos da campanha e enviar o formulário.
+- **Página pública:** substituir a rota com token por `app/voluntariado/cadastro/page.tsx`; os links de teste antigos não serão preservados.
+- **APIs:** endpoint público para consultar a campanha ativa, sem token na URL, e endpoint para enviar o formulário associado à campanha resolvida no servidor.
 - **Frontend interno:** listagem, filtros, detalhes, cadastro assistido, edição, validação, arquivamento e restauração.
 - **Banco:** novas tabelas, índices, funções, gatilhos de auditoria e políticas RLS.
 - **Automação:** processamento periódico de campanhas expiradas.
 - **Configuração:** novo segredo de servidor para produzir identificadores irreversíveis usados no controle de abuso.
 - **Dependências:** nenhuma biblioteca npm adicional prevista.
+- **Ativo visual:** fotografia preparada em `public/voluntarios-afapan-rosto-crianca-desfocado.png`, otimizada para web durante a implementação.
 
 ## 3. Modelo de dados proposto
 
 ### `volunteer_campaigns`
 
-- Identificação, nome, token público aleatório, prazo, situação e textos/versionamento do formulário.
+- Identificação, nome, prazo, situação e textos/versionamento do formulário.
 - Autoria e datas de criação e atualização.
-- Apenas uma campanha poderá ser marcada como principal por vez.
-- O token permitirá abrir o mesmo formulário para todos, sem expor identificadores sequenciais.
+- Apenas uma campanha poderá estar ativa para o formulário público por vez, com restrição ou RPC transacional que impeça ambiguidade.
+- O token legado deixará de fazer parte do contrato público; como o módulo ainda está em testes, não será necessária rota de compatibilidade.
 
 ### `volunteers`
 
@@ -40,6 +42,8 @@ O envio público passará por uma rota de API do Next.js e por uma função tran
 - Telefone original e telefone normalizado.
 - Endereço com bairro e cidade obrigatórios e demais campos opcionais.
 - Profissão, habilidades e situação.
+- Expectativas sobre a AFAPAN, forma como conheceu a associação, experiência anterior de voluntariado, canais de comunicação, ideia de projeto e história de vínculo, todos opcionais.
+- Autorização opcional de uso de imagem com três estados possíveis: não respondido, autorizado ou não autorizado.
 - Mês e ano opcionais de início das atividades na AFAPAN, armazenados em colunas numéricas separadas.
 - Origem `publico` ou `assistido` e campanha associada quando aplicável.
 - Dados do responsável e confirmação de autorização quando menor de idade.
@@ -49,8 +53,8 @@ O envio público passará por uma rota de API do Next.js e por uma função tran
 ### `volunteer_availability`
 
 - Relação individual com o voluntário.
-- Dias da semana e turnos como conjuntos validados.
-- Frequência e observações opcionais.
+- Somente frequência, restrita aos códigos estáveis `diaria`, `semanal`, `quinzenal`, `mensal` e `eventual`.
+- Colunas locais anteriores de dias, turnos e observações serão removidas do script ainda não publicado; se a migração já tiver sido aplicada em algum ambiente, a correção será aditiva e deixará de utilizar essas colunas antes de eventual remoção posterior.
 
 ### `volunteer_interests`
 
@@ -84,17 +88,21 @@ O envio público passará por uma rota de API do Next.js e por uma função tran
 - Cálculo de idade ocorrerá a partir da data de nascimento e da data corrente, com teste para aniversário ainda não ocorrido no ano.
 - Validação de menor exigirá nome, telefone e autorização do responsável.
 - Início das atividades aceitará somente mês e ano preenchidos em conjunto, com competência não futura.
-- Disponibilidade aceitará múltiplos dias e turnos, com frequências predefinidas.
+- Disponibilidade aceitará somente uma frequência predefinida, apresentada como `Diariamente`, `Uma vez por semana`, `A cada 15 dias`, `Uma vez por mês` ou `Eventualmente`.
+- Datas completas serão digitadas e exibidas como `dd/mm/aaaa`, validadas por parser próprio e convertidas para ISO somente nos contratos internos e na persistência.
+- Mês e ano continuarão no padrão visual `MM/AAAA` e serão convertidos para as colunas numéricas já previstas.
+- Campos de perfil incorporados do formulário de referência serão opcionais e aceitarão ausência sem bloquear o cadastro.
+- A autorização de uso de imagem aceitará `true`, `false` ou `null`; `false` e `null` não impedirão o cadastro.
 - `outras` exigirá descrição; `ainda_nao_sei` não exigirá.
 - Regras do cliente, API e banco deverão produzir o mesmo resultado de negócio.
 
 ## 5. Fluxo público
 
-1. O link compartilhado conterá somente o token aleatório da campanha.
-2. A página consultará uma API que retornará nome da campanha, prazo e textos públicos, sem dados de voluntários.
+1. O link compartilhado será sempre `/voluntariado/cadastro`.
+2. A página consultará uma API que localizará a única campanha ativa e retornará nome, prazo e textos públicos, sem expor token nem dados de voluntários.
 3. O formulário usará Zod e validações de domínio antes do envio.
 4. A API repetirá todas as validações, aplicará proteção contra abuso e chamará uma RPC transacional.
-5. A RPC validará campanha ativa e prazo, normalizará o telefone, verificará duplicidade e gravará voluntário, disponibilidade, interesses e consentimentos em uma transação.
+5. A API resolverá novamente a campanha ativa no momento do envio; a RPC validará campanha e prazo, normalizará o telefone, verificará duplicidade e gravará voluntário, frequência, interesses, perfil e consentimentos em uma transação.
 6. Duplicidade retornará resposta genérica com os canais oficiais, sem expor o cadastro existente.
 7. Sucesso mostrará apenas a confirmação de recebimento e a situação `Aguardando validação`.
 
@@ -110,9 +118,11 @@ O envio público passará por uma rota de API do Next.js e por uma função tran
 ## 7. Fluxo administrativo
 
 - Novo `VolunteersPage` integrado ao estado de navegação atual.
-- Listagem paginada no servidor, ordenada por nome, com busca e filtros por situação, cidade, bairro, disponibilidade, interesse e arquivamento.
+- Listagem paginada no servidor, ordenada por nome, com busca e filtros por situação, cidade, bairro, frequência, interesse e arquivamento.
 - Colunas principais: identificação, telefone, idade, aniversário, início das atividades, situação e ações.
-- Detalhe em modal responsivo para endereço, disponibilidade, interesses, consentimentos e histórico resumido.
+- Detalhe em modal responsivo para endereço, frequência, interesses, novos campos de perfil, autorização de imagem, consentimentos e histórico resumido.
+- Busca e filtros ficarão em uma região recolhida por padrão, controlada por botão acessível `Filtros`; o botão exibirá a quantidade de campos de filtro fora do valor inicial.
+- Recolher a região manterá os filtros e resultados; `Limpar filtros` restaurará todos os valores iniciais.
 - Formulário compartilhado entre cadastro assistido e edição.
 - Cadastro assistido poderá iniciar como `Ativo` e registrará o usuário responsável.
 - Mutações administrativas usarão RPCs transacionais com `auth.uid()` e concorrência otimista por `atualizado_em`.
@@ -139,14 +149,14 @@ O envio público passará por uma rota de API do Next.js e por uma função tran
 
 ## 10. APIs e contratos
 
-### `GET /api/volunteers/campaign/[token]`
+### `GET /api/volunteers/campaign/active`
 
-- Retorna somente informações públicas da campanha.
-- Responde de forma uniforme para token inválido, campanha encerrada ou expirada.
+- Localiza e retorna somente informações públicas da única campanha ativa.
+- Responde de forma uniforme quando não houver campanha disponível, encerrada ou dentro de prazo válido.
 
 ### `POST /api/volunteers/submit`
 
-- Recebe token, dados pessoais, endereço, disponibilidade, interesses e consentimentos.
+- Recebe dados pessoais, endereço, frequência, interesses, perfil opcional e consentimentos; a campanha não é escolhida pelo cliente.
 - Valida tamanho, formato, idade, responsável, honeypot e limite de tentativas.
 - Retorna sucesso, validação, duplicidade ou indisponibilidade sem detalhes internos.
 
@@ -163,15 +173,19 @@ O envio público passará por uma rota de API do Next.js e por uma função tran
 - Preservação dos valores após erros recuperáveis.
 - Foco direcionado ao primeiro erro e confirmação clara após envio.
 - Máscara visual de telefone sem alterar o valor normalizado persistido.
+- Campo textual de data com máscara e validação explícita `dd/mm/aaaa`, evitando depender do formato regional do `input[type=date]`.
+- Campo de início das atividades com máscara `MM/AAAA`.
+- Introdução acolhedora e fotografia institucional preparada, responsiva, com texto alternativo e carregamento otimizado pelo componente de imagem do Next.js.
+- Novos campos opcionais agrupados em seções curtas para não tornar o preenchimento cansativo no celular.
 - Nenhuma conta, senha ou link individual para o voluntário.
 
 ## 12. Compatibilidade, migração e implantação
 
-1. Criar uma migração aditiva com tabelas, índices, RLS, funções e auditoria.
+1. Como `001-volunteers-schema.sql` já foi aplicado, executar a migração incremental `003-volunteers-form-revision.sql` para adicionar os novos campos, atualizar a frequência e criar a nova assinatura sem token, preservando os dados e a assinatura antiga durante a transição do deploy.
 2. Validar a migração em ambiente de teste, incluindo anon, authenticated e service role.
 3. Configurar `VOLUNTEER_FORM_RATE_LIMIT_SECRET` no ambiente local e na Vercel.
 4. Publicar a API e as telas sem criar automaticamente uma campanha pública.
-5. Criar a campanha pela área interna, conferir prazo e textos e copiar o link.
+5. Criar ou ativar a campanha pela área interna, conferir prazo e textos e copiar o endereço fixo `/voluntariado/cadastro`.
 6. Executar testes de fumaça público e administrativo.
 7. Somente então compartilhar o link no grupo do WhatsApp.
 
@@ -179,10 +193,10 @@ Não há alteração destrutiva em tabelas atuais. A reversão da aplicação ma
 
 ## 13. Estratégia de testes
 
-- **Domínio:** telefone, idade, menor/responsável, interesses, disponibilidade, início das atividades, estados e prazo.
-- **Formulário público:** obrigatórios, consentimentos, acessibilidade, preservação de dados, duplicidade e mensagens.
-- **API pública:** campanha inválida/expirada, payload inválido, limite, duplicidade e sucesso, com Supabase mockado.
-- **Gestão interna:** filtros, paginação, preenchimento da edição, cadastro assistido, validação, arquivamento e restauração.
+- **Domínio:** telefone, idade, menor/responsável, interesses, frequência, datas brasileiras, início das atividades, perfil opcional, autorização de imagem, estados e prazo.
+- **Formulário público:** obrigatórios, novos campos opcionais, frequência sem dias/turnos, consentimentos, fotografia, acessibilidade, preservação de dados, duplicidade e mensagens.
+- **API pública:** ausência/expiração de campanha ativa, payload inválido, limite, duplicidade e sucesso, com Supabase mockado.
+- **Gestão interna:** filtros recolhidos, indicador de filtros ativos, limpeza, paginação, preenchimento da edição, campos de perfil, cadastro assistido, validação, arquivamento e restauração.
 - **Persistência:** mapeamento de dados, conflito de concorrência e mensagens de erro.
 - **Banco remoto:** RLS anônima, permissões autenticadas, transação, unicidade, auditoria e processamento automático.
 - Executar a suíte Vitest, TypeScript sem emissão e build de produção antes da conclusão.
@@ -202,19 +216,23 @@ Não há alteração destrutiva em tabelas atuais. A reversão da aplicação ma
 - **Falha do agendamento:** processamento idempotente também ocorre nos acessos relevantes.
 - **Conflito de edição:** versão por `atualizado_em` impede sobrescrita silenciosa.
 - **Retenção indefinida:** cadastros ficam ocultos, protegidos por RLS e sujeitos a revisão futura da política da AFAPAN.
+- **Fotografia sem autorizações expressas dos adultos:** publicar somente a versão preparada, manter possibilidade de retirada imediata e recomendar obtenção das autorizações; substituir ou remover a imagem diante de oposição.
+- **Mais de uma campanha ativa:** restrição de banco e RPC administrativa impedirão ativação concorrente; a API falhará de forma segura se detectar ambiguidade.
+- **Interpretação de datas:** máscara e parser compartilhado evitarão inversão entre dia e mês; o banco continuará usando tipos de data/valores numéricos apropriados.
 
 ## 16. Estratégia de reversão
 
 - Desativar a campanha pública para interromper novos envios.
 - Reverter a navegação e as telas sem remover as tabelas.
 - Revogar a execução da RPC pública, se necessário.
+- Se a revisão precisar ser revertida antes do deploy, revogar a nova assinatura `submit_volunteer_registration(jsonb,text,text)`; as colunas adicionadas podem permanecer sem afetar a versão anterior.
 - Desabilitar o agendamento sem apagar histórico.
 - Preservar dados e auditoria para correção e nova publicação.
 
 ## 17. Aprovação
 
-- [x] Arquitetura e modelo de dados revisados
-- [x] Segurança, RLS e proteção contra abuso revisadas
-- [x] Migração e reversão compreendidas
-- [x] Estratégia de testes aprovada
-- [x] Plano técnico aprovado pelo responsável em 2026-09-29
+- [x] Arquitetura e modelo de dados da revisão de 2026-10-01 revisados
+- [x] Segurança, RLS e proteção contra abuso da revisão revisadas
+- [x] Migração, compatibilidade e reversão compreendidas
+- [x] Estratégia de testes da revisão aprovada
+- [x] Plano técnico revisado aprovado pelo responsável em 2026-10-01

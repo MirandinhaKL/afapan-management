@@ -19,3 +19,12 @@
 - **DEC-017:** a primeira versão não integrará nem administrará grupos do WhatsApp.
 - **DEC-018:** o envio público usará API de servidor e RPC transacional, sem acesso anônimo direto às tabelas.
 - **DEC-019:** mês e ano de início das atividades na AFAPAN serão opcionais, validados em conjunto, não poderão ser futuros e aparecerão na listagem como `MM/AAAA`.
+- **DEC-020:** o formulário público passará a usar o endereço fixo `/voluntariado/cadastro`; a campanha ativa será resolvida internamente e os links antigos com identificador não precisarão ser preservados.
+- **DEC-021:** o botão de copiar o endereço público tentará a API moderna da área de transferência, usará uma alternativa compatível quando necessário e exibirá mensagem de erro se nenhuma estratégia funcionar.
+- **DEC-021:** datas completas serão apresentadas no padrão brasileiro `dd/mm/aaaa`, enquanto competências de mês e ano usarão `MM/AAAA`.
+- **DEC-022:** o formulário adotará linguagem acolhedora inspirada no Google Forms de referência e incorporará suas perguntas de perfil, preservando as decisões já tomadas sobre campos opcionais.
+- **DEC-023:** a fotografia destinada ao formulário terá o rosto da criança desfocado e será armazenada como `/voluntarios-afapan-rosto-crianca-desfocado.png`; a versão original não será publicada pelo sistema. A AFAPAN autorizou formalmente a publicação da versão preparada em 2026-10-01, ciente da ausência de autorização expressa dos demais adultos retratados.
+- **DEC-024:** a autorização para uso de imagem do voluntário será coletada separadamente e sua recusa não impedirá o cadastro.
+- **DEC-025:** todas as novas perguntas de perfil incorporadas do formulário de referência serão opcionais.
+- **DEC-026:** a decisão `DEC-007` foi substituída: a seção de disponibilidade solicitará somente a frequência (`Diariamente`, `Uma vez por semana`, `A cada 15 dias`, `Uma vez por mês` ou `Eventualmente`), sem dias da semana, turnos, horários ou observações.
+- **DEC-027:** na tela interna de voluntários, a área de busca e filtros iniciará recolhida e será controlada pelo botão `Filtros`; filtros ativos continuarão aplicados quando a área for recolhida e serão indicados numericamente no botão.

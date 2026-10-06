@@ -1,9 +1,9 @@
 # Especificação — Cadastro e confirmação de voluntários AFAPAN
 
-- **Status:** Aprovada
+- **Status:** Aprovada — revisão de ampliação do formulário público
 - **Responsável:** AFAPAN
 - **Data:** 2026-09-28
-- **Última atualização:** 2026-09-29
+- **Última atualização:** 2026-10-01
 
 ## 1. Contexto e problema
 
@@ -36,6 +36,10 @@ Disponibilizar um módulo integrado ao sistema da AFAPAN para coletar, validar e
 - Registro separado dos consentimentos obrigatórios.
 - Histórico das mudanças de situação e das alterações administrativas relevantes.
 - Interface pública acessível, responsiva e adequada a pessoas com pouca familiaridade com tecnologia.
+- Endereço público amigável e fixo em `/voluntariado/cadastro`, com seleção interna da campanha ativa.
+- Apresentação institucional acolhedora, com linguagem inspirada no formulário de referência da AFAPAN.
+- Exibição da versão preparada da fotografia institucional dos voluntários, com o rosto da criança desfocado para reduzir sua identificação.
+- Coleta de informações sobre expectativas, vínculo com a AFAPAN, experiência anterior de voluntariado, canais de comunicação, ideias de projetos e autorização de uso de imagem.
 
 ### Fora do escopo desta primeira versão
 
@@ -55,9 +59,9 @@ Disponibilizar um módulo integrado ao sistema da AFAPAN para coletar, validar e
 ### Formulário público
 
 - **RF-001:** O sistema deve disponibilizar uma página pública por um único endereço compartilhável, sem exigir login.
-- **RF-002:** O formulário deve coletar nome, sobrenome, data de nascimento, telefone com WhatsApp, e-mail opcional, endereço, disponibilidade, profissão opcional, habilidades opcionais, atividades de interesse e mês/ano opcionais de início das atividades na AFAPAN.
+- **RF-002:** O formulário deve coletar nome, sobrenome, data de nascimento, telefone com WhatsApp, e-mail opcional, endereço, frequência de disponibilidade, profissão opcional, habilidades opcionais, atividades de interesse e mês/ano opcionais de início das atividades na AFAPAN.
 - **RF-003:** Bairro e cidade devem ser obrigatórios; rua, número, complemento e estado devem ser opcionais; CEP não deve ser solicitado.
-- **RF-004:** O formulário deve permitir selecionar vários dias da semana, turnos e uma frequência pretendida, além de observações opcionais sobre disponibilidade.
+- **RF-004:** O formulário deve solicitar somente a frequência pretendida de participação, sem perguntar dias da semana, turnos ou horários disponíveis.
 - **RF-005:** O formulário deve permitir selecionar várias atividades de interesse.
 - **RF-006:** O formulário deve apresentar separadamente as opções “Outras atividades”, com descrição, e “Ainda não sei, quero conhecer as opções”.
 - **RF-007:** O formulário deve exigir uma confirmação de ciência sobre o uso dos dados pela AFAPAN.
@@ -65,6 +69,21 @@ Disponibilizar um módulo integrado ao sistema da AFAPAN para coletar, validar e
 - **RF-009:** Após um envio válido, o registro deve ser criado com a situação `Aguardando validação`.
 - **RF-010:** Após o envio, o sistema deve apresentar confirmação clara e informar que a AFAPAN fará a validação.
 - **RF-024:** Quando o voluntário for menor de 18 anos, o formulário deve solicitar nome, telefone e autorização do responsável.
+- **RF-032:** O formulário público deve estar disponível no endereço fixo `/voluntariado/cadastro`, sem identificador de campanha exposto na URL.
+- **RF-033:** Ao acessar o endereço público, o sistema deve localizar internamente a campanha ativa e associar o cadastro a ela.
+- **RF-034:** Se não houver campanha ativa, a página não deve permitir o envio e deve informar, em linguagem simples, que o período de cadastro ou confirmação não está disponível.
+- **RF-035:** O formulário deve apresentar uma introdução acolhedora, explicando brevemente o papel da AFAPAN, a importância do voluntariado e a finalidade das perguntas.
+- **RF-036:** O formulário deve coletar o que a pessoa espera da AFAPAN e como conheceu a associação.
+- **RF-037:** O formulário deve perguntar se a pessoa é ou já foi voluntária em outra instituição sem fins lucrativos, com as opções `Sim, atualmente`, `Já fui, mas não sou mais` e `Não`.
+- **RF-038:** O formulário deve permitir indicar por quais meios a pessoa acompanha a AFAPAN, aceitando múltipla seleção entre `Instagram`, `Facebook`, `Rádio, TV ou jornal`, `Site`, `WhatsApp` e `Não acompanho`.
+- **RF-039:** O formulário deve permitir informar, opcionalmente, uma ideia de projeto que a pessoa gostaria de criar ou desenvolver na AFAPAN.
+- **RF-040:** O formulário deve perguntar separadamente se a pessoa autoriza o uso de sua imagem para divulgação institucional da AFAPAN, permitindo as respostas `Autorizo` e `Não autorizo` sem impedir o cadastro em caso de recusa.
+- **RF-041:** O formulário deve permitir que a pessoa conte, opcionalmente, sua história e seu vínculo com a AFAPAN.
+- **RF-042:** O formulário deve exibir a fotografia institucional preparada em `/voluntarios-afapan-rosto-crianca-desfocado.png`, em posição de destaque e com o texto alternativo `Voluntários da AFAPAN reunidos`. A versão original, na qual o rosto da criança está visível, não deve ser publicada pelo sistema.
+- **RF-043:** Datas completas digitadas ou exibidas ao público devem usar o padrão brasileiro `dd/mm/aaaa`; campos compostos apenas por mês e ano devem usar `MM/AAAA`.
+- **RF-044:** Na tela interna de voluntários, a área de busca e filtros deve iniciar recolhida e ser aberta ou fechada por um controle identificado como `Filtros`.
+- **RF-045:** Quando existirem filtros aplicados, o controle deve indicar visualmente a quantidade de filtros ativos, mesmo com a área recolhida.
+- **RF-046:** Recolher a área de filtros não deve remover nem alterar os filtros aplicados; a remoção deve ocorrer somente por alteração explícita ou pela ação `Limpar filtros`.
 
 ### Duplicidade e correção
 
@@ -80,7 +99,7 @@ Disponibilizar um módulo integrado ao sistema da AFAPAN para coletar, validar e
 - **RF-017:** A equipe deve conseguir editar os dados de um voluntário, inclusive corrigir o telefone.
 - **RF-018:** A equipe deve conseguir alterar a situação entre `Aguardando validação`, `Ativo`, `Sem confirmação` e `Inativo`.
 - **RF-019:** A validação de um registro deve exigir uma ação explícita da equipe antes de alterar sua situação para `Ativo`.
-- **RF-020:** A listagem deve permitir filtrar por situação, cidade, bairro, disponibilidade e atividades de interesse.
+- **RF-020:** A listagem deve permitir filtrar por situação, cidade, bairro, frequência de disponibilidade e atividades de interesse.
 - **RF-021:** A equipe deve conseguir arquivar logicamente um cadastro sem apagar seu histórico.
 - **RF-022:** A equipe deve conseguir consultar e restaurar cadastros arquivados.
 - **RF-023:** O sistema deve registrar quem realizou e quando ocorreu cada criação assistida, edição, validação, mudança de situação, arquivamento e restauração.
@@ -106,6 +125,10 @@ Disponibilizar um módulo integrado ao sistema da AFAPAN para coletar, validar e
 - **RNF-010:** O envio público deve possuir proteção contra abuso e submissões automatizadas, definida no plano técnico.
 - **RNF-011:** Novos comportamentos e correções devem possuir testes unitários automatizados.
 - **RNF-012:** A interface deve evitar termos técnicos e etapas desnecessárias para o voluntário.
+- **RNF-013:** A fotografia deve ser otimizada para a web, manter sua proporção, adaptar-se à largura da tela e não prejudicar o carregamento do formulário.
+- **RNF-014:** O formulário deve dividir as perguntas em grupos curtos e visualmente claros, evitando uma página excessivamente cansativa em celulares.
+- **RNF-015:** Campos de data devem apresentar máscara, exemplo ou seletor compatível com o padrão brasileiro, sem depender da apresentação regional do navegador.
+- **RNF-016:** O controle de expansão dos filtros deve ser acessível por teclado, informar seu estado aberto ou fechado e manter foco visível.
 
 ## 7. Regras de negócio
 
@@ -121,9 +144,9 @@ Disponibilizar um módulo integrado ao sistema da AFAPAN para coletar, validar e
 - **RN-010:** Somente a equipe autenticada pode marcar um voluntário como `Ativo`.
 - **RN-011:** `Sem confirmação` identifica pessoas conhecidas pela AFAPAN que ainda não confirmaram interesse; `Inativo` identifica quem não deseja ou não pode continuar no momento.
 - **RN-012:** Registros arquivados não devem aparecer na listagem padrão.
-- **RN-013:** A pessoa pode selecionar mais de uma atividade, mais de um dia da semana e mais de um turno.
-- **RN-014:** As opções de frequência da primeira versão serão `Eventual`, `Semanal`, `Quinzenal` e `Mensal`.
-- **RN-015:** Os turnos disponíveis serão `Manhã`, `Tarde` e `Noite`, sem exigência de horário exato.
+- **RN-013:** A pessoa pode selecionar mais de uma atividade de interesse.
+- **RN-014:** As opções de frequência da primeira versão serão `Diariamente`, `Uma vez por semana`, `A cada 15 dias`, `Uma vez por mês` e `Eventualmente`.
+- **RN-015:** O formulário não deve coletar dias da semana, turnos, horários ou observações adicionais de disponibilidade; a frequência será a única informação de disponibilidade solicitada.
 - **RN-016:** A confirmação de ciência sobre o uso dos dados e a declaração de interesse devem ser registradas separadamente, com data, hora e versão do texto aceito.
 - **RN-017:** O cadastro não adiciona automaticamente a pessoa a nenhum grupo de WhatsApp.
 - **RN-018:** Cadastros arquivados serão preservados por prazo indeterminado e não aparecerão na listagem padrão.
@@ -133,6 +156,14 @@ Disponibilizar um módulo integrado ao sistema da AFAPAN para coletar, validar e
 - **RN-022:** Os canais oficiais para solicitar correção são o e-mail `afapan.ong@gmail.com` e o WhatsApp `(54) 9941-9286`.
 - **RN-023:** Quando o início das atividades for informado, mês e ano devem ser preenchidos em conjunto, formar uma competência válida e não podem representar uma data futura.
 - **RN-024:** Na listagem, o início das atividades deve ser apresentado como `MM/AAAA`; quando ausente, deve ser apresentado como `Não informado`.
+- **RN-025:** A URL pública não identifica uma campanha específica; somente uma campanha ativa pode receber os cadastros enviados por `/voluntariado/cadastro`.
+- **RN-026:** Como os links anteriores ainda não foram divulgados, não haverá obrigação de manter compatibilidade com URLs no formato `/voluntariado/<identificador>`.
+- **RN-027:** A recusa da autorização de uso de imagem não impede a pessoa de atuar como voluntária nem de concluir o cadastro.
+- **RN-028:** As respostas sobre expectativas, origem do contato, experiência anterior, canais de comunicação, ideia de projeto e história com a AFAPAN são dados de perfil e não alteram automaticamente a situação do voluntário.
+- **RN-029:** No navegador, datas completas devem ser compreendidas e apresentadas em `dd/mm/aaaa`; no banco ou nas APIs elas poderão permanecer no formato técnico ISO, sem exposição desse formato ao usuário.
+- **RN-030:** As perguntas sobre expectativas, como conheceu a AFAPAN, experiência anterior de voluntariado e canais pelos quais acompanha a associação são opcionais.
+- **RN-031:** O desfoque do rosto da criança é uma medida de redução de identificação e não representa, por si só, autorização de uso da imagem das demais pessoas retratadas.
+- **RN-032:** A preferência de abertura ou fechamento dos filtros não precisa ser preservada após sair ou recarregar a tela; em uma nova abertura da página, a área deve iniciar recolhida.
 
 ## 8. Textos obrigatórios do formulário
 
@@ -159,16 +190,19 @@ As duas confirmações devem ser apresentadas separadamente e devem ser aceitas 
 - Outras atividades, com descrição.
 - Ainda não sei, quero conhecer as opções.
 
+As opções poderão ser apresentadas em grupos amigáveis que relacionem as atividades aos projetos da AFAPAN, incluindo coletas mensais ou especiais, Compostando Juntos, Compostando nas Escolas, Regenera Mata Atlântica, organização de eventos e projetos, comunicação digital e produção de conteúdo para o site, sem perder as atividades específicas já definidas nesta seção.
+
 ## 10. Cenários e exceções
 
 ### Confirmação pelo voluntário
 
 1. A AFAPAN compartilha o link único no grupo atual de WhatsApp.
-2. A pessoa abre a página sem realizar login.
-3. Preenche os dados, disponibilidade e atividades de interesse.
-4. Aceita separadamente as duas confirmações obrigatórias.
-5. O sistema valida e salva o cadastro como `Aguardando validação`.
-6. A equipe confere o telefone e decide se altera a situação para `Ativo`.
+2. A pessoa abre `/voluntariado/cadastro` sem realizar login.
+3. O sistema identifica a campanha ativa e apresenta a introdução, a fotografia institucional autorizada e o formulário.
+4. A pessoa preenche os dados pessoais, o perfil de vínculo, a disponibilidade e as atividades de interesse utilizando datas no padrão brasileiro.
+5. Aceita separadamente as duas confirmações obrigatórias.
+6. O sistema valida e salva o cadastro como `Aguardando validação`.
+7. A equipe confere o telefone e decide se altera a situação para `Ativo`.
 
 ### Cadastro assistido
 
@@ -190,6 +224,8 @@ As duas confirmações devem ser apresentadas separadamente e devem ser aceitas 
 - Uma alteração administrativa concorrente deve ser detectada para evitar sobrescrever dados mais recentes.
 - Telefone com formatação diferente, mas com os mesmos dígitos e código do país, deve ser reconhecido como duplicado.
 - Se “Outras atividades” for selecionada, a descrição correspondente deve ser obrigatória.
+- Se não houver campanha ativa, o formulário deve ficar indisponível sem expor detalhes internos da campanha.
+- Uma data apresentada fora do padrão brasileiro deve ser indicada de forma clara para correção, preservando os demais dados preenchidos.
 
 ## 11. Critérios de aceite
 
@@ -208,7 +244,7 @@ As duas confirmações devem ser apresentadas separadamente e devem ser aceitas 
 - **CA-013:** Dado um acesso por celular, quando o formulário for preenchido, então todos os campos e ações essenciais devem permanecer legíveis e utilizáveis.
 - **CA-014:** Dada uma pessoa com pouca familiaridade tecnológica, então o formulário deve poder ser concluído sem conta, senha, link individual ou termos técnicos.
 - **CA-015:** Dado um menor de 18 anos, quando os dados ou a autorização do responsável não forem informados, então o envio deve ser bloqueado.
-- **CA-016:** Dado o filtro por atividade, disponibilidade, cidade, bairro ou situação, então a listagem deve apresentar somente voluntários correspondentes.
+- **CA-016:** Dado o filtro por atividade, frequência de disponibilidade, cidade, bairro ou situação, então a listagem deve apresentar somente voluntários correspondentes.
 - **CA-017:** Dada a seleção de “Outras atividades”, quando a descrição estiver vazia, então o envio deve ser bloqueado.
 - **CA-018:** Dado um cadastro concluído, então nenhuma inclusão automática em grupo de WhatsApp deve ocorrer.
 - **CA-019:** Dado um cadastro assistido pela equipe, quando houver confirmação durante o atendimento, então ele poderá ser salvo diretamente como `Ativo`.
@@ -221,6 +257,19 @@ As duas confirmações devem ser apresentadas separadamente e devem ser aceitas 
 - **CA-026:** Dado um cadastro com mês e ano válidos de início das atividades, quando ele for salvo, então a informação deve ser persistida e exibida como `MM/AAAA` na listagem.
 - **CA-027:** Dado que somente o mês ou somente o ano foi preenchido, ou que a competência é futura, quando houver tentativa de salvar, então o sistema deve bloquear a operação com uma mensagem de validação.
 - **CA-028:** Dado um cadastro sem início das atividades, quando ele for salvo e listado, então a ausência deve ser permitida e apresentada como `Não informado`.
+- **CA-029:** Dado o endereço `/voluntariado/cadastro`, quando houver campanha ativa, então o formulário deve ser apresentado e o envio associado internamente à campanha, sem identificador na URL.
+- **CA-030:** Dado que não existe campanha ativa, quando alguém acessar `/voluntariado/cadastro`, então o envio deve ficar indisponível e uma mensagem compreensível deve ser apresentada.
+- **CA-031:** Dado o formulário público, então sua introdução deve explicar de forma acolhedora quem é a AFAPAN, por que os dados são solicitados e como a pessoa pode colaborar.
+- **CA-032:** Dado um campo de data completa, então o usuário deve visualizar e informar a data como `dd/mm/aaaa`; dado o início das atividades, deve visualizar e informar `MM/AAAA`.
+- **CA-033:** Dada a resposta `Não autorizo` para uso de imagem, quando os demais campos obrigatórios estiverem válidos, então o cadastro deve ser permitido e a recusa armazenada.
+- **CA-034:** Dadas as perguntas de perfil do formulário de referência, quando o cadastro for salvo e consultado internamente, então as respostas devem ser preservadas e exibidas no detalhamento do voluntário.
+- **CA-035:** Dada a fotografia institucional preparada, quando o formulário for acessado em celular ou computador, então a imagem deve aparecer sem distorção, com o rosto da criança desfocado, texto alternativo e sem causar rolagem horizontal.
+- **CA-036:** Dadas as novas perguntas de perfil, quando elas não forem respondidas e os demais campos obrigatórios estiverem válidos, então o cadastro deve poder ser concluído.
+- **CA-037:** Dada a seção de disponibilidade do formulário, então ela deve apresentar somente a seleção de frequência e não deve exibir campos de dias da semana, turnos, horários ou observações.
+- **CA-038:** Dada a abertura da tela de voluntários, então a área de busca e filtros deve aparecer recolhida e a listagem deve permanecer visível.
+- **CA-039:** Dado o controle `Filtros`, quando o usuário acioná-lo, então a área deve alternar entre aberta e recolhida sem recarregar a página.
+- **CA-040:** Dados filtros aplicados, quando a área for recolhida, então os resultados filtrados devem permanecer e o controle deve informar quantos filtros estão ativos.
+- **CA-041:** Dados filtros aplicados, quando o usuário acionar `Limpar filtros`, então todos os filtros devem voltar aos valores iniciais e a indicação de filtros ativos deve desaparecer.
 
 ## 12. Dados e privacidade
 
@@ -229,7 +278,8 @@ As duas confirmações devem ser apresentadas separadamente e devem ser aceitas 
 - Identificação: nome, sobrenome e data de nascimento.
 - Contato: telefone com WhatsApp e e-mail opcional.
 - Endereço: bairro e cidade obrigatórios; rua, número, complemento e estado opcionais.
-- Perfil de contribuição: profissão, habilidades, disponibilidade, atividades de interesse e início opcional das atividades na AFAPAN.
+- Perfil de contribuição: profissão, habilidades, frequência de disponibilidade, atividades de interesse, início opcional das atividades na AFAPAN, expectativas, experiência anterior, canais pelos quais acompanha a associação, ideias de projetos e história de vínculo.
+- Preferência de imagem: autorização ou recusa para uso da imagem em divulgação institucional.
 - Governança: situação, origem do cadastro, consentimentos, datas e autoria das operações administrativas.
 
 ### Princípios e restrições
@@ -262,11 +312,15 @@ As duas confirmações devem ser apresentadas separadamente e devem ser aceitas 
 - [x] **Q-007:** Cadastros arquivados serão mantidos por prazo indeterminado e não serão exibidos na listagem padrão.
 - [x] **Q-008:** Menores exigirão nome, telefone e autorização do responsável.
 - [x] **Q-009:** Os dois textos propostos foram aprovados e estão registrados na seção 8.
+- [x] **Q-010:** A AFAPAN decidiu publicar a fotografia preparada com o rosto da criança desfocado, ciente de que não possui autorização expressa das demais pessoas retratadas e de que o desfoque não substitui essas autorizações.
+- [x] **Q-011:** As perguntas sobre expectativas e como conheceu a AFAPAN serão opcionais.
+- [x] **Q-012:** A pergunta sobre experiência anterior de voluntariado será opcional.
+- [x] **Q-013:** A seleção dos meios pelos quais a pessoa acompanha a AFAPAN será opcional.
 
 ## 15. Aprovação
 
-- [x] Regras de negócio revisadas
-- [x] Critérios de aceite revisados
-- [x] Questões em aberto respondidas
-- [x] Escopo e itens excluídos compreendidos
-- [x] Especificação aprovada formalmente em 2026-09-29
+- [x] Revisão de 2026-10-01 das regras de negócio revisada
+- [x] Novos critérios de aceite revisados
+- [x] Novas questões em aberto respondidas
+- [x] Ampliação do formulário e novo endereço público compreendidos
+- [x] Revisão aprovada formalmente em 2026-10-01

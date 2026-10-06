@@ -1,24 +1,9 @@
-export const VOLUNTEER_DAYS = [
-  { value: "segunda", label: "Segunda-feira" },
-  { value: "terca", label: "Terça-feira" },
-  { value: "quarta", label: "Quarta-feira" },
-  { value: "quinta", label: "Quinta-feira" },
-  { value: "sexta", label: "Sexta-feira" },
-  { value: "sabado", label: "Sábado" },
-  { value: "domingo", label: "Domingo" },
-] as const
-
-export const VOLUNTEER_SHIFTS = [
-  { value: "manha", label: "Manhã" },
-  { value: "tarde", label: "Tarde" },
-  { value: "noite", label: "Noite" },
-] as const
-
 export const VOLUNTEER_FREQUENCIES = [
-  { value: "eventual", label: "Eventual" },
-  { value: "semanal", label: "Semanal" },
-  { value: "quinzenal", label: "Quinzenal" },
-  { value: "mensal", label: "Mensal" },
+  { value: "diaria", label: "Diariamente" },
+  { value: "semanal", label: "Uma vez por semana" },
+  { value: "quinzenal", label: "A cada 15 dias" },
+  { value: "mensal", label: "Uma vez por mês" },
+  { value: "eventual", label: "Eventualmente" },
 ] as const
 
 export const VOLUNTEER_ACTIVITIES = [
@@ -34,10 +19,25 @@ export const VOLUNTEER_ACTIVITIES = [
   { value: "ainda_nao_sei", label: "Ainda não sei, quero conhecer as opções" },
 ] as const
 
-export type VolunteerDay = typeof VOLUNTEER_DAYS[number]["value"]
-export type VolunteerShift = typeof VOLUNTEER_SHIFTS[number]["value"]
+export const VOLUNTEER_COMMUNICATION_CHANNELS = [
+  { value: "instagram", label: "Instagram" },
+  { value: "facebook", label: "Facebook" },
+  { value: "radio_tv_jornal", label: "Rádio, TV ou jornal" },
+  { value: "site", label: "Site" },
+  { value: "whatsapp", label: "WhatsApp" },
+  { value: "nao_acompanho", label: "Não acompanho" },
+] as const
+
+export const PREVIOUS_VOLUNTEERING_OPTIONS = [
+  { value: "atualmente", label: "Sim, atualmente" },
+  { value: "anteriormente", label: "Já fui, mas não sou mais" },
+  { value: "nunca", label: "Não" },
+] as const
+
 export type VolunteerFrequency = typeof VOLUNTEER_FREQUENCIES[number]["value"]
 export type VolunteerActivity = typeof VOLUNTEER_ACTIVITIES[number]["value"]
+export type VolunteerCommunicationChannel = typeof VOLUNTEER_COMMUNICATION_CHANNELS[number]["value"]
+export type PreviousVolunteering = typeof PREVIOUS_VOLUNTEERING_OPTIONS[number]["value"]
 export type VolunteerStatus = "aguardando_validacao" | "ativo" | "sem_confirmacao" | "inativo"
 export type VolunteerOrigin = "publico" | "assistido"
 
@@ -60,12 +60,16 @@ export interface VolunteerInput {
   skills?: string
   activityStartMonth?: number | null
   activityStartYear?: number | null
-  availableDays: VolunteerDay[]
-  availableShifts: VolunteerShift[]
   frequency: VolunteerFrequency
-  availabilityNotes?: string
   activities: VolunteerActivity[]
   otherActivityDescription?: string
+  expectations?: string
+  discoverySource?: string
+  previousVolunteering?: PreviousVolunteering | null
+  communicationChannels?: VolunteerCommunicationChannel[]
+  projectIdea?: string
+  imageUseAuthorized?: boolean | null
+  afapanStory?: string
   guardianName?: string
   guardianPhone?: string
   guardianAuthorized?: boolean
@@ -90,14 +94,13 @@ export interface VolunteerFilters {
   city?: string
   neighborhood?: string
   activity?: VolunteerActivity | "all"
-  day?: VolunteerDay | "all"
+  frequency?: VolunteerFrequency | "all"
   archive?: "active" | "archived" | "all"
 }
 
 export interface VolunteerCampaign {
   id: string
   name: string
-  publicToken: string
   deadline: string
   active: boolean
   privacyText: string
@@ -114,9 +117,7 @@ export interface VolunteerValidationError {
 
 export function normalizeBrazilianPhone(value: string) {
   let digits = (value || "").replace(/\D/g, "")
-  if ((digits.length === 10 || digits.length === 11) && !digits.startsWith("55")) {
-    digits = `55${digits}`
-  }
+  if ((digits.length === 10 || digits.length === 11) && !digits.startsWith("55")) digits = `55${digits}`
   return digits
 }
 
@@ -125,13 +126,54 @@ export function isValidBrazilianPhone(value: string) {
   return normalized.startsWith("55") && (normalized.length === 12 || normalized.length === 13)
 }
 
+export function maskBrazilianDate(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 8)
+  if (digits.length <= 2) return digits
+  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`
+}
+
+export function maskMonthYear(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 6)
+  return digits.length <= 2 ? digits : `${digits.slice(0, 2)}/${digits.slice(2)}`
+}
+
+function dateParts(value: string) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split("-").map(Number)
+    return { year, month, day }
+  }
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) {
+    const [day, month, year] = value.split("/").map(Number)
+    return { year, month, day }
+  }
+  return null
+}
+
 function parseLocalDate(value: string) {
-  if (!value) return null
-  const [year, month, day] = value.split("-").map(Number)
-  if (!year || !month || !day) return null
-  const date = new Date(year, month - 1, day)
-  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null
+  const parts = dateParts(value)
+  if (!parts) return null
+  const date = new Date(parts.year, parts.month - 1, parts.day)
+  if (date.getFullYear() !== parts.year || date.getMonth() !== parts.month - 1 || date.getDate() !== parts.day) return null
   return date
+}
+
+export function brazilianDateToIso(value: string) {
+  const parts = dateParts(value)
+  if (!parts || !parseLocalDate(value)) return null
+  return `${parts.year}-${String(parts.month).padStart(2, "0")}-${String(parts.day).padStart(2, "0")}`
+}
+
+export function isoDateToBrazilian(value: string) {
+  const parts = dateParts(value)
+  if (!parts || !parseLocalDate(value)) return ""
+  return `${String(parts.day).padStart(2, "0")}/${String(parts.month).padStart(2, "0")}/${parts.year}`
+}
+
+export function parseMonthYear(value: string) {
+  if (!/^\d{2}\/\d{4}$/.test(value)) return { month: null, year: null }
+  const [month, year] = value.split("/").map(Number)
+  return { month, year }
 }
 
 export function calculateAge(birthDate: string, today = new Date()) {
@@ -155,16 +197,11 @@ export function formatBirthday(birthDate: string) {
   return `${String(birth.getDate()).padStart(2, "0")}/${String(birth.getMonth() + 1).padStart(2, "0")}`
 }
 
-export function validateActivityStart(
-  month?: number | null,
-  year?: number | null,
-  today = new Date()
-) {
+export function validateActivityStart(month?: number | null, year?: number | null, today = new Date()) {
   if (month == null && year == null) return true
   if (month == null || year == null || !Number.isInteger(month) || !Number.isInteger(year)) return false
   if (month < 1 || month > 12 || year < 1900) return false
-  return year < today.getFullYear()
-    || (year === today.getFullYear() && month <= today.getMonth() + 1)
+  return year < today.getFullYear() || (year === today.getFullYear() && month <= today.getMonth() + 1)
 }
 
 export function formatActivityStart(month?: number | null, year?: number | null) {
@@ -172,33 +209,29 @@ export function formatActivityStart(month?: number | null, year?: number | null)
   return `${String(month).padStart(2, "0")}/${year}`
 }
 
+export function getFrequencyLabel(value: VolunteerFrequency) {
+  return VOLUNTEER_FREQUENCIES.find((item) => item.value === value)?.label || value
+}
+
 export function validateVolunteerInput(input: VolunteerInput, today = new Date()) {
   const errors: VolunteerValidationError[] = []
   if (!input.firstName?.trim()) errors.push({ field: "firstName", message: "Informe o nome." })
   if (!input.lastName?.trim()) errors.push({ field: "lastName", message: "Informe o sobrenome." })
   const age = calculateAge(input.birthDate, today)
-  if (age === null) errors.push({ field: "birthDate", message: "Informe uma data de nascimento válida." })
+  if (age === null) errors.push({ field: "birthDate", message: "Informe a data de nascimento no formato dd/mm/aaaa." })
   if (!isValidBrazilianPhone(input.phone)) errors.push({ field: "phone", message: "Informe um telefone com DDD válido." })
-  if (input.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email.trim())) {
-    errors.push({ field: "email", message: "Informe um e-mail válido." })
-  }
+  if (input.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email.trim())) errors.push({ field: "email", message: "Informe um e-mail válido." })
   if (!input.neighborhood?.trim()) errors.push({ field: "neighborhood", message: "Informe o bairro." })
   if (!input.city?.trim()) errors.push({ field: "city", message: "Informe a cidade." })
-  if (!Array.isArray(input.availableDays) || input.availableDays.length === 0) errors.push({ field: "availableDays", message: "Selecione ao menos um dia disponível." })
-  if (!Array.isArray(input.availableShifts) || input.availableShifts.length === 0) errors.push({ field: "availableShifts", message: "Selecione ao menos um turno." })
   if (!VOLUNTEER_FREQUENCIES.some((item) => item.value === input.frequency)) errors.push({ field: "frequency", message: "Selecione uma frequência válida." })
   if (!Array.isArray(input.activities) || input.activities.length === 0) errors.push({ field: "activities", message: "Selecione ao menos uma atividade." })
-  if (Array.isArray(input.activities) && input.activities.includes("outras") && !input.otherActivityDescription?.trim()) {
-    errors.push({ field: "otherActivityDescription", message: "Descreva as outras atividades." })
-  }
-  if (!validateActivityStart(input.activityStartMonth, input.activityStartYear, today)) {
-    errors.push({ field: "activityStartMonth", message: "Informe mês e ano válidos e não futuros." })
-  }
+  if (input.activities?.includes("outras") && !input.otherActivityDescription?.trim()) errors.push({ field: "otherActivityDescription", message: "Descreva as outras atividades." })
+  if (!validateActivityStart(input.activityStartMonth, input.activityStartYear, today)) errors.push({ field: "activityStartMonth", message: "Informe mês e ano válidos e não futuros." })
+  if (input.previousVolunteering && !PREVIOUS_VOLUNTEERING_OPTIONS.some((item) => item.value === input.previousVolunteering)) errors.push({ field: "previousVolunteering", message: "Selecione uma opção válida." })
+  if (input.communicationChannels?.some((channel) => !VOLUNTEER_COMMUNICATION_CHANNELS.some((item) => item.value === channel))) errors.push({ field: "communicationChannels", message: "Selecione canais válidos." })
   if (age !== null && age < 18) {
     if (!input.guardianName?.trim()) errors.push({ field: "guardianName", message: "Informe o nome do responsável." })
-    if (!input.guardianPhone || !isValidBrazilianPhone(input.guardianPhone)) {
-      errors.push({ field: "guardianPhone", message: "Informe o telefone do responsável." })
-    }
+    if (!input.guardianPhone || !isValidBrazilianPhone(input.guardianPhone)) errors.push({ field: "guardianPhone", message: "Informe o telefone do responsável." })
     if (!input.guardianAuthorized) errors.push({ field: "guardianAuthorized", message: "A autorização do responsável é obrigatória." })
   }
   if (!input.privacyAccepted) errors.push({ field: "privacyAccepted", message: "Confirme a ciência sobre o uso dos dados." })

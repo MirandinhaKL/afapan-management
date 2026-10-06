@@ -1,8 +1,7 @@
 import { createHmac } from "node:crypto"
-import { AFAPAN_CONTACT_EMAIL, AFAPAN_CONTACT_WHATSAPP, normalizeBrazilianPhone, type VolunteerInput } from "@/lib/volunteers"
+import { AFAPAN_CONTACT_EMAIL, AFAPAN_CONTACT_WHATSAPP, brazilianDateToIso, normalizeBrazilianPhone, type VolunteerInput } from "@/lib/volunteers"
 
 export interface PublicVolunteerPayload extends VolunteerInput {
-  token: string
   website?: string
 }
 
@@ -13,12 +12,16 @@ export function getVolunteerRequestHash(value: string, secret: string) {
 export function prepareVolunteerRpcPayload(input: VolunteerInput) {
   return {
     ...input,
+    birthDate: brazilianDateToIso(input.birthDate),
     normalizedPhone: normalizeBrazilianPhone(input.phone),
     normalizedGuardianPhone: input.guardianPhone
       ? normalizeBrazilianPhone(input.guardianPhone)
       : null,
     activityStartMonth: input.activityStartMonth ?? null,
     activityStartYear: input.activityStartYear ?? null,
+    communicationChannels: input.communicationChannels ?? [],
+    previousVolunteering: input.previousVolunteering ?? null,
+    imageUseAuthorized: input.imageUseAuthorized ?? null,
   }
 }
 

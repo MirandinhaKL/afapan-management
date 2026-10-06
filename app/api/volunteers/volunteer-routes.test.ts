@@ -1,26 +1,58 @@
-import { describe,expect,it,vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
-vi.mock("@/lib/supabase-server",()=>({createSupabaseServiceClient:vi.fn()}))
+const { createSupabaseServiceClient } = vi.hoisted(() => ({ createSupabaseServiceClient: vi.fn() }))
+vi.mock("@/lib/supabase-server", () => ({ createSupabaseServiceClient }))
 
-import { GET } from "@/app/api/volunteers/campaign/[token]/route"
+import { GET } from "@/app/api/volunteers/campaign/active/route"
 import { POST } from "@/app/api/volunteers/submit/route"
 
-describe("rotas públicas de voluntários",()=>{
-  it("não consulta o banco para token de campanha malformado",async()=>{
-    const response=await GET(new Request("http://localhost/api/volunteers/campaign/invalido"),{params:Promise.resolve({token:"invalido"})})
+describe("rotas públicas de voluntários", () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it("carrega a única campanha ativa sem token público", async () => {
+    const campaign = { nome: "Confirmação", prazo: "2026-10-06T23:59:00Z", privacy_text: "Privacidade", privacy_version: "1", participation_text: "Participação", participation_version: "1" }
+    const chain: any = { select: vi.fn(), eq: vi.fn(), gte: vi.fn(), limit: vi.fn() }
+    chain.select.mockReturnValue(chain); chain.eq.mockReturnValue(chain); chain.gte.mockReturnValue(chain); chain.limit.mockResolvedValue({ data: [campaign], error: null })
+    createSupabaseServiceClient.mockReturnValue({ rpc: vi.fn().mockResolvedValue({}), from: vi.fn().mockReturnValue(chain) })
+    const response = await GET()
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({ name: "Confirmação", privacyText: "Privacidade" })
+  })
+
+  it("informa indisponibilidade quando não existe campanha ativa", async () => {
+    const chain: any = { select: vi.fn(), eq: vi.fn(), gte: vi.fn(), limit: vi.fn() }
+    chain.select.mockReturnValue(chain); chain.eq.mockReturnValue(chain); chain.gte.mockReturnValue(chain); chain.limit.mockResolvedValue({ data: [], error: null })
+    createSupabaseServiceClient.mockReturnValue({ rpc: vi.fn().mockResolvedValue({}), from: vi.fn().mockReturnValue(chain) })
+    const response = await GET()
     expect(response.status).toBe(404)
-    expect(await response.json()).toEqual({error:"Formulário indisponível."})
   })
 
-  it("rejeita envio com token malformado",async()=>{
-    const response=await POST(new Request("http://localhost/api/volunteers/submit",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token:"invalido"})}))
+  it("rejeita formulário incompleto antes de acessar o banco", async () => {
+    const response = await POST(new Request("http://localhost/api/volunteers/submit", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ firstName: "" }) }))
     expect(response.status).toBe(400)
+    expect((await response.json()).fields).toContain("firstName")
+    expect(createSupabaseServiceClient).not.toHaveBeenCalled()
   })
 
-  it("rejeita formulário incompleto antes de acessar o banco",async()=>{
-    const response=await POST(new Request("http://localhost/api/volunteers/submit",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token:"00000000-0000-0000-0000-000000000001",firstName:""})}))
-    expect(response.status).toBe(400)
-    const body=await response.json()
-    expect(body.fields).toContain("firstName")
+  it("envia cadastro pela campanha ativa sem receber token do cliente", async () => {
+    process.env.VOLUNTEER_FORM_RATE_LIMIT_SECRET = "test-secret"
+    const attempts: any = { select: vi.fn(), eq: vi.fn(), gte: vi.fn(), insert: vi.fn() }
+    attempts.select.mockReturnValue(attempts)
+    attempts.eq.mockReturnValue(attempts)
+    attempts.gte.mockResolvedValue({ count: 0, error: null })
+    attempts.insert.mockResolvedValue({ error: null })
+    const rpc = vi.fn().mockResolvedValue({ error: null })
+    createSupabaseServiceClient.mockReturnValue({ rpc, from: vi.fn().mockReturnValue(attempts) })
+    const response = await POST(new Request("http://localhost/api/volunteers/submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        firstName: "Ana", lastName: "Silva", birthDate: "15/03/1990", phone: "(54) 99999-1234",
+        neighborhood: "Centro", city: "Farroupilha", frequency: "mensal", activities: ["plantio_mudas"],
+        privacyAccepted: true, participationAccepted: true,
+      }),
+    }))
+    expect(response.status).toBe(200)
+    expect(rpc).toHaveBeenCalledWith("submit_volunteer_registration", expect.not.objectContaining({ p_campaign_token: expect.anything() }))
   })
 })

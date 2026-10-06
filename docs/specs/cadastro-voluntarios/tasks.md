@@ -99,6 +99,13 @@
   - Manter o botão visível e orientar a criação ou ativação da campanha quando necessário.
   - Cobrir por testes unitários os cenários de sucesso, alternativa e falha.
 
+- [x] **T-020 — Melhorar a apresentação e o preenchimento do formulário público** (`RF-047`–`RF-051`, `CA-042`–`CA-046`)
+  - Remover a faixa vazia sobre o cabeçalho e aumentar o espaçamento entre rótulos e campos.
+  - Destacar rótulos obrigatórios e remover a indicação textual de opcionalidade.
+  - Aplicar e testar máscara brasileira nos telefones.
+  - Adicionar e testar a seleção ou remoção de todas as atividades.
+  - Validar e testar a data de nascimento ao concluir o preenchimento do campo.
+
 ## Dependências entre tarefas
 
 As tarefas `T-001` a `T-010` foram implementadas localmente conforme o plano anterior. `T-013` a `T-018` compõem a revisão atual. A migração incremental `003` foi aplicada e verificada no Supabase em 2026-10-01. `T-011` e a parte remota de `T-012` permanecem parcialmente pendentes até a validação completa de permissões, aplicação do agendamento e publicação controlada.

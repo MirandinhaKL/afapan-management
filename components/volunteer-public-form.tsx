@@ -17,8 +17,10 @@ import {
   VOLUNTEER_ACTIVITIES,
   VOLUNTEER_COMMUNICATION_CHANNELS,
   VOLUNTEER_FREQUENCIES,
+  getBirthDateValidationError,
   isMinor,
   maskBrazilianDate,
+  maskBrazilianPhone,
   maskMonthYear,
   parseMonthYear,
   validateVolunteerInput,
@@ -55,8 +57,10 @@ export function VolunteerPublicForm({ campaign }: { campaign: CampaignData }) {
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [birthDateError, setBirthDateError] = useState<string | null>(null)
   const [invalidFields, setInvalidFields] = useState<string[]>([])
   const minor = useMemo(() => Boolean(value.birthDate && isMinor(value.birthDate)), [value.birthDate])
+  const allActivitiesSelected = VOLUNTEER_ACTIVITIES.every((item) => value.activities.includes(item.value))
 
   const update = <K extends keyof VolunteerInput>(field: K, next: VolunteerInput[K]) => {
     setValue((current) => ({ ...current, [field]: next }))
@@ -65,6 +69,7 @@ export function VolunteerPublicForm({ campaign }: { campaign: CampaignData }) {
   }
 
   const toggleActivity = (item: VolunteerActivity, checked: boolean) => update("activities", checked ? [...value.activities, item] : value.activities.filter((current) => current !== item))
+  const toggleAllActivities = (checked: boolean) => update("activities", checked ? VOLUNTEER_ACTIVITIES.map((item) => item.value) : [])
   const toggleChannel = (item: VolunteerCommunicationChannel, checked: boolean) => {
     const channels = value.communicationChannels || []
     update("communicationChannels", checked ? [...channels, item] : channels.filter((current) => current !== item))
@@ -76,6 +81,19 @@ export function VolunteerPublicForm({ campaign }: { campaign: CampaignData }) {
     const parsed = parseMonthYear(masked)
     update("activityStartMonth", parsed.month)
     update("activityStartYear", parsed.year)
+  }
+
+  const validateBirthDate = (birthDate: string) => {
+    const validationError = getBirthDateValidationError(birthDate)
+    setBirthDateError(validationError)
+    setInvalidFields((fields) => validationError ? Array.from(new Set([...fields, "birthDate"])) : fields.filter((item) => item !== "birthDate"))
+  }
+
+  const handleBirthDate = (next: string) => {
+    const masked = maskBrazilianDate(next)
+    update("birthDate", masked)
+    if (masked.length === 10) validateBirthDate(masked)
+    else setBirthDateError(null)
   }
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -107,7 +125,7 @@ export function VolunteerPublicForm({ campaign }: { campaign: CampaignData }) {
 
   if (submitted) return <Card className="w-full max-w-2xl"><CardContent className="space-y-4 py-10 text-center"><CheckCircle2 className="mx-auto h-12 w-12 text-green-600" /><h1 className="text-2xl font-bold">Cadastro recebido!</h1><p className="text-muted-foreground">A AFAPAN fará a validação dos seus dados antes de confirmar sua participação como voluntário(a).</p></CardContent></Card>
 
-  return <Card className="w-full max-w-4xl overflow-hidden shadow-lg">
+  return <Card className="w-full max-w-4xl overflow-hidden py-0 shadow-lg">
     <CardHeader className="border-b bg-primary text-primary-foreground">
       <div className="flex items-center gap-3"><HeartHandshake className="h-8 w-8" /><div><CardTitle className="text-2xl">Voluntariado AFAPAN</CardTitle><CardDescription className="text-primary-foreground/80">{campaign.name} · Responda até {new Date(campaign.deadline).toLocaleDateString("pt-BR")}</CardDescription></div></div>
     </CardHeader>
@@ -116,37 +134,37 @@ export function VolunteerPublicForm({ campaign }: { campaign: CampaignData }) {
       <div className="mb-8 space-y-3 rounded-xl bg-green-50 p-5 text-green-950">
         <h2 className="text-xl font-semibold">Que bom ter você por aqui! 💚</h2>
         <p>A AFAPAN é uma associação sem fins lucrativos que conta com pessoas voluntárias para cuidar do nosso ambiente e fortalecer ações em Farroupilha.</p>
-        <p>Queremos conhecer você um pouco melhor e entender como gostaria de colaborar. O formulário é simples e os campos opcionais podem ficar em branco.</p>
+        <p>Queremos conhecer você um pouco melhor e entender como gostaria de colaborar. O formulário é simples e rápido de preencher.</p>
       </div>
-      <form onSubmit={handleSubmit} className="space-y-7" noValidate>
+      <form onSubmit={handleSubmit} className="space-y-7 [&_[data-slot=label]]:mb-2" noValidate>
         <div className="absolute -left-[10000px]" aria-hidden="true"><Label htmlFor="website">Site</Label><Input id="website" tabIndex={-1} autoComplete="off" value={website} onChange={(event) => setWebsite(event.target.value)} /></div>
 
         <section className="space-y-4"><div><h2 className="text-xl font-semibold">Seus dados</h2><p className="text-sm text-muted-foreground">Campos marcados com * são obrigatórios.</p></div><div className="grid gap-4 sm:grid-cols-2">
-          <div><Label htmlFor="firstName">Nome *</Label><Input id="firstName" autoComplete="given-name" value={value.firstName} onChange={(event) => update("firstName", event.target.value)} aria-invalid={invalidFields.includes("firstName")} /></div>
-          <div><Label htmlFor="lastName">Sobrenome *</Label><Input id="lastName" autoComplete="family-name" value={value.lastName} onChange={(event) => update("lastName", event.target.value)} aria-invalid={invalidFields.includes("lastName")} /></div>
-          <div><Label htmlFor="birthDate">Data de nascimento *</Label><Input id="birthDate" inputMode="numeric" placeholder="dd/mm/aaaa" maxLength={10} value={value.birthDate} onChange={(event) => update("birthDate", maskBrazilianDate(event.target.value))} aria-invalid={invalidFields.includes("birthDate")} /></div>
-          <div><Label htmlFor="phone">Telefone com WhatsApp *</Label><Input id="phone" inputMode="tel" placeholder="(54) 99999-9999" value={value.phone} onChange={(event) => update("phone", event.target.value)} aria-invalid={invalidFields.includes("phone")} /></div>
-          <div><Label htmlFor="email">E-mail (opcional)</Label><Input id="email" type="email" value={value.email} onChange={(event) => update("email", event.target.value)} /></div>
-          <div><Label htmlFor="activityStart">Início das atividades na AFAPAN (opcional)</Label><Input id="activityStart" inputMode="numeric" placeholder="MM/AAAA" maxLength={7} value={startMonth} onChange={(event) => handleStartMonth(event.target.value)} aria-invalid={invalidFields.includes("activityStartMonth")} /></div>
+          <div><Label className="font-bold" htmlFor="firstName">Nome *</Label><Input id="firstName" autoComplete="given-name" value={value.firstName} onChange={(event) => update("firstName", event.target.value)} aria-invalid={invalidFields.includes("firstName")} /></div>
+          <div><Label className="font-bold" htmlFor="lastName">Sobrenome *</Label><Input id="lastName" autoComplete="family-name" value={value.lastName} onChange={(event) => update("lastName", event.target.value)} aria-invalid={invalidFields.includes("lastName")} /></div>
+          <div><Label className="font-bold" htmlFor="birthDate">Data de nascimento *</Label><Input id="birthDate" inputMode="numeric" placeholder="dd/mm/aaaa" maxLength={10} value={value.birthDate} onChange={(event) => handleBirthDate(event.target.value)} onBlur={() => validateBirthDate(value.birthDate)} aria-invalid={Boolean(birthDateError) || invalidFields.includes("birthDate")} aria-describedby={birthDateError ? "birthDate-error" : undefined} />{birthDateError && <p id="birthDate-error" role="alert" className="mt-2 text-sm text-destructive">{birthDateError}</p>}</div>
+          <div><Label className="font-bold" htmlFor="phone">Telefone com WhatsApp *</Label><Input id="phone" inputMode="tel" autoComplete="tel" placeholder="(54) 99999-9999" maxLength={15} value={value.phone} onChange={(event) => update("phone", maskBrazilianPhone(event.target.value))} aria-invalid={invalidFields.includes("phone")} /></div>
+          <div><Label htmlFor="email">E-mail</Label><Input id="email" type="email" value={value.email} onChange={(event) => update("email", event.target.value)} /></div>
+          <div><Label htmlFor="activityStart">Início das atividades na AFAPAN</Label><Input id="activityStart" inputMode="numeric" placeholder="MM/AAAA" maxLength={7} value={startMonth} onChange={(event) => handleStartMonth(event.target.value)} aria-invalid={invalidFields.includes("activityStartMonth")} /></div>
         </div></section>
 
         <section className="space-y-4 border-t pt-6"><h2 className="text-xl font-semibold">Onde você mora?</h2><div className="grid gap-4 sm:grid-cols-2">
-          <div><Label htmlFor="neighborhood">Bairro *</Label><Input id="neighborhood" value={value.neighborhood} onChange={(event) => update("neighborhood", event.target.value)} aria-invalid={invalidFields.includes("neighborhood")} /></div>
-          <div><Label htmlFor="city">Cidade *</Label><Input id="city" value={value.city} onChange={(event) => update("city", event.target.value)} aria-invalid={invalidFields.includes("city")} /></div>
-          <div><Label htmlFor="street">Rua (opcional)</Label><Input id="street" value={value.street} onChange={(event) => update("street", event.target.value)} /></div>
-          <div><Label htmlFor="number">Número (opcional)</Label><Input id="number" value={value.number} onChange={(event) => update("number", event.target.value)} /></div>
-          <div><Label htmlFor="complement">Complemento (opcional)</Label><Input id="complement" value={value.complement} onChange={(event) => update("complement", event.target.value)} /></div>
-          <div><Label htmlFor="state">Estado (opcional)</Label><Input id="state" value={value.state} onChange={(event) => update("state", event.target.value)} /></div>
+          <div><Label className="font-bold" htmlFor="neighborhood">Bairro *</Label><Input id="neighborhood" value={value.neighborhood} onChange={(event) => update("neighborhood", event.target.value)} aria-invalid={invalidFields.includes("neighborhood")} /></div>
+          <div><Label className="font-bold" htmlFor="city">Cidade *</Label><Input id="city" value={value.city} onChange={(event) => update("city", event.target.value)} aria-invalid={invalidFields.includes("city")} /></div>
+          <div><Label htmlFor="street">Rua</Label><Input id="street" value={value.street} onChange={(event) => update("street", event.target.value)} /></div>
+          <div><Label htmlFor="number">Número</Label><Input id="number" value={value.number} onChange={(event) => update("number", event.target.value)} /></div>
+          <div><Label htmlFor="complement">Complemento</Label><Input id="complement" value={value.complement} onChange={(event) => update("complement", event.target.value)} /></div>
+          <div><Label htmlFor="state">Estado</Label><Input id="state" value={value.state} onChange={(event) => update("state", event.target.value)} /></div>
         </div></section>
 
         <section className="space-y-4 border-t pt-6"><h2 className="text-xl font-semibold">Como você gostaria de contribuir?</h2><div className="grid gap-4 sm:grid-cols-2">
-          <div><Label htmlFor="profession">Profissão (opcional)</Label><Input id="profession" value={value.profession} onChange={(event) => update("profession", event.target.value)} /></div>
-          <div><Label htmlFor="skills">Habilidades e experiências (opcional)</Label><Textarea id="skills" value={value.skills} onChange={(event) => update("skills", event.target.value)} /></div>
-        </div><fieldset><legend className="mb-2 font-medium">Atividades de interesse *</legend><div id="activities" tabIndex={-1} className="grid gap-2 sm:grid-cols-2">{VOLUNTEER_ACTIVITIES.map((item) => <CheckOption key={item.value} label={item.label} checked={value.activities.includes(item.value)} onChange={(checked) => toggleActivity(item.value, checked)} />)}</div></fieldset>{value.activities.includes("outras") && <div><Label htmlFor="otherActivityDescription">Quais outras atividades? *</Label><Textarea id="otherActivityDescription" value={value.otherActivityDescription} onChange={(event) => update("otherActivityDescription", event.target.value)} /></div>}</section>
+          <div><Label htmlFor="profession">Profissão</Label><Input id="profession" value={value.profession} onChange={(event) => update("profession", event.target.value)} /></div>
+          <div><Label htmlFor="skills">Habilidades e experiências</Label><Textarea id="skills" value={value.skills} onChange={(event) => update("skills", event.target.value)} /></div>
+        </div><fieldset><legend className="mb-3 font-bold">Atividades de interesse *</legend><div className="mb-3"><CheckOption label="Marcar todas as atividades" checked={allActivitiesSelected} onChange={toggleAllActivities} /></div><div id="activities" tabIndex={-1} className="grid gap-2 sm:grid-cols-2">{VOLUNTEER_ACTIVITIES.map((item) => <CheckOption key={item.value} label={item.label} checked={value.activities.includes(item.value)} onChange={(checked) => toggleActivity(item.value, checked)} />)}</div></fieldset>{value.activities.includes("outras") && <div><Label className="font-bold" htmlFor="otherActivityDescription">Quais outras atividades? *</Label><Textarea id="otherActivityDescription" value={value.otherActivityDescription} onChange={(event) => update("otherActivityDescription", event.target.value)} /></div>}</section>
 
-        <section className="space-y-4 border-t pt-6"><h2 className="text-xl font-semibold">Disponibilidade</h2><div><Label htmlFor="frequency">Com que frequência você poderia participar? *</Label><Select value={value.frequency} onValueChange={(next: VolunteerFrequency) => update("frequency", next)}><SelectTrigger id="frequency"><SelectValue /></SelectTrigger><SelectContent>{VOLUNTEER_FREQUENCIES.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent></Select></div></section>
+        <section className="space-y-4 border-t pt-6"><h2 className="text-xl font-semibold">Disponibilidade</h2><div><Label className="font-bold" htmlFor="frequency">Com que frequência você poderia participar? *</Label><Select value={value.frequency} onValueChange={(next: VolunteerFrequency) => update("frequency", next)}><SelectTrigger id="frequency"><SelectValue /></SelectTrigger><SelectContent>{VOLUNTEER_FREQUENCIES.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent></Select></div></section>
 
-        <section className="space-y-4 border-t pt-6"><div><h2 className="text-xl font-semibold">Conte um pouco mais sobre você</h2><p className="text-sm text-muted-foreground">As perguntas desta seção são opcionais.</p></div>
+        <section className="space-y-4 border-t pt-6"><div><h2 className="text-xl font-semibold">Conte um pouco mais sobre você</h2></div>
           <div><Label htmlFor="expectations">O que você espera da AFAPAN?</Label><Textarea id="expectations" value={value.expectations} onChange={(event) => update("expectations", event.target.value)} /></div>
           <div><Label htmlFor="discoverySource">Como você conheceu a AFAPAN?</Label><Textarea id="discoverySource" value={value.discoverySource} onChange={(event) => update("discoverySource", event.target.value)} /></div>
           <div><Label htmlFor="previousVolunteering">Você é ou já foi voluntário(a) em outra instituição?</Label><Select value={value.previousVolunteering || "nao_informado"} onValueChange={(next) => update("previousVolunteering", next === "nao_informado" ? null : next as VolunteerInput["previousVolunteering"])}><SelectTrigger id="previousVolunteering"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="nao_informado">Prefiro não responder</SelectItem>{PREVIOUS_VOLUNTEERING_OPTIONS.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent></Select></div>
@@ -156,7 +174,7 @@ export function VolunteerPublicForm({ campaign }: { campaign: CampaignData }) {
           <div><Label htmlFor="imageUseAuthorized">Você autoriza o uso da sua imagem em divulgações da AFAPAN?</Label><Select value={value.imageUseAuthorized == null ? "nao_informado" : value.imageUseAuthorized ? "sim" : "nao"} onValueChange={(next) => update("imageUseAuthorized", next === "nao_informado" ? null : next === "sim")}><SelectTrigger id="imageUseAuthorized"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="nao_informado">Prefiro não responder</SelectItem><SelectItem value="sim">Autorizo</SelectItem><SelectItem value="nao">Não autorizo</SelectItem></SelectContent></Select></div>
         </section>
 
-        {minor && <section className="space-y-4 rounded-lg border border-amber-300 bg-amber-50 p-4"><h2 className="text-xl font-semibold">Responsável pelo menor</h2><div className="grid gap-4 sm:grid-cols-2"><div><Label htmlFor="guardianName">Nome do responsável *</Label><Input id="guardianName" value={value.guardianName} onChange={(event) => update("guardianName", event.target.value)} /></div><div><Label htmlFor="guardianPhone">Telefone do responsável *</Label><Input id="guardianPhone" inputMode="tel" value={value.guardianPhone} onChange={(event) => update("guardianPhone", event.target.value)} /></div></div><CheckOption label="Declaro que o responsável autoriza a participação do menor nas atividades de voluntariado da AFAPAN." checked={Boolean(value.guardianAuthorized)} onChange={(checked) => update("guardianAuthorized", checked)} /></section>}
+        {minor && <section className="space-y-4 rounded-lg border border-amber-300 bg-amber-50 p-4"><h2 className="text-xl font-semibold">Responsável pelo menor</h2><div className="grid gap-4 sm:grid-cols-2"><div><Label className="font-bold" htmlFor="guardianName">Nome do responsável *</Label><Input id="guardianName" value={value.guardianName} onChange={(event) => update("guardianName", event.target.value)} /></div><div><Label className="font-bold" htmlFor="guardianPhone">Telefone do responsável *</Label><Input id="guardianPhone" inputMode="tel" maxLength={15} value={value.guardianPhone} onChange={(event) => update("guardianPhone", maskBrazilianPhone(event.target.value))} /></div></div><CheckOption label="Declaro que o responsável autoriza a participação do menor nas atividades de voluntariado da AFAPAN." checked={Boolean(value.guardianAuthorized)} onChange={(checked) => update("guardianAuthorized", checked)} /></section>}
 
         <section className="space-y-3 border-t pt-6"><h2 className="text-xl font-semibold">Confirmações</h2><CheckOption label={campaign.privacyText} checked={value.privacyAccepted} onChange={(checked) => update("privacyAccepted", checked)} /><CheckOption label={campaign.participationText} checked={value.participationAccepted} onChange={(checked) => update("participationAccepted", checked)} /></section>
         {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}

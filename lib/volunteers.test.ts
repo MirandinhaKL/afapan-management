@@ -5,7 +5,9 @@ import {
   formatActivityStart,
   formatBirthday,
   isoDateToBrazilian,
+  getBirthDateValidationError,
   maskBrazilianDate,
+  maskBrazilianPhone,
   maskMonthYear,
   normalizeBrazilianPhone,
   parseMonthYear,
@@ -27,6 +29,12 @@ describe("domínio de voluntários", () => {
     expect(normalizeBrazilianPhone("+55 54 99999-1234")).toBe("5554999991234")
   })
 
+  it("aplica máscara brasileira e limita o celular a onze dígitos", () => {
+    expect(maskBrazilianPhone("54999991234")).toBe("(54) 99999-1234")
+    expect(maskBrazilianPhone("+55 54 99999-1234")).toBe("(54) 99999-1234")
+    expect(maskBrazilianPhone("54999991234999")).toBe("(54) 99999-1234")
+  })
+
   it("converte e mascara datas no padrão brasileiro sem inverter dia e mês", () => {
     expect(maskBrazilianDate("15031990")).toBe("15/03/1990")
     expect(brazilianDateToIso("15/03/1990")).toBe("1990-03-15")
@@ -42,6 +50,13 @@ describe("domínio de voluntários", () => {
   it("calcula a idade com datas ISO e brasileiras", () => {
     expect(calculateAge("15/10/2000", new Date(2026, 8, 29))).toBe(25)
     expect(calculateAge("2000-09-15", new Date(2026, 8, 29))).toBe(26)
+  })
+
+  it("valida imediatamente datas de nascimento inválidas e futuras", () => {
+    const today = new Date(2026, 9, 5)
+    expect(getBirthDateValidationError("31/02/1990", today)).toContain("válida")
+    expect(getBirthDateValidationError("06/10/2026", today)).toContain("futura")
+    expect(getBirthDateValidationError("05/10/2000", today)).toBeNull()
   })
 
   it("formata aniversário sem revelar o ano", () => {

@@ -84,6 +84,11 @@ Disponibilizar um módulo integrado ao sistema da AFAPAN para coletar, validar e
 - **RF-044:** Na tela interna de voluntários, a área de busca e filtros deve iniciar recolhida e ser aberta ou fechada por um controle identificado como `Filtros`.
 - **RF-045:** Quando existirem filtros aplicados, o controle deve indicar visualmente a quantidade de filtros ativos, mesmo com a área recolhida.
 - **RF-046:** Recolher a área de filtros não deve remover nem alterar os filtros aplicados; a remoção deve ocorrer somente por alteração explícita ou pela ação `Limpar filtros`.
+- **RF-047:** O formulário público não deve apresentar espaço vazio acima do cabeçalho verde e deve manter distância visual clara entre os rótulos e os respectivos campos.
+- **RF-048:** Rótulos obrigatórios devem aparecer em negrito e conservar o asterisco; rótulos não obrigatórios não devem apresentar a palavra `opcional`.
+- **RF-049:** Telefones digitados no formulário público devem receber máscara brasileira, aceitar no máximo 11 dígitos nacionais e continuar sendo normalizados antes da persistência.
+- **RF-050:** A seção de atividades deve oferecer uma ação para marcar ou desmarcar todas as opções.
+- **RF-051:** A data de nascimento deve ser validada ao completar o valor ou ao sair do campo, apresentando imediatamente uma mensagem para datas inválidas ou futuras.
 
 ### Duplicidade e correção
 
@@ -270,6 +275,11 @@ As opções poderão ser apresentadas em grupos amigáveis que relacionem as ati
 - **CA-039:** Dado o controle `Filtros`, quando o usuário acioná-lo, então a área deve alternar entre aberta e recolhida sem recarregar a página.
 - **CA-040:** Dados filtros aplicados, quando a área for recolhida, então os resultados filtrados devem permanecer e o controle deve informar quantos filtros estão ativos.
 - **CA-041:** Dados filtros aplicados, quando o usuário acionar `Limpar filtros`, então todos os filtros devem voltar aos valores iniciais e a indicação de filtros ativos deve desaparecer.
+- **CA-042:** Dado o formulário público, então o cabeçalho verde deve iniciar no topo do card, sem faixa branca, e os rótulos devem ter espaçamento perceptível em relação aos campos.
+- **CA-043:** Dados campos obrigatórios e não obrigatórios, então somente os obrigatórios devem ter rótulo em negrito com `*`, e nenhum rótulo deve conter `(opcional)`.
+- **CA-044:** Dado um telefone digitado ou colado com DDD, então o campo deve exibir a máscara `(DD) 99999-9999`, descartar dígitos excedentes e preservar a normalização usada no envio.
+- **CA-045:** Dada a ação `Marcar todas as atividades`, quando acionada, então todas as atividades devem ser selecionadas; quando acionada novamente, todas devem ser desmarcadas.
+- **CA-046:** Dada uma data de nascimento completa inválida ou futura, então o campo deve apresentar o erro antes do envio do formulário; uma correção válida deve remover o erro.
 
 ## 12. Dados e privacidade
 

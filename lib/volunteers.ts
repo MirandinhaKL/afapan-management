@@ -126,6 +126,16 @@ export function isValidBrazilianPhone(value: string) {
   return normalized.startsWith("55") && (normalized.length === 12 || normalized.length === 13)
 }
 
+export function maskBrazilianPhone(value: string) {
+  let digits = value.replace(/\D/g, "")
+  if (digits.startsWith("55") && digits.length > 11) digits = digits.slice(2)
+  digits = digits.slice(0, 11)
+  if (digits.length <= 2) return digits.length ? `(${digits}` : ""
+  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`
+  if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`
+}
+
 export function maskBrazilianDate(value: string) {
   const digits = value.replace(/\D/g, "").slice(0, 8)
   if (digits.length <= 2) return digits
@@ -191,6 +201,14 @@ export function isMinor(birthDate: string, today = new Date()) {
   return age !== null && age < 18
 }
 
+export function getBirthDateValidationError(birthDate: string, today = new Date()) {
+  if (!birthDate) return "Informe a data de nascimento."
+  const birth = parseLocalDate(birthDate)
+  if (!birth) return "Informe uma data de nascimento válida no formato dd/mm/aaaa."
+  if (birth > today) return "A data de nascimento não pode ser futura."
+  return null
+}
+
 export function formatBirthday(birthDate: string) {
   const birth = parseLocalDate(birthDate)
   if (!birth) return "Não informado"
@@ -218,7 +236,8 @@ export function validateVolunteerInput(input: VolunteerInput, today = new Date()
   if (!input.firstName?.trim()) errors.push({ field: "firstName", message: "Informe o nome." })
   if (!input.lastName?.trim()) errors.push({ field: "lastName", message: "Informe o sobrenome." })
   const age = calculateAge(input.birthDate, today)
-  if (age === null) errors.push({ field: "birthDate", message: "Informe a data de nascimento no formato dd/mm/aaaa." })
+  const birthDateError = getBirthDateValidationError(input.birthDate, today)
+  if (birthDateError) errors.push({ field: "birthDate", message: birthDateError })
   if (!isValidBrazilianPhone(input.phone)) errors.push({ field: "phone", message: "Informe um telefone com DDD válido." })
   if (input.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email.trim())) errors.push({ field: "email", message: "Informe um e-mail válido." })
   if (!input.neighborhood?.trim()) errors.push({ field: "neighborhood", message: "Informe o bairro." })

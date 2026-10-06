@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 import { VolunteerPublicForm } from "@/components/volunteer-public-form"
+import { VOLUNTEER_ACTIVITIES } from "@/lib/volunteers"
 
 const campaign = { name: "Confirmação 2026", deadline: "2026-10-06T23:59:00Z", privacyText: "Estou ciente do uso dos dados.", participationText: "Quero continuar como voluntário." }
 
@@ -13,6 +14,48 @@ describe("formulário público de voluntários", () => {
     expect(screen.getByText(campaign.participationText)).toBeInTheDocument()
     expect(screen.getByLabelText(/Data de nascimento/)).toHaveAttribute("placeholder", "dd/mm/aaaa")
     expect(screen.getByLabelText(/Início das atividades/)).toHaveAttribute("placeholder", "MM/AAAA")
+  })
+
+  it("remove o espaço superior do card e aumenta a distância entre rótulos e campos", () => {
+    render(<VolunteerPublicForm campaign={campaign} />)
+    expect(screen.getByText("Voluntariado AFAPAN").closest('[data-slot="card"]')).toHaveClass("py-0")
+    expect(screen.getByRole("button", { name: "Enviar cadastro" }).closest("form")).toHaveClass("[&_[data-slot=label]]:mb-2")
+  })
+
+  it("diferencia campos obrigatórios sem escrever opcional nos demais", () => {
+    render(<VolunteerPublicForm campaign={campaign} />)
+    expect(screen.getByText("Nome *")).toHaveClass("font-bold")
+    expect(screen.getByText("Telefone com WhatsApp *")).toHaveClass("font-bold")
+    expect(screen.getByText("E-mail")).not.toHaveTextContent(/opcional/i)
+    expect(screen.queryByText(/\(opcional\)/i)).not.toBeInTheDocument()
+  })
+
+  it("aplica máscara de celular e impede dígitos excedentes", () => {
+    render(<VolunteerPublicForm campaign={campaign} />)
+    const phone = screen.getByLabelText("Telefone com WhatsApp *")
+    fireEvent.change(phone, { target: { value: "54999991234999" } })
+    expect(phone).toHaveValue("(54) 99999-1234")
+    expect(phone).toHaveAttribute("maxlength", "15")
+  })
+
+  it("permite marcar e desmarcar todas as atividades", async () => {
+    const user = userEvent.setup()
+    render(<VolunteerPublicForm campaign={campaign} />)
+    const markAll = screen.getByLabelText("Marcar todas as atividades")
+
+    await user.click(markAll)
+    for (const activity of VOLUNTEER_ACTIVITIES) expect(screen.getByLabelText(activity.label)).toBeChecked()
+
+    await user.click(markAll)
+    for (const activity of VOLUNTEER_ACTIVITIES) expect(screen.getByLabelText(activity.label)).not.toBeChecked()
+  })
+
+  it("valida a data de nascimento assim que o preenchimento termina", () => {
+    render(<VolunteerPublicForm campaign={campaign} />)
+    const birthDate = screen.getByLabelText("Data de nascimento *")
+    fireEvent.change(birthDate, { target: { value: "31021990" } })
+    expect(screen.getByRole("alert")).toHaveTextContent("Informe uma data de nascimento válida")
+    expect(birthDate).toHaveAttribute("aria-invalid", "true")
   })
 
   it("mostra somente frequência na seção de disponibilidade", () => {

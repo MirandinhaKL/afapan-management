@@ -122,8 +122,7 @@ create table if not exists public.volunteer_interests (
   atividade text not null,
   outra_descricao text,
   primary key (volunteer_id, atividade),
-  check (atividade in ('plantio_mudas','coleta_residuos','limpeza_areas_publicas','retirada_plantas_exoticas','conscientizacao_ambiental','caminhos_residuos','compostagem_escola','ecopontos_bairros','outras','ainda_nao_sei')),
-  check (atividade <> 'outras' or nullif(btrim(outra_descricao), '') is not null)
+  check (atividade in ('plantio_mudas','coleta_residuos','limpeza_areas_publicas','retirada_plantas_exoticas','conscientizacao_ambiental','caminhos_residuos','compostagem_escola','ecopontos_bairros','outras','ainda_nao_sei'))
 );
 
 create index if not exists volunteer_interests_activity_idx on public.volunteer_interests (atividade);

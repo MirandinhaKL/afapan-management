@@ -90,7 +90,7 @@ Disponibilizar um módulo integrado ao sistema da AFAPAN para coletar, validar e
 - **RF-050:** A seção de atividades deve oferecer uma ação para marcar ou desmarcar todas as opções.
 - **RF-051:** A data de nascimento deve ser validada ao completar o valor ou ao sair do campo, apresentando imediatamente uma mensagem para datas inválidas ou futuras.
 - **RF-052:** O e-mail deve permanecer não obrigatório; quando preenchido, deve ser validado ao sair do campo e durante a correção de um valor inválido.
-- **RF-053:** O conteúdo do cabeçalho verde do formulário público deve aparecer centralizado.
+- **RF-053:** O título e as informações do cabeçalho verde do formulário público devem aparecer centralizados horizontal e verticalmente, sem deslocamento causado pelo ícone.
 - **RF-054:** A seção de endereço deve usar o título `Endereço`.
 - **RF-055:** A descrição apresentada ao selecionar `Outras atividades` deve permanecer disponível, mas não deve ser obrigatória.
 
@@ -285,7 +285,7 @@ As opções poderão ser apresentadas em grupos amigáveis que relacionem as ati
 - **CA-045:** Dada a ação `Marcar todas as atividades`, quando acionada, então todas as atividades devem ser selecionadas; quando acionada novamente, todas devem ser desmarcadas.
 - **CA-046:** Dada uma data de nascimento completa inválida ou futura, então o campo deve apresentar o erro antes do envio do formulário; uma correção válida deve remover o erro.
 - **CA-047:** Dado um e-mail vazio, então o formulário deve aceitá-lo; dado um e-mail preenchido em formato inválido, então o erro deve aparecer junto ao campo antes do envio e desaparecer após a correção.
-- **CA-048:** Dado o cabeçalho verde, então seu ícone, título e informações da campanha devem estar centralizados.
+- **CA-048:** Dado o cabeçalho verde, então o título e as informações da campanha devem ocupar o centro horizontal e vertical da área; o ícone deve permanecer à esquerda sem deslocar o texto.
 - **CA-049:** Dada a seção que reúne bairro, cidade e demais dados de localização, então seu título deve ser `Endereço`.
 - **CA-050:** Dada a seleção de `Outras atividades`, então a descrição adicional deve ser exibida sem asterisco e sua ausência não deve bloquear o cadastro.
 

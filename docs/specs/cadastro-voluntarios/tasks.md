@@ -111,6 +111,8 @@
   - Centralizar o conteúdo do cabeçalho e renomear a seção de localização para `Endereço`.
   - Tornar facultativa a descrição de `Outras atividades` no domínio e na interface.
   - Cobrir os quatro comportamentos com testes unitários e de componente.
+  - Criar a migração incremental `004` para alinhar a restrição do banco à descrição facultativa de `Outras atividades`.
+  - Centralizar o bloco textual do cabeçalho nos dois eixos, mantendo o ícone fora do cálculo de centralização.
 
 ## Dependências entre tarefas
 
@@ -138,6 +140,7 @@ As tarefas `T-001` a `T-010` foram implementadas localmente conforme o plano ant
 
 - [x] `001-volunteers-schema.sql` aplicado no Supabase, conforme confirmação da responsável.
 - [x] `003-volunteers-form-revision.sql` aplicado e validado no Supabase: sete novas colunas presentes, assinaturas antiga e nova da RPC disponíveis, nenhuma frequência inválida e RLS habilitada nas cinco tabelas do módulo.
+- [x] `004-optional-other-activity-description.sql` aplicado e validado no Supabase em 2026-10-06; envio público com `Outras atividades` sem descrição confirmado em produção.
 - [ ] Configurar `VOLUNTEER_FORM_RATE_LIMIT_SECRET` localmente e na Vercel.
 - [ ] Aplicar e validar `002-volunteers-schedule.sql` após a migração principal.
 - [ ] Executar testes de RLS com os papéis `anon`, `authenticated` e `service_role`.

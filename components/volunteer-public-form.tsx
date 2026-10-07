@@ -139,8 +139,9 @@ export function VolunteerPublicForm({ campaign }: { campaign: CampaignData }) {
   if (submitted) return <Card className="w-full max-w-2xl"><CardContent className="space-y-4 py-10 text-center"><CheckCircle2 className="mx-auto h-12 w-12 text-green-600" /><h1 className="text-2xl font-bold">Cadastro recebido!</h1><p className="text-muted-foreground">A AFAPAN fará a validação dos seus dados antes de confirmar sua participação como voluntário(a).</p></CardContent></Card>
 
   return <Card className="w-full max-w-4xl overflow-hidden py-0 shadow-lg">
-    <CardHeader className="border-b bg-primary text-center text-primary-foreground">
-      <div className="flex items-center justify-center gap-3"><HeartHandshake className="h-8 w-8" /><div><CardTitle className="text-2xl">Voluntariado AFAPAN</CardTitle><CardDescription className="text-primary-foreground/80">{campaign.name} · Responda até {new Date(campaign.deadline).toLocaleDateString("pt-BR")}</CardDescription></div></div>
+    <CardHeader className="relative flex min-h-28 items-center justify-center border-b bg-primary px-16 py-6 text-center text-primary-foreground">
+      <HeartHandshake className="absolute left-5 h-8 w-8 sm:left-8" aria-hidden="true" />
+      <div className="flex flex-col items-center justify-center gap-2"><CardTitle className="text-2xl">Voluntariado AFAPAN</CardTitle><CardDescription className="text-center text-primary-foreground/80">{campaign.name} · Responda até {new Date(campaign.deadline).toLocaleDateString("pt-BR")}</CardDescription></div>
     </CardHeader>
     <div className="relative aspect-[4/3] w-full bg-muted sm:aspect-[16/7]"><Image src="/voluntarios-afapan-rosto-crianca-desfocado.png" alt="Voluntários da AFAPAN reunidos" fill priority sizes="(max-width: 896px) 100vw, 896px" className="object-cover object-center" /></div>
     <CardContent className="p-5 sm:p-8">

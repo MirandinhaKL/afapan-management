@@ -25,8 +25,9 @@ describe("formulário público de voluntários", () => {
   it("centraliza o conteúdo do cabeçalho verde", () => {
     render(<VolunteerPublicForm campaign={campaign} />)
     const header = screen.getByText("Voluntariado AFAPAN").closest('[data-slot="card-header"]')
-    expect(header).toHaveClass("text-center")
-    expect(screen.getByText("Voluntariado AFAPAN").parentElement?.parentElement).toHaveClass("justify-center")
+    expect(header).toHaveClass("flex", "items-center", "justify-center", "text-center", "py-6")
+    expect(screen.getByText("Voluntariado AFAPAN").parentElement).toHaveClass("items-center", "justify-center")
+    expect(screen.getByText(campaign.name, { exact: false })).toHaveClass("text-center")
   })
 
   it("diferencia campos obrigatórios sem escrever opcional nos demais", () => {

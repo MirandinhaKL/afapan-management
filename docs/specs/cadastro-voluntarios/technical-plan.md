@@ -1,6 +1,6 @@
 # Plano técnico — Cadastro e confirmação de voluntários AFAPAN
 
-- **Status:** Aprovado e implementado localmente; migração `003` validada no Supabase e demais etapas remotas pendentes
+- **Status:** Aprovado e implementado; migrações `003` e `004` validadas no Supabase e demais etapas remotas pendentes
 - **Aprovação anterior:** 2026-09-29
 - **Especificação:** `./specification.md`
 - **Última atualização:** 2026-10-01
@@ -182,6 +182,7 @@ O envio público passará por uma rota de API do Next.js e por uma função tran
 ## 12. Compatibilidade, migração e implantação
 
 1. Como `001-volunteers-schema.sql` já foi aplicado, executar a migração incremental `003-volunteers-form-revision.sql` para adicionar os novos campos, atualizar a frequência e criar a nova assinatura sem token, preservando os dados e a assinatura antiga durante a transição do deploy.
+2. Após tornar facultativa a descrição de `Outras atividades`, executar `004-optional-other-activity-description.sql` para remover exclusivamente a restrição antiga de obrigatoriedade. A migração não altera dados, RLS, permissões ou outras validações e pode ser revertida recriando a restrição como `not valid` após tratar eventuais registros sem descrição.
 2. Validar a migração em ambiente de teste, incluindo anon, authenticated e service role.
 3. Configurar `VOLUNTEER_FORM_RATE_LIMIT_SECRET` no ambiente local e na Vercel.
 4. Publicar a API e as telas sem criar automaticamente uma campanha pública.

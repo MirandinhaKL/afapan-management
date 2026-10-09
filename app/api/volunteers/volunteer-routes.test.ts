@@ -48,11 +48,22 @@ describe("rotas públicas de voluntários", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         firstName: "Ana", lastName: "Silva", birthDate: "15/03/1990", phone: "(54) 99999-1234",
-        neighborhood: "Centro", city: "Farroupilha", frequency: "mensal", activities: ["plantio_mudas"],
+        neighborhood: "Centro", city: "Farroupilha", frequency: "mensal", activities: ["plantio_arvores_nativas", "coletas_residuos"],
         privacyAccepted: true, participationAccepted: true,
       }),
     }))
     expect(response.status).toBe(200)
     expect(rpc).toHaveBeenCalledWith("submit_volunteer_registration", expect.not.objectContaining({ p_campaign_token: expect.anything() }))
+    expect(rpc).toHaveBeenCalledWith("submit_volunteer_registration", expect.objectContaining({ p_payload: expect.objectContaining({ activities: ["plantio_arvores_nativas", "coletas_residuos"] }) }))
+  })
+
+  it.each(["outras", "plantio_mudas", "atividade_inexistente"])("CA-052/CA-055: rejeita código %s antes de acessar o banco", async (activity) => {
+    const response = await POST(new Request("http://localhost/api/volunteers/submit", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ firstName: "Ana", lastName: "Silva", birthDate: "15/03/1990", phone: "(54) 99999-1234", neighborhood: "Centro", city: "Farroupilha", frequency: "mensal", activities: [activity], privacyAccepted: true, participationAccepted: true }),
+    }))
+    expect(response.status).toBe(400)
+    expect((await response.json()).fields).toContain("activities")
+    expect(createSupabaseServiceClient).not.toHaveBeenCalled()
   })
 })

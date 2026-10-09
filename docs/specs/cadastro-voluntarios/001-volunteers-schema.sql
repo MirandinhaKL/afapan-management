@@ -120,9 +120,8 @@ alter table public.volunteer_availability add constraint volunteer_availability_
 create table if not exists public.volunteer_interests (
   volunteer_id uuid not null references public.volunteers(id) on delete cascade,
   atividade text not null,
-  outra_descricao text,
   primary key (volunteer_id, atividade),
-  check (atividade in ('plantio_mudas','coleta_residuos','limpeza_areas_publicas','retirada_plantas_exoticas','conscientizacao_ambiental','caminhos_residuos','compostagem_escola','ecopontos_bairros','outras','ainda_nao_sei'))
+  constraint volunteer_interests_atividade_check check (atividade in ('plantio_arvores_nativas','retirada_plantas_exoticas_invasoras','coletas_residuos','mutiroes_limpeza_areas_publicas','ecopontos','compostagem_domestica','compostagem_escolas','oficinas_conscientizacao','caminhos_residuos','palestras_atividades_educativas','apoio_projetos_eventos','comunicacao_divulgacao','ainda_nao_sei'))
 );
 
 create index if not exists volunteer_interests_activity_idx on public.volunteer_interests (atividade);
@@ -242,8 +241,8 @@ begin
     nullif(btrim(p_payload->>'normalizedGuardianPhone'),''),coalesce((p_payload->>'guardianAuthorized')::boolean,false),'aguardando_validacao',v_origin
   ) returning id into v_id;
   insert into public.volunteer_availability(volunteer_id,frequencia) values(v_id,p_payload->>'frequency');
-  insert into public.volunteer_interests(volunteer_id,atividade,outra_descricao)
-  select v_id,value,nullif(btrim(p_payload->>'otherActivityDescription'),'') from jsonb_array_elements_text(p_payload->'activities');
+  insert into public.volunteer_interests(volunteer_id,atividade)
+  select v_id,value from jsonb_array_elements_text(p_payload->'activities');
   insert into public.volunteer_consents(volunteer_id,tipo,versao,texto,origem) values
     (v_id,'privacidade',v_campaign.privacy_version,v_campaign.privacy_text,v_origin),
     (v_id,'participacao',v_campaign.participation_version,v_campaign.participation_text,v_origin);
@@ -299,8 +298,8 @@ begin
   values(v_id,p_payload->>'frequency')
   on conflict(volunteer_id) do update set frequencia=excluded.frequencia,dias=null,turnos=null,observacoes=null;
   delete from public.volunteer_interests where volunteer_id=v_id;
-  insert into public.volunteer_interests(volunteer_id,atividade,outra_descricao)
-  select v_id,value,nullif(btrim(p_payload->>'otherActivityDescription'),'') from jsonb_array_elements_text(p_payload->'activities');
+  insert into public.volunteer_interests(volunteer_id,atividade)
+  select v_id,value from jsonb_array_elements_text(p_payload->'activities');
   if v_is_new then
     insert into public.volunteer_consents(volunteer_id,tipo,versao,texto,origem) values
       (v_id,'privacidade','1','Declaro que li e estou ciente de que a AFAPAN utilizará os dados informados neste formulário para organizar ações de voluntariado, manter contato comigo e administrar o cadastro de voluntários, conforme o aviso de privacidade apresentado.','assistido'),

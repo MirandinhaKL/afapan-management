@@ -6,18 +6,37 @@ export const VOLUNTEER_FREQUENCIES = [
   { value: "eventual", label: "Eventualmente" },
 ] as const
 
-export const VOLUNTEER_ACTIVITIES = [
-  { value: "plantio_mudas", label: "Plantio de mudas de árvores" },
-  { value: "coleta_residuos", label: "Coleta de resíduos" },
-  { value: "limpeza_areas_publicas", label: "Limpeza em áreas públicas" },
-  { value: "retirada_plantas_exoticas", label: "Retirada de plantas exóticas de parques" },
-  { value: "conscientizacao_ambiental", label: "Mutirão de conscientização ambiental" },
-  { value: "caminhos_residuos", label: "Acompanhamento de turma Caminhos dos Resíduos" },
-  { value: "compostagem_escola", label: "Compostagem doméstica na escola" },
-  { value: "ecopontos_bairros", label: "Ecopontos nos bairros" },
-  { value: "outras", label: "Outras atividades" },
-  { value: "ainda_nao_sei", label: "Ainda não sei, quero conhecer as opções" },
+export const VOLUNTEER_ACTIVITY_GROUPS = [
+  { title: "Preservação da Mata Atlântica", icon: "🌱", activities: [
+    { value: "plantio_arvores_nativas", label: "Plantio de árvores nativas" },
+    { value: "retirada_plantas_exoticas_invasoras", label: "Retirada de plantas exóticas invasoras" },
+  ] },
+  { title: "Reciclagem", icon: "♻️", activities: [
+    { value: "coletas_residuos", label: "Coletas mensais e especiais de resíduos" },
+    { value: "mutiroes_limpeza_areas_publicas", label: "Mutirões de limpeza de áreas públicas" },
+    { value: "ecopontos", label: "Ecopontos" },
+  ] },
+  { title: "Compostagem", icon: "🌱", activities: [
+    { value: "compostagem_domestica", label: "Compostagem doméstica" },
+    { value: "compostagem_escolas", label: "Compostagem nas escolas" },
+  ] },
+  { title: "Educação Ambiental", icon: "🌎", activities: [
+    { value: "oficinas_conscientizacao", label: "Oficinas de conscientização" },
+    { value: "caminhos_residuos", label: "Acompanhamento de turmas no projeto Caminhos dos Resíduos" },
+    { value: "palestras_atividades_educativas", label: "Palestras e atividades educativas" },
+  ] },
+  { title: "Projetos e Eventos", icon: "🤝", activities: [
+    { value: "apoio_projetos_eventos", label: "Apoio e organização de projetos e eventos" },
+    { value: "comunicacao_divulgacao", label: "Comunicação e divulgação" },
+  ] },
 ] as const
+
+export const VOLUNTEER_UNDECIDED_ACTIVITY = { value: "ainda_nao_sei", label: "Ainda não sei, quero conhecer as opções" } as const
+export type VolunteerActivity = typeof VOLUNTEER_ACTIVITY_GROUPS[number]["activities"][number]["value"] | typeof VOLUNTEER_UNDECIDED_ACTIVITY["value"]
+export const VOLUNTEER_ACTIVITIES = [
+  ...VOLUNTEER_ACTIVITY_GROUPS.flatMap<{ value: VolunteerActivity; label: string }>((group) => [...group.activities]),
+  VOLUNTEER_UNDECIDED_ACTIVITY,
+]
 
 export const VOLUNTEER_COMMUNICATION_CHANNELS = [
   { value: "instagram", label: "Instagram" },
@@ -35,7 +54,6 @@ export const PREVIOUS_VOLUNTEERING_OPTIONS = [
 ] as const
 
 export type VolunteerFrequency = typeof VOLUNTEER_FREQUENCIES[number]["value"]
-export type VolunteerActivity = typeof VOLUNTEER_ACTIVITIES[number]["value"]
 export type VolunteerCommunicationChannel = typeof VOLUNTEER_COMMUNICATION_CHANNELS[number]["value"]
 export type PreviousVolunteering = typeof PREVIOUS_VOLUNTEERING_OPTIONS[number]["value"]
 export type VolunteerStatus = "aguardando_validacao" | "ativo" | "sem_confirmacao" | "inativo"
@@ -62,7 +80,6 @@ export interface VolunteerInput {
   activityStartYear?: number | null
   frequency: VolunteerFrequency
   activities: VolunteerActivity[]
-  otherActivityDescription?: string
   expectations?: string
   discoverySource?: string
   previousVolunteering?: PreviousVolunteering | null
@@ -250,6 +267,7 @@ export function validateVolunteerInput(input: VolunteerInput, today = new Date()
   if (!input.city?.trim()) errors.push({ field: "city", message: "Informe a cidade." })
   if (!VOLUNTEER_FREQUENCIES.some((item) => item.value === input.frequency)) errors.push({ field: "frequency", message: "Selecione uma frequência válida." })
   if (!Array.isArray(input.activities) || input.activities.length === 0) errors.push({ field: "activities", message: "Selecione ao menos uma atividade." })
+  else if (input.activities.some((activity) => !VOLUNTEER_ACTIVITIES.some((item) => item.value === activity))) errors.push({ field: "activities", message: "Selecione atividades válidas." })
   if (!validateActivityStart(input.activityStartMonth, input.activityStartYear, today)) errors.push({ field: "activityStartMonth", message: "Informe mês e ano válidos e não futuros." })
   if (input.previousVolunteering && !PREVIOUS_VOLUNTEERING_OPTIONS.some((item) => item.value === input.previousVolunteering)) errors.push({ field: "previousVolunteering", message: "Selecione uma opção válida." })
   if (input.communicationChannels?.some((channel) => !VOLUNTEER_COMMUNICATION_CHANNELS.some((item) => item.value === channel))) errors.push({ field: "communicationChannels", message: "Selecione canais válidos." })

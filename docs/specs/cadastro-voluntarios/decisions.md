@@ -21,6 +21,9 @@
 - **DEC-019:** mês e ano de início das atividades na AFAPAN serão opcionais, validados em conjunto, não poderão ser futuros e aparecerão na listagem como `MM/AAAA`.
 - **DEC-020:** o formulário público passará a usar o endereço fixo `/voluntariado/cadastro`; a campanha ativa será resolvida internamente e os links antigos com identificador não precisarão ser preservados.
 - **DEC-021:** o botão de copiar o endereço público tentará a API moderna da área de transferência, usará uma alternativa compatível quando necessário e exibirá mensagem de erro se nenhuma estratégia funcionar.
+- **DEC-022:** o catálogo de atividades será substituído pelos cinco grupos aprovados, com ícones e uma opção independente para quem ainda não sabe como colaborar; `Outras atividades` será removida.
+- **DEC-023:** os interesses cadastrados conforme o catálogo anterior não precisam ser preservados. A migração poderá apagar exclusivamente esses vínculos e recriar ou simplificar sua validação, sem excluir voluntários ou outros dados do módulo.
+- **DEC-024:** os textos usarão `Coletas mensais e especiais de resíduos` e `Mutirões de limpeza de áreas públicas`, corrigindo a redação proposta sem alterar o sentido.
 - **DEC-021:** datas completas serão apresentadas no padrão brasileiro `dd/mm/aaaa`, enquanto competências de mês e ano usarão `MM/AAAA`.
 - **DEC-022:** o formulário adotará linguagem acolhedora inspirada no Google Forms de referência e incorporará suas perguntas de perfil, preservando as decisões já tomadas sobre campos opcionais.
 - **DEC-023:** a fotografia destinada ao formulário terá o rosto da criança desfocado e será armazenada como `/voluntarios-afapan-rosto-crianca-desfocado.png`; a versão original não será publicada pelo sistema. A AFAPAN autorizou formalmente a publicação da versão preparada em 2026-10-01, ciente da ausência de autorização expressa dos demais adultos retratados.

@@ -1,10 +1,11 @@
 # Plano técnico — Cadastro e confirmação de voluntários AFAPAN
 
-- **Status:** Aprovado e implementado; migrações `003` e `004` validadas no Supabase e demais etapas remotas pendentes
+- **Status:** Revisão do catálogo aprovada e implementada localmente; execução e validação remotas pendentes
 - **Aprovação anterior:** 2026-09-29
 - **Especificação:** `./specification.md`
 - **Última atualização:** 2026-10-01
 - **Aprovação da revisão:** 2026-10-01
+- **Autorização para implementar T-022 a T-025:** confirmada pela responsável em 2026-10-08 nesta solicitação, sem autorização para migração remota.
 
 ## 1. Resumo da solução
 
@@ -214,6 +215,40 @@ Não há alteração destrutiva em tabelas atuais. A reversão da aplicação ma
 - **Link compartilhado fora do grupo:** validação interna impede ativação automática; limite reduz abuso.
 - **Telefone informado por terceiro:** situação inicial aguarda conferência da equipe.
 - **Menor sem autorização válida:** dados do responsável e autorização são obrigatórios, com validação administrativa.
+
+## Revisão técnica — catálogo de atividades agrupado (2026-10-08)
+
+### Modelo de domínio e interface
+
+- Substituir `VOLUNTEER_ACTIVITIES` por uma estrutura agrupada, mantendo um tipo único derivado dos valores aceitos.
+- Usar os identificadores: `plantio_arvores_nativas`, `retirada_plantas_exoticas_invasoras`, `coletas_residuos`, `mutiroes_limpeza_areas_publicas`, `ecopontos`, `compostagem_domestica`, `compostagem_escolas`, `oficinas_conscientizacao`, `caminhos_residuos`, `palestras_atividades_educativas`, `apoio_projetos_eventos`, `comunicacao_divulgacao` e `ainda_nao_sei`.
+- Renderizar cinco grupos com ícone, título e opções, mantendo `Ainda não sei, quero conhecer as opções` fora dos grupos.
+- Fazer `Marcar todas as atividades` operar sobre a lista achatada derivada dos grupos, evitando duas fontes de verdade.
+- Remover do frontend, contratos, detalhes e formulários internos todo uso de `outras` e `otherActivityDescription`.
+
+### Migração do Supabase
+
+- Criar `005-volunteer-activity-catalog.sql`.
+- Apagar somente as linhas de `public.volunteer_interests`, conforme autorização expressa de não preservar os interesses antigos.
+- Remover a coluna obsoleta `outra_descricao` e substituir a restrição de `atividade` pelo novo catálogo.
+- Atualizar as RPCs `submit_volunteer_registration(jsonb,text,text)` e `save_assisted_volunteer(uuid,timestamptz,jsonb)` para gravarem apenas `volunteer_id` e `atividade`.
+- Preservar a tabela, suas chaves, índice, RLS e políticas; não apagar voluntários, campanhas, consentimentos, auditoria ou histórico.
+- Atualizar também `001-volunteers-schema.sql` como definição-base limpa para instalações futuras.
+
+### Compatibilidade, risco e reversão
+
+- Não haverá compatibilidade com valores antigos na aplicação após a migração.
+- A exclusão dos vínculos de interesses é intencional e irreversível sem backup. Como a responsável dispensou sua preservação, a migração não criará cópia permanente; recomenda-se exportação manual apenas se essa decisão mudar antes da execução.
+- Reversão estrutural: restaurar a coluna e a restrição antigas e reaplicar as RPCs anteriores. Os interesses apagados não serão recuperados por essa reversão.
+- A migração será transacional: falhas antes do `commit` desfazem alterações estruturais e exclusões.
+
+### Verificação
+
+- Testes unitários do catálogo achatado, agrupamentos, seleção total, payload público, cadastro assistido e detalhamento.
+- TypeScript, suíte completa e build de produção.
+- Após SQL remoto: verificar colunas, restrição, assinaturas das RPCs, RLS e ausência de valores fora do novo catálogo.
+- Preparação, verificações e reversão detalhadas em `activity-catalog-deployment.md`. As migrações históricas `003` e `004` permanecem como registro; para instalações novas, aplicar `001` e depois `005` caso também tenham sido reaplicadas as migrações históricas.
+- Teste de fumaça: salvar um cadastro público e um assistido com opções de grupos diferentes e consultar a listagem/detalhes.
 - **Falha do agendamento:** processamento idempotente também ocorre nos acessos relevantes.
 - **Conflito de edição:** versão por `atualizado_em` impede sobrescrita silenciosa.
 - **Retenção indefinida:** cadastros ficam ocultos, protegidos por RLS e sujeitos a revisão futura da política da AFAPAN.

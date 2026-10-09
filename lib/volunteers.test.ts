@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
+  VOLUNTEER_ACTIVITIES,
+  VOLUNTEER_ACTIVITY_GROUPS,
   brazilianDateToIso,
   calculateAge,
   formatActivityStart,
@@ -21,7 +23,7 @@ const validInput: VolunteerInput = {
   firstName: "Ana", lastName: "Silva", birthDate: "15/10/1990", phone: "(54) 99999-1234",
   email: "ana@example.com", neighborhood: "Centro", city: "Farroupilha",
   activityStartMonth: 3, activityStartYear: 2020, frequency: "mensal",
-  activities: ["plantio_mudas"], privacyAccepted: true, participationAccepted: true,
+  activities: ["plantio_arvores_nativas"], privacyAccepted: true, participationAccepted: true,
 }
 
 describe("domínio de voluntários", () => {
@@ -88,8 +90,17 @@ describe("domínio de voluntários", () => {
     expect(validateVolunteerInput(validInput, new Date(2026, 8, 29))).toEqual([])
   })
 
-  it("não exige descrição quando outras atividades está selecionada", () => {
-    expect(validateVolunteerInput({ ...validInput, activities: ["outras"], otherActivityDescription: "" }, new Date(2026, 8, 29))).toEqual([])
+  it("CA-051/CA-052: oferece cinco grupos e treze atividades únicas aceitas pelo domínio", () => {
+    expect(VOLUNTEER_ACTIVITY_GROUPS.map((group) => group.title)).toEqual(["Preservação da Mata Atlântica", "Reciclagem", "Compostagem", "Educação Ambiental", "Projetos e Eventos"])
+    expect(VOLUNTEER_ACTIVITIES).toHaveLength(13)
+    expect(new Set(VOLUNTEER_ACTIVITIES.map((item) => item.value)).size).toBe(13)
+    for (const item of VOLUNTEER_ACTIVITIES) {
+      expect(validateVolunteerInput({ ...validInput, activities: [item.value] }, new Date(2026, 8, 29))).toEqual([])
+    }
+  })
+
+  it.each(["plantio_mudas", "coleta_residuos", "limpeza_areas_publicas", "retirada_plantas_exoticas", "conscientizacao_ambiental", "compostagem_escola", "ecopontos_bairros", "outras", "desconhecida"])("CA-055: rejeita atividade antiga ou desconhecida %s", (activity) => {
+    expect(validateVolunteerInput({ ...validInput, activities: [activity] } as unknown as VolunteerInput)).toContainEqual({ field: "activities", message: "Selecione atividades válidas." })
   })
 
   it("aceita recusa expressa de uso da imagem", () => {

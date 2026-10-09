@@ -1,6 +1,7 @@
 "use client"
 
 import Image from "next/image"
+import { VolunteerActivityOptions } from "@/components/volunteer-activity-options"
 import { useMemo, useState } from "react"
 import { CheckCircle2, HeartHandshake } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -14,7 +15,6 @@ import {
   AFAPAN_CONTACT_EMAIL,
   AFAPAN_CONTACT_WHATSAPP,
   PREVIOUS_VOLUNTEERING_OPTIONS,
-  VOLUNTEER_ACTIVITIES,
   VOLUNTEER_COMMUNICATION_CHANNELS,
   VOLUNTEER_FREQUENCIES,
   getBirthDateValidationError,
@@ -25,7 +25,6 @@ import {
   maskMonthYear,
   parseMonthYear,
   validateVolunteerInput,
-  type VolunteerActivity,
   type VolunteerCommunicationChannel,
   type VolunteerFrequency,
   type VolunteerInput,
@@ -41,7 +40,7 @@ interface CampaignData {
 const initialValue: VolunteerInput = {
   firstName: "", lastName: "", birthDate: "", phone: "", email: "", street: "", number: "", complement: "",
   neighborhood: "", city: "Farroupilha", state: "RS", profession: "", skills: "", activityStartMonth: null,
-  activityStartYear: null, frequency: "eventual", activities: [], otherActivityDescription: "", expectations: "",
+  activityStartYear: null, frequency: "eventual", activities: [], expectations: "",
   discoverySource: "", previousVolunteering: null, communicationChannels: [], projectIdea: "", imageUseAuthorized: null,
   afapanStory: "", guardianName: "", guardianPhone: "", guardianAuthorized: false,
   privacyAccepted: false, participationAccepted: false,
@@ -62,7 +61,6 @@ export function VolunteerPublicForm({ campaign }: { campaign: CampaignData }) {
   const [emailError, setEmailError] = useState<string | null>(null)
   const [invalidFields, setInvalidFields] = useState<string[]>([])
   const minor = useMemo(() => Boolean(value.birthDate && isMinor(value.birthDate)), [value.birthDate])
-  const allActivitiesSelected = VOLUNTEER_ACTIVITIES.every((item) => value.activities.includes(item.value))
 
   const update = <K extends keyof VolunteerInput>(field: K, next: VolunteerInput[K]) => {
     setValue((current) => ({ ...current, [field]: next }))
@@ -70,8 +68,6 @@ export function VolunteerPublicForm({ campaign }: { campaign: CampaignData }) {
     setInvalidFields((fields) => fields.filter((item) => item !== field))
   }
 
-  const toggleActivity = (item: VolunteerActivity, checked: boolean) => update("activities", checked ? [...value.activities, item] : value.activities.filter((current) => current !== item))
-  const toggleAllActivities = (checked: boolean) => update("activities", checked ? VOLUNTEER_ACTIVITIES.map((item) => item.value) : [])
   const toggleChannel = (item: VolunteerCommunicationChannel, checked: boolean) => {
     const channels = value.communicationChannels || []
     update("communicationChannels", checked ? [...channels, item] : channels.filter((current) => current !== item))
@@ -174,7 +170,7 @@ export function VolunteerPublicForm({ campaign }: { campaign: CampaignData }) {
         <section className="space-y-4 border-t pt-6"><h2 className="text-xl font-semibold">Como você gostaria de contribuir?</h2><div className="grid gap-4 sm:grid-cols-2">
           <div><Label htmlFor="profession">Profissão</Label><Input id="profession" value={value.profession} onChange={(event) => update("profession", event.target.value)} /></div>
           <div><Label htmlFor="skills">Habilidades e experiências</Label><Textarea id="skills" value={value.skills} onChange={(event) => update("skills", event.target.value)} /></div>
-        </div><fieldset><legend className="mb-3 font-bold">Atividades de interesse *</legend><div className="mb-3"><CheckOption label="Marcar todas as atividades" checked={allActivitiesSelected} onChange={toggleAllActivities} /></div><div id="activities" tabIndex={-1} className="grid gap-2 sm:grid-cols-2">{VOLUNTEER_ACTIVITIES.map((item) => <CheckOption key={item.value} label={item.label} checked={value.activities.includes(item.value)} onChange={(checked) => toggleActivity(item.value, checked)} />)}</div></fieldset>{value.activities.includes("outras") && <div><Label htmlFor="otherActivityDescription">Quais outras atividades?</Label><Textarea id="otherActivityDescription" value={value.otherActivityDescription} onChange={(event) => update("otherActivityDescription", event.target.value)} /></div>}</section>
+        </div><VolunteerActivityOptions selected={value.activities} onChange={(activities) => update("activities", activities)} /></section>
 
         <section className="space-y-4 border-t pt-6"><h2 className="text-xl font-semibold">Disponibilidade</h2><div><Label className="font-bold" htmlFor="frequency">Com que frequência você poderia participar? *</Label><Select value={value.frequency} onValueChange={(next: VolunteerFrequency) => update("frequency", next)}><SelectTrigger id="frequency"><SelectValue /></SelectTrigger><SelectContent>{VOLUNTEER_FREQUENCIES.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent></Select></div></section>
 

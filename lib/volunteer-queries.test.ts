@@ -9,9 +9,10 @@ describe("consultas administrativas de voluntários", () => {
       telefone_normalizado: "5554999991234", bairro: "Centro", cidade: "Farroupilha", status: "ativo", origem: "assistido",
       inicio_atividades_mes: 3, inicio_atividades_ano: 2020, expectativas: "Participar", uso_imagem_autorizado: false,
       criado_em: "2026-01-01", atualizado_em: "2026-01-01", volunteer_availability: { frequencia: "mensal" },
-      volunteer_interests: [{ atividade: "plantio_mudas" }],
+      volunteer_interests: [{ atividade: "plantio_arvores_nativas" }, { atividade: "compostagem_escolas" }],
     })
-    expect(volunteer).toMatchObject({ firstName: "Ana", activityStartMonth: 3, activityStartYear: 2020, frequency: "mensal", expectations: "Participar", imageUseAuthorized: false, activities: ["plantio_mudas"] })
+    expect(volunteer).toMatchObject({ firstName: "Ana", activityStartMonth: 3, activityStartYear: 2020, frequency: "mensal", expectations: "Participar", imageUseAuthorized: false, activities: ["plantio_arvores_nativas", "compostagem_escolas"] })
+    expect(volunteer).not.toHaveProperty("otherActivityDescription")
   })
 
   it("traduz conflito concorrente em orientação clara", () => {

@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 import { VolunteerPublicForm } from "@/components/volunteer-public-form"
-import { VOLUNTEER_ACTIVITIES } from "@/lib/volunteers"
+import { VOLUNTEER_ACTIVITIES, VOLUNTEER_ACTIVITY_GROUPS } from "@/lib/volunteers"
 
 const campaign = { name: "Confirmação 2026", deadline: "2026-10-06T23:59:00Z", privacyText: "Estou ciente do uso dos dados.", participationText: "Quero continuar como voluntário." }
 
@@ -74,12 +74,15 @@ describe("formulário público de voluntários", () => {
     for (const activity of VOLUNTEER_ACTIVITIES) expect(screen.getByLabelText(activity.label)).not.toBeChecked()
   })
 
-  it("não apresenta a descrição de outras atividades como obrigatória", async () => {
-    const user = userEvent.setup()
+  it("CA-051/CA-052: apresenta os cinco grupos e remove outras atividades", () => {
     render(<VolunteerPublicForm campaign={campaign} />)
-    await user.click(screen.getByLabelText("Outras atividades"))
-    expect(screen.getByLabelText("Quais outras atividades?")).toBeInTheDocument()
-    expect(screen.queryByLabelText("Quais outras atividades? *")).not.toBeInTheDocument()
+    for (const group of VOLUNTEER_ACTIVITY_GROUPS) {
+      const fieldset = screen.getByRole("group", { name: group.title })
+      expect(fieldset).toHaveTextContent(group.icon)
+      for (const activity of group.activities) expect(screen.getByLabelText(activity.label)).toBeInTheDocument()
+    }
+    expect(screen.queryByLabelText("Outras atividades")).not.toBeInTheDocument()
+    expect(screen.queryByLabelText("Quais outras atividades?")).not.toBeInTheDocument()
   })
 
   it("valida a data de nascimento assim que o preenchimento termina", () => {

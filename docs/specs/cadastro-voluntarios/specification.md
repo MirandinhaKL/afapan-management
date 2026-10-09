@@ -93,6 +93,14 @@ Disponibilizar um módulo integrado ao sistema da AFAPAN para coletar, validar e
 - **RF-053:** O título e as informações do cabeçalho verde do formulário público devem aparecer centralizados horizontal e verticalmente, sem deslocamento causado pelo ícone.
 - **RF-054:** A seção de endereço deve usar o título `Endereço`.
 - **RF-055:** A descrição apresentada ao selecionar `Outras atividades` deve permanecer disponível, mas não deve ser obrigatória.
+- **RF-056:** O catálogo anterior de atividades deve ser substituído no formulário pelo novo catálogo agrupado por área, sem a opção `Outras atividades`.
+- **RF-057:** O grupo `Preservação da Mata Atlântica`, identificado pelo ícone 🌱, deve oferecer `Plantio de árvores nativas` e `Retirada de plantas exóticas invasoras`.
+- **RF-058:** O grupo `Reciclagem`, identificado pelo ícone ♻️, deve oferecer `Coletas mensais e especiais de resíduos`, `Mutirões de limpeza de áreas públicas` e `Ecopontos`.
+- **RF-059:** O grupo `Compostagem`, identificado pelo ícone 🌱, deve oferecer `Compostagem doméstica` e `Compostagem nas escolas`.
+- **RF-060:** O grupo `Educação Ambiental`, identificado pelo ícone 🌎, deve oferecer `Oficinas de conscientização`, `Acompanhamento de turmas no projeto Caminhos dos Resíduos` e `Palestras e atividades educativas`.
+- **RF-061:** O grupo `Projetos e Eventos`, identificado pelo ícone 🤝, deve oferecer `Apoio e organização de projetos e eventos` e `Comunicação e divulgação`.
+- **RF-062:** A opção `Ainda não sei, quero conhecer as opções` deve aparecer separada dos grupos, e a ação `Marcar todas as atividades` deve selecionar ou desmarcar todas as opções do novo catálogo.
+- **RF-063:** Não é necessário preservar os interesses cadastrados segundo o catálogo anterior; a migração pode remover esses registros e substituir a estrutura de validação se isso simplificar o modelo e evitar dívida técnica.
 
 ### Duplicidade e correção
 
@@ -288,6 +296,11 @@ As opções poderão ser apresentadas em grupos amigáveis que relacionem as ati
 - **CA-048:** Dado o cabeçalho verde, então o título e as informações da campanha devem ocupar o centro horizontal e vertical da área; o ícone deve permanecer à esquerda sem deslocar o texto.
 - **CA-049:** Dada a seção que reúne bairro, cidade e demais dados de localização, então seu título deve ser `Endereço`.
 - **CA-050:** Dada a seleção de `Outras atividades`, então a descrição adicional deve ser exibida sem asterisco e sua ausência não deve bloquear o cadastro.
+- **CA-051:** Dado o formulário público, quando a seção de interesses for exibida, então as atividades devem aparecer nos cinco grupos aprovados, com seus ícones e textos correspondentes.
+- **CA-052:** Dado o novo catálogo, então `Outras atividades` não deve ser oferecida e as novas opções devem ser aceitas pelo frontend, API e banco.
+- **CA-053:** Dada a ação `Marcar todas as atividades`, então todas as opções dos cinco grupos e a opção independente devem ser selecionadas ou desmarcadas em conjunto.
+- **CA-054:** Dada a migração do catálogo, então os interesses antigos podem ser removidos, mas voluntários, campanhas, consentimentos e demais dados não relacionados devem ser preservados.
+- **CA-055:** Após a migração, então nenhuma restrição, tipo ou código legado específico do catálogo anterior deve permanecer em uso pela aplicação.
 
 ## 12. Dados e privacidade
 

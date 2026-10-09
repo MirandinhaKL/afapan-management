@@ -1,6 +1,6 @@
 # Tarefas — Cadastro e confirmação de voluntários AFAPAN
 
-- **Status:** Revisão de 2026-10-01 implementada localmente; validação remota pendente
+- **Status:** T-022 a T-024 implementadas localmente; T-025 com validação local e preparação da implantação, validação remota pendente
 - **Plano:** `./technical-plan.md`
 - **Atualização:** 2026-10-01
 
@@ -113,6 +113,40 @@
   - Cobrir os quatro comportamentos com testes unitários e de componente.
   - Criar a migração incremental `004` para alinhar a restrição do banco à descrição facultativa de `Outras atividades`.
   - Centralizar o bloco textual do cabeçalho nos dois eixos, mantendo o ícone fora do cálculo de centralização.
+
+- [x] **T-022 — Substituir o domínio do catálogo de atividades** (`RF-056`–`RF-063`, `CA-051`–`CA-055`)
+  - Criar uma única estrutura agrupada e derivar dela tipo, lista achatada, rótulos e seleção total.
+  - Remover `outras`, `otherActivityDescription` e identificadores antigos dos contratos em uso.
+  - Atualizar testes unitários do domínio.
+
+- [x] **T-023 — Atualizar formulários e visualização** (`RF-056`–`RF-062`, `CA-051`–`CA-053`, `CA-055`)
+  - Renderizar os cinco grupos com ícones no formulário público.
+  - Atualizar formulário assistido e detalhamento para o novo catálogo.
+  - Testar grupos, textos, seleção individual e `Marcar todas`.
+
+- [x] **T-024 — Criar migração destrutiva e controlada do catálogo** (`RF-063`, `CA-052`, `CA-054`, `CA-055`)
+  - Criar `005-volunteer-activity-catalog.sql` transacional.
+  - Apagar somente vínculos de interesses antigos, remover coluna obsoleta, substituir restrição e atualizar RPCs.
+  - Preservar tabela, RLS, chaves, voluntários e demais dados.
+  - Documentar verificação e reversão sem recuperação dos interesses apagados.
+
+- [ ] **T-025 — Validar e preparar implantação** (`RF-056`–`RF-063`, `CA-051`–`CA-055`)
+  - Executar testes relevantes, suíte completa, TypeScript e build.
+  - Aplicar o SQL remoto somente após autorização específica e validar catálogo, RPCs e RLS.
+  - Executar testes de fumaça público e assistido após o deploy.
+
+### Evidências locais das tarefas T-022 a T-025 — 2026-10-08
+
+- Domínio e lista achatada derivados dos cinco grupos; opção independente incluída na seleção total.
+- Componente compartilhado entre formulário público e assistido; filtros e detalhamento usam os rótulos derivados.
+- Códigos antigos e desconhecidos rejeitados pelo domínio e pela API antes de acessar o banco.
+- Migração `005` preparada e definição-base `001` alinhada. Nenhum SQL remoto executado.
+- Suíte completa: 98 testes em 19 arquivos aprovados; TypeScript sem emissão aprovado.
+- Build de produção aprovado; verificação de tipos executada separadamente, pois o build do projeto omite essa etapa.
+- `CA-051` e `CA-053`: validados nos testes do formulário público e da gestão interna.
+- `CA-052` e `CA-055`: validados no domínio, API, payloads, mapeamento, edição e detalhamento; validação do banco permanece pendente.
+- `CA-054`: escopo do script conferido por teste estático; preservação efetiva e transação no PostgreSQL permanecem pendentes.
+- T-025 permanece aberta até migração autorizada, verificação de RPCs/RLS e testes de fumaça após publicação. Procedimento em `activity-catalog-deployment.md`.
 
 ## Dependências entre tarefas
 

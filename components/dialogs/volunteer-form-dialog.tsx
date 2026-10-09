@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { VolunteerActivityOptions } from "@/components/volunteer-activity-options"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -9,7 +10,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import {
   PREVIOUS_VOLUNTEERING_OPTIONS,
-  VOLUNTEER_ACTIVITIES,
   VOLUNTEER_COMMUNICATION_CHANNELS,
   VOLUNTEER_FREQUENCIES,
   isoDateToBrazilian,
@@ -19,7 +19,6 @@ import {
   parseMonthYear,
   validateVolunteerInput,
   type Volunteer,
-  type VolunteerActivity,
   type VolunteerCommunicationChannel,
   type VolunteerFrequency,
   type VolunteerInput,
@@ -37,7 +36,7 @@ interface Props {
 const empty: VolunteerInput = {
   firstName: "", lastName: "", birthDate: "", phone: "", email: "", street: "", number: "", complement: "",
   neighborhood: "", city: "Farroupilha", state: "RS", profession: "", skills: "", activityStartMonth: null,
-  activityStartYear: null, frequency: "eventual", activities: [], otherActivityDescription: "", expectations: "",
+  activityStartYear: null, frequency: "eventual", activities: [], expectations: "",
   discoverySource: "", previousVolunteering: null, communicationChannels: [], projectIdea: "", imageUseAuthorized: null,
   afapanStory: "", guardianName: "", guardianPhone: "", guardianAuthorized: false,
   privacyAccepted: true, participationAccepted: true,
@@ -59,7 +58,6 @@ export function VolunteerFormDialog({ open, onOpenChange, volunteer, onSave, sav
   }, [open, volunteer])
 
   const update = <K extends keyof VolunteerInput>(field: K, next: VolunteerInput[K]) => setValue((current) => ({ ...current, [field]: next }))
-  const toggleActivity = (activity: VolunteerActivity, checked: boolean) => update("activities", checked ? [...value.activities, activity] : value.activities.filter((item) => item !== activity))
   const toggleChannel = (channel: VolunteerCommunicationChannel, checked: boolean) => {
     const current = value.communicationChannels || []
     update("communicationChannels", checked ? [...current, channel] : current.filter((item) => item !== channel))
@@ -85,7 +83,7 @@ export function VolunteerFormDialog({ open, onOpenChange, volunteer, onSave, sav
     </div></section>
     <section className="space-y-3"><h3 className="font-semibold">Endereço</h3><div className="grid gap-4 sm:grid-cols-2"><div><Label>Bairro *</Label><Input value={value.neighborhood} onChange={(event) => update("neighborhood", event.target.value)} /></div><div><Label>Cidade *</Label><Input value={value.city} onChange={(event) => update("city", event.target.value)} /></div><div><Label>Rua</Label><Input value={value.street} onChange={(event) => update("street", event.target.value)} /></div><div><Label>Número</Label><Input value={value.number} onChange={(event) => update("number", event.target.value)} /></div><div><Label>Complemento</Label><Input value={value.complement} onChange={(event) => update("complement", event.target.value)} /></div><div><Label>Estado</Label><Input value={value.state} onChange={(event) => update("state", event.target.value)} /></div></div></section>
     <section className="space-y-3"><h3 className="font-semibold">Perfil e disponibilidade</h3><div className="grid gap-4 sm:grid-cols-2"><div><Label>Profissão</Label><Input value={value.profession} onChange={(event) => update("profession", event.target.value)} /></div><div><Label>Habilidades</Label><Textarea value={value.skills} onChange={(event) => update("skills", event.target.value)} /></div><div><Label>Frequência *</Label><Select value={value.frequency} onValueChange={(next: VolunteerFrequency) => update("frequency", next)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{VOLUNTEER_FREQUENCIES.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent></Select></div><div><Label>Situação</Label><Select value={status} onValueChange={(next: VolunteerStatus) => setStatus(next)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="aguardando_validacao">Aguardando validação</SelectItem><SelectItem value="ativo">Ativo</SelectItem><SelectItem value="sem_confirmacao">Sem confirmação</SelectItem><SelectItem value="inativo">Inativo</SelectItem></SelectContent></Select></div></div>
-      <fieldset><legend className="mb-2 font-medium">Atividades de interesse *</legend><div className="grid gap-2 sm:grid-cols-2">{VOLUNTEER_ACTIVITIES.map((item) => <label key={item.value} className="flex gap-2 rounded border p-2"><input type="checkbox" checked={value.activities.includes(item.value)} onChange={(event) => toggleActivity(item.value, event.target.checked)} />{item.label}</label>)}</div></fieldset>{value.activities.includes("outras") && <div><Label>Outras atividades *</Label><Textarea value={value.otherActivityDescription} onChange={(event) => update("otherActivityDescription", event.target.value)} /></div>}
+      <VolunteerActivityOptions selected={value.activities} onChange={(activities) => update("activities", activities)} />
     </section>
     <section className="space-y-3"><h3 className="font-semibold">Informações opcionais</h3><div className="grid gap-4 sm:grid-cols-2"><div><Label>O que espera da AFAPAN?</Label><Textarea value={value.expectations} onChange={(event) => update("expectations", event.target.value)} /></div><div><Label>Como conheceu a AFAPAN?</Label><Textarea value={value.discoverySource} onChange={(event) => update("discoverySource", event.target.value)} /></div><div><Label>Experiência anterior de voluntariado</Label><Select value={value.previousVolunteering || "nao_informado"} onValueChange={(next) => update("previousVolunteering", next === "nao_informado" ? null : next as VolunteerInput["previousVolunteering"])}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="nao_informado">Não informado</SelectItem>{PREVIOUS_VOLUNTEERING_OPTIONS.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent></Select></div><div><Label>Uso de imagem</Label><Select value={value.imageUseAuthorized == null ? "nao_informado" : value.imageUseAuthorized ? "sim" : "nao"} onValueChange={(next) => update("imageUseAuthorized", next === "nao_informado" ? null : next === "sim")}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="nao_informado">Não informado</SelectItem><SelectItem value="sim">Autorizado</SelectItem><SelectItem value="nao">Não autorizado</SelectItem></SelectContent></Select></div></div>
       <fieldset><legend className="mb-2 font-medium">Canais pelos quais acompanha a AFAPAN</legend><div className="grid gap-2 sm:grid-cols-2">{VOLUNTEER_COMMUNICATION_CHANNELS.map((item) => <label key={item.value} className="flex gap-2 rounded border p-2"><input type="checkbox" checked={(value.communicationChannels || []).includes(item.value)} onChange={(event) => toggleChannel(item.value, event.target.checked)} />{item.label}</label>)}</div></fieldset>

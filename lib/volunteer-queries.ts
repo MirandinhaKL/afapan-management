@@ -44,7 +44,7 @@ interface VolunteerRow {
   atualizado_em: string
   arquivado_em?: string | null
   volunteer_availability?: Array<{ frequencia: Volunteer["frequency"] }> | { frequencia: Volunteer["frequency"] } | null
-  volunteer_interests?: Array<{ atividade: Volunteer["activities"][number]; outra_descricao?: string | null }> | null
+  volunteer_interests?: Array<{ atividade: Volunteer["activities"][number] }> | null
 }
 
 const SELECT = "*, volunteer_availability(frequencia), volunteer_interests(*)"
@@ -74,7 +74,6 @@ export function mapVolunteer(row: VolunteerRow): Volunteer {
     activityStartYear: row.inicio_atividades_ano,
     frequency: availability?.frequencia || "eventual",
     activities: interests.map((item) => item.atividade),
-    otherActivityDescription: interests.find((item) => item.atividade === "outras")?.outra_descricao || undefined,
     expectations: row.expectativas || undefined,
     discoverySource: row.como_conheceu || undefined,
     previousVolunteering: row.experiencia_voluntariado || null,

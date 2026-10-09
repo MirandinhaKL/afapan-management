@@ -1,5 +1,7 @@
 # Especificação — Cadastro e confirmação de voluntários AFAPAN
 
+> Revisão aprovada em 2026-10-09: [cadastro permanente](../cadastro-voluntarios-permanente/specification.md) substitui as regras de campanha, prazo, ativação e expiração deste documento. RF-026, RF-027, RF-029, RF-033, RF-034 e os critérios/cenários associados são históricos e não orientam a implementação atual. O link permanece /voluntariado/cadastro; os novos consentimentos seguem a configuração permanente. Não instalar a migração 002 nem criar campanha como pré-requisito. Consulte o [plano atual](../cadastro-voluntarios-permanente/technical-plan.md) e o [roteiro de implantação](../cadastro-voluntarios-permanente/deployment.md).
+
 - **Status:** Aprovada — revisão de ampliação do formulário público
 - **Responsável:** AFAPAN
 - **Data:** 2026-09-28
@@ -36,7 +38,7 @@ Disponibilizar um módulo integrado ao sistema da AFAPAN para coletar, validar e
 - Registro separado dos consentimentos obrigatórios.
 - Histórico das mudanças de situação e das alterações administrativas relevantes.
 - Interface pública acessível, responsiva e adequada a pessoas com pouca familiaridade com tecnologia.
-- Endereço público amigável e fixo em `/voluntariado/cadastro`, com seleção interna da campanha ativa.
+- Endereço público amigável e fixo em `/voluntariado/cadastro`, sem dependência de campanha.
 - Apresentação institucional acolhedora, com linguagem inspirada no formulário de referência da AFAPAN.
 - Exibição da versão preparada da fotografia institucional dos voluntários, com o rosto da criança desfocado para reduzir sua identificação.
 - Coleta de informações sobre expectativas, vínculo com a AFAPAN, experiência anterior de voluntariado, canais de comunicação, ideias de projetos e autorização de uso de imagem.
@@ -70,8 +72,8 @@ Disponibilizar um módulo integrado ao sistema da AFAPAN para coletar, validar e
 - **RF-010:** Após o envio, o sistema deve apresentar confirmação clara e informar que a AFAPAN fará a validação.
 - **RF-024:** Quando o voluntário for menor de 18 anos, o formulário deve solicitar nome, telefone e autorização do responsável.
 - **RF-032:** O formulário público deve estar disponível no endereço fixo `/voluntariado/cadastro`, sem identificador de campanha exposto na URL.
-- **RF-033:** Ao acessar o endereço público, o sistema deve localizar internamente a campanha ativa e associar o cadastro a ela.
-- **RF-034:** Se não houver campanha ativa, a página não deve permitir o envio e deve informar, em linguagem simples, que o período de cadastro ou confirmação não está disponível.
+- **RF-033:** A rota pública utiliza configuração própria; novo cadastro não se associa a campanha histórica.
+- **RF-034:** Ausência de campanha não bloqueia cadastro; falha técnica preserva os dados e permite tentar novamente.
 - **RF-035:** O formulário deve apresentar uma introdução acolhedora, explicando brevemente o papel da AFAPAN, a importância do voluntariado e a finalidade das perguntas.
 - **RF-036:** O formulário deve coletar o que a pessoa espera da AFAPAN e como conheceu a associação.
 - **RF-037:** O formulário deve perguntar se a pessoa é ou já foi voluntária em outra instituição sem fins lucrativos, com as opções `Sim, atualmente`, `Já fui, mas não sou mais` e `Não`.
@@ -121,10 +123,10 @@ Disponibilizar um módulo integrado ao sistema da AFAPAN para coletar, validar e
 - **RF-022:** A equipe deve conseguir consultar e restaurar cadastros arquivados.
 - **RF-023:** O sistema deve registrar quem realizou e quando ocorreu cada criação assistida, edição, validação, mudança de situação, arquivamento e restauração.
 - **RF-025:** Cadastros realizados diretamente pela equipe poderão ser salvos inicialmente como `Ativo`.
-- **RF-026:** A campanha de confirmação deve possuir prazo padrão de uma semana.
-- **RF-027:** Encerrado o prazo, cadastros ainda não confirmados devem ser alterados automaticamente para `Sem confirmação`.
+- **RF-026:** Cadastro aberto continuamente, sem prazo. Substituído por RF-001 da iniciativa permanente.
+- **RF-027:** Campanhas antigas não alteram automaticamente situações. Substituído por RF-007 permanente.
 - **RF-028:** A listagem principal deve apresentar telefone, idade e dia/mês do aniversário, preservando a data de nascimento completa no detalhamento interno.
-- **RF-029:** Qualquer usuário autenticado da AFAPAN deve poder alterar o prazo da campanha de confirmação.
+- **RF-029:** Controle de prazo removido. A equipe acessa o link fixo conforme RF-003 permanente.
 - **RF-030:** As orientações para correção devem apresentar o e-mail `afapan.ong@gmail.com` e o WhatsApp `(54) 9941-9286`.
 - **RF-031:** A listagem principal deve exibir o mês e o ano de início das atividades quando essa informação tiver sido cadastrada.
 
@@ -169,11 +171,11 @@ Disponibilizar um módulo integrado ao sistema da AFAPAN para coletar, validar e
 - **RN-018:** Cadastros arquivados serão preservados por prazo indeterminado e não aparecerão na listagem padrão.
 - **RN-019:** Cadastros assistidos pela equipe poderão iniciar como `Ativo`, pois a confirmação ocorre durante o atendimento.
 - **RN-020:** A idade exibida deve ser calculada a partir da data de nascimento; a listagem mostrará apenas idade e dia/mês do aniversário.
-- **RN-021:** Todos os usuários autenticados possuem permissão para alterar o prazo da campanha.
+- **RN-021:** Controle de prazo removido pela revisão permanente aprovada.
 - **RN-022:** Os canais oficiais para solicitar correção são o e-mail `afapan.ong@gmail.com` e o WhatsApp `(54) 9941-9286`.
 - **RN-023:** Quando o início das atividades for informado, mês e ano devem ser preenchidos em conjunto, formar uma competência válida e não podem representar uma data futura.
 - **RN-024:** Na listagem, o início das atividades deve ser apresentado como `MM/AAAA`; quando ausente, deve ser apresentado como `Não informado`.
-- **RN-025:** A URL pública não identifica uma campanha específica; somente uma campanha ativa pode receber os cadastros enviados por `/voluntariado/cadastro`.
+- **RN-025:** A URL fixa não depende de campanha e novos cadastros não recebem vínculo histórico.
 - **RN-026:** Como os links anteriores ainda não foram divulgados, não haverá obrigação de manter compatibilidade com URLs no formato `/voluntariado/<identificador>`.
 - **RN-027:** A recusa da autorização de uso de imagem não impede a pessoa de atuar como voluntária nem de concluir o cadastro.
 - **RN-028:** As respostas sobre expectativas, origem do contato, experiência anterior, canais de comunicação, ideia de projeto e história com a AFAPAN são dados de perfil e não alteram automaticamente a situação do voluntário.
@@ -215,7 +217,7 @@ As opções poderão ser apresentadas em grupos amigáveis que relacionem as ati
 
 1. A AFAPAN compartilha o link único no grupo atual de WhatsApp.
 2. A pessoa abre `/voluntariado/cadastro` sem realizar login.
-3. O sistema identifica a campanha ativa e apresenta a introdução, a fotografia institucional autorizada e o formulário.
+3. O sistema carrega a configuração permanente e apresenta a introdução, a fotografia institucional autorizada e o formulário.
 4. A pessoa preenche os dados pessoais, o perfil de vínculo, a disponibilidade e as atividades de interesse utilizando datas no padrão brasileiro.
 5. Aceita separadamente as duas confirmações obrigatórias.
 6. O sistema valida e salva o cadastro como `Aguardando validação`.
@@ -241,7 +243,7 @@ As opções poderão ser apresentadas em grupos amigáveis que relacionem as ati
 - Uma alteração administrativa concorrente deve ser detectada para evitar sobrescrever dados mais recentes.
 - Telefone com formatação diferente, mas com os mesmos dígitos e código do país, deve ser reconhecido como duplicado.
 - Se “Outras atividades” for selecionada, a descrição correspondente deve ser obrigatória.
-- Se não houver campanha ativa, o formulário deve ficar indisponível sem expor detalhes internos da campanha.
+- Ausência de campanha não impede cadastro. Falha técnica mantém os campos e apresenta mensagem recuperável.
 - Uma data apresentada fora do padrão brasileiro deve ser indicada de forma clara para correção, preservando os demais dados preenchidos.
 
 ## 11. Critérios de aceite
@@ -265,17 +267,17 @@ As opções poderão ser apresentadas em grupos amigáveis que relacionem as ati
 - **CA-017:** Dada a seleção de “Outras atividades”, quando a descrição estiver vazia, então o envio deve ser bloqueado.
 - **CA-018:** Dado um cadastro concluído, então nenhuma inclusão automática em grupo de WhatsApp deve ocorrer.
 - **CA-019:** Dado um cadastro assistido pela equipe, quando houver confirmação durante o atendimento, então ele poderá ser salvo diretamente como `Ativo`.
-- **CA-020:** Dado o encerramento do prazo de uma semana, quando existirem cadastros ainda não confirmados, então eles devem ser alterados automaticamente para `Sem confirmação`.
+- **CA-020:** Vencimento de campanha histórica não altera situação (CA-006 permanente).
 - **CA-021:** Dado um cadastro arquivado, então ele deve permanecer armazenado e oculto da listagem padrão, sem exclusão automática por tempo.
 - **CA-022:** Dada a listagem principal, então ela deve exibir telefone, idade e dia/mês do aniversário sem apresentar a data de nascimento completa.
-- **CA-023:** Dado qualquer usuário autenticado, quando alterar o prazo da campanha, então o novo prazo deve ser salvo e utilizado no processamento automático.
+- **CA-023:** Não há edição de prazo; link permanece acessível sem configuração de campanha (CA-003 permanente).
 - **CA-024:** Dada uma tentativa pública duplicada ou uma orientação de correção, então o sistema deve apresentar o e-mail e o WhatsApp oficiais da AFAPAN.
 - **CA-025:** Dado o formulário público, então os dois textos aprovados devem aparecer separadamente e exigir aceite individual.
 - **CA-026:** Dado um cadastro com mês e ano válidos de início das atividades, quando ele for salvo, então a informação deve ser persistida e exibida como `MM/AAAA` na listagem.
 - **CA-027:** Dado que somente o mês ou somente o ano foi preenchido, ou que a competência é futura, quando houver tentativa de salvar, então o sistema deve bloquear a operação com uma mensagem de validação.
 - **CA-028:** Dado um cadastro sem início das atividades, quando ele for salvo e listado, então a ausência deve ser permitida e apresentada como `Não informado`.
-- **CA-029:** Dado o endereço `/voluntariado/cadastro`, quando houver campanha ativa, então o formulário deve ser apresentado e o envio associado internamente à campanha, sem identificador na URL.
-- **CA-030:** Dado que não existe campanha ativa, quando alguém acessar `/voluntariado/cadastro`, então o envio deve ficar indisponível e uma mensagem compreensível deve ser apresentada.
+- **CA-029:** A rota /voluntariado/cadastro mostra o formulário independentemente de campanha; cadastro aguardando validação e campaign_id nulo.
+- **CA-030:** Ausência de campanha não impede abertura ou envio (CA-001 permanente).
 - **CA-031:** Dado o formulário público, então sua introdução deve explicar de forma acolhedora quem é a AFAPAN, por que os dados são solicitados e como a pessoa pode colaborar.
 - **CA-032:** Dado um campo de data completa, então o usuário deve visualizar e informar a data como `dd/mm/aaaa`; dado o início das atividades, deve visualizar e informar `MM/AAAA`.
 - **CA-033:** Dada a resposta `Não autorizo` para uso de imagem, quando os demais campos obrigatórios estiverem válidos, então o cadastro deve ser permitido e a recusa armazenada.

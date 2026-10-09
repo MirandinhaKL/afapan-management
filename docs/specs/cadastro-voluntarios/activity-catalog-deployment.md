@@ -2,6 +2,8 @@
 
 Data: 2026-10-08. T-024 e T-025; RF-056 a RF-063; CA-051 a CA-055.
 
+> Complemento aprovado em 2026-10-09: 005 redefine a RPC assistida. Aplicar/reaplicar 006 depois de 005 para manter consentimentos permanentes; 006 preserva configuração existente. A autorização da implementação local permanente não autoriza executar 005. Após 006, a RPC pública em uso é submit_permanent_volunteer_registration; a antiga tem execução revogada.
+
 ## Estado e finalidade
 
 A implementação local substitui o catálogo por doze atividades distribuídas em cinco grupos, mais a opção independente `ainda_nao_sei`. A migração `005-volunteer-activity-catalog.sql` ainda não foi executada. Sua execução depende de autorização explícita da responsável.
@@ -13,12 +15,12 @@ A exclusão dos interesses é irreversível sem backup, conforme decisão aprova
 ## Ordem de implantação — somente após autorização
 
 1. Conferir o ambiente alvo e a aplicação prévia de 001, 003 e 004. Registrar contagens de voluntários, campanhas, disponibilidade, consentimentos, histórico e auditoria e capturar definições de constraints, índices, políticas e permissões das RPCs. Se a decisão de dispensar os interesses mudar, exportá-los antes da execução.
-2. Preparar a nova versão da aplicação e reservar uma janela sem cadastros ou edições administrativas. Desativar temporariamente a campanha pública, registrando sua situação e prazo para restauração. A desativação só interrompe o fluxo público; a equipe também deve suspender operações internas.
+2. Preparar a nova versão da aplicação e reservar uma janela sem cadastros ou edições administrativas. Suspender operacionalmente novos envios e edições durante a janela coordenada. O cadastro permanente não possui controle de ativação de campanha.
 3. Executar 005 integralmente, sem retirar `begin` ou `commit`. Não reaplicar 001 ao ambiente existente.
 4. Executar as consultas de verificação comentadas ao final de 005. Confirmar ausência de `outra_descricao`, restrição com os treze códigos aprovados, chave primária e estrangeira preservadas, índice de atividade preservado e RLS habilitada com as mesmas políticas.
 5. Confirmar que as RPCs `submit_volunteer_registration(jsonb,text,text)` e `save_assisted_volunteer(uuid,timestamptz,jsonb)` gravam somente `volunteer_id` e `atividade`. Conferir `SECURITY DEFINER`, `search_path` vazio e grants: pública apenas para `service_role`; assistida para `authenticated`, sem execução anônima.
 6. Comparar as contagens de dados preservados antes de qualquer teste de fumaça. Os interesses devem estar vazios imediatamente após a migração. Conferir eventuais assinaturas legadas de RPC existentes no ambiente: a aplicação utiliza somente as duas assinaturas acima.
-7. Publicar a nova aplicação e reativar a campanha conforme o estado e prazo registrados. Validar os fluxos abaixo antes de compartilhar o link.
+7. Após autorização específica, aplicar/reaplicar 006 e conferir o roteiro de cadastro permanente antes de publicar a aplicação. Validar os fluxos abaixo antes de compartilhar o link.
 
 ## Testes de fumaça e segurança pendentes
 

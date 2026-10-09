@@ -1,5 +1,7 @@
 # Tarefas — Cadastro e confirmação de voluntários AFAPAN
 
+> Revisão aprovada em 2026-10-09: [cadastro permanente](../cadastro-voluntarios-permanente/specification.md) substitui as regras de campanha, prazo, ativação e expiração deste documento. RF-026, RF-027, RF-029, RF-033, RF-034 e os critérios/cenários associados são históricos e não orientam a implementação atual. O link permanece /voluntariado/cadastro; os novos consentimentos seguem a configuração permanente. Não instalar a migração 002 nem criar campanha como pré-requisito. Consulte o [plano atual](../cadastro-voluntarios-permanente/technical-plan.md) e o [roteiro de implantação](../cadastro-voluntarios-permanente/deployment.md).
+
 - **Status:** T-022 a T-024 implementadas localmente; T-025 com validação local e preparação da implantação, validação remota pendente
 - **Plano:** `./technical-plan.md`
 - **Atualização:** 2026-10-01
@@ -39,10 +41,10 @@
   - Testes unitários dos fluxos administrativos.
 
 - [ ] **T-009 — Implementar gestão da campanha e link** (`RF-001`, `RF-025`–`RF-030`, `CA-001`, `CA-020`, `CA-023`–`CA-025`)
-  - Criar/editar campanha, alterar prazo, ativar/desativar e copiar link público.
+  - Escopo de campanha substituído em 2026-10-09 por link permanente; ver T-005 da iniciativa permanente.
   - Exibir textos aprovados e canais oficiais.
 
-- [ ] **T-010 — Implementar processamento automático de prazo** (`RF-026`, `RF-027`, `RNF-007`, `CA-020`, `CA-023`)
+- [ ] **T-010 — Histórico: processamento automático de prazo substituído por expiração sem efeitos em 006** (`RF-026`, `RF-027`, `RNF-007`, `CA-020`, `CA-023`)
   - Função idempotente, histórico de origem `sistema`, agendamento e fallback por acesso.
   - Testes de prazo e repetição segura.
 
@@ -176,6 +178,6 @@ As tarefas `T-001` a `T-010` foram implementadas localmente conforme o plano ant
 - [x] `003-volunteers-form-revision.sql` aplicado e validado no Supabase: sete novas colunas presentes, assinaturas antiga e nova da RPC disponíveis, nenhuma frequência inválida e RLS habilitada nas cinco tabelas do módulo.
 - [x] `004-optional-other-activity-description.sql` aplicado e validado no Supabase em 2026-10-06; envio público com `Outras atividades` sem descrição confirmado em produção.
 - [ ] Configurar `VOLUNTEER_FORM_RATE_LIMIT_SECRET` localmente e na Vercel.
-- [ ] Aplicar e validar `002-volunteers-schedule.sql` após a migração principal.
+- Substituída em 2026-10-09: não instalar `002-volunteers-schedule.sql`; aplicar 006 somente após autorização conforme iniciativa permanente.
 - [ ] Executar testes de RLS com os papéis `anon`, `authenticated` e `service_role`.
 - [ ] Publicar e executar teste de fumaça antes de compartilhar o link público.

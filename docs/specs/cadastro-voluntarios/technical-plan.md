@@ -1,5 +1,7 @@
 # Plano técnico — Cadastro e confirmação de voluntários AFAPAN
 
+> Revisão aprovada em 2026-10-09: [cadastro permanente](../cadastro-voluntarios-permanente/specification.md) substitui as regras de campanha, prazo, ativação e expiração deste documento. RF-026, RF-027, RF-029, RF-033, RF-034 e os critérios/cenários associados são históricos e não orientam a implementação atual. O link permanece /voluntariado/cadastro; os novos consentimentos seguem a configuração permanente. Não instalar a migração 002 nem criar campanha como pré-requisito. Consulte o [plano atual](../cadastro-voluntarios-permanente/technical-plan.md) e o [roteiro de implantação](../cadastro-voluntarios-permanente/deployment.md).
+
 - **Status:** Revisão do catálogo aprovada e implementada localmente; execução e validação remotas pendentes
 - **Aprovação anterior:** 2026-09-29
 - **Especificação:** `./specification.md`
@@ -187,7 +189,7 @@ O envio público passará por uma rota de API do Next.js e por uma função tran
 2. Validar a migração em ambiente de teste, incluindo anon, authenticated e service role.
 3. Configurar `VOLUNTEER_FORM_RATE_LIMIT_SECRET` no ambiente local e na Vercel.
 4. Publicar a API e as telas sem criar automaticamente uma campanha pública.
-5. Criar ou ativar a campanha pela área interna, conferir prazo e textos e copiar o endereço fixo `/voluntariado/cadastro`.
+5. Seguir o roteiro da iniciativa permanente: configurar via 006 após autorização, conferir textos e copiar o endereço fixo `/voluntariado/cadastro`, sem criar campanha.
 6. Executar testes de fumaça público e administrativo.
 7. Somente então compartilhar o link no grupo do WhatsApp.
 

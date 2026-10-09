@@ -1,9 +1,8 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { Archive, Check, ChevronDown, ChevronUp, Copy, Eye, HeartHandshake, Pencil, Plus, RotateCcw, Settings, SlidersHorizontal } from "lucide-react"
+import { Archive, Check, ChevronDown, ChevronUp, Copy, Eye, HeartHandshake, Pencil, Plus, RotateCcw, SlidersHorizontal } from "lucide-react"
 import { toast } from "sonner"
-import { VolunteerCampaignDialog } from "@/components/dialogs/volunteer-campaign-dialog"
 import { VolunteerDetailsDialog } from "@/components/dialogs/volunteer-details-dialog"
 import { VolunteerFormDialog } from "@/components/dialogs/volunteer-form-dialog"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
@@ -15,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { copyTextToClipboard } from "@/lib/clipboard"
+import { VOLUNTEER_REGISTRATION_PATH } from "@/lib/volunteer-registration"
 import {
   VOLUNTEER_ACTIVITIES,
   VOLUNTEER_FREQUENCIES,
@@ -23,13 +23,12 @@ import {
   formatBirthday,
   type Volunteer,
   type VolunteerActivity,
-  type VolunteerCampaign,
   type VolunteerFilters,
   type VolunteerFrequency,
   type VolunteerInput,
   type VolunteerStatus,
 } from "@/lib/volunteers"
-import { fetchVolunteerCampaign, fetchVolunteers, getVolunteerMutationError, saveAssistedVolunteer, saveVolunteerCampaign, setVolunteerArchived, setVolunteerStatus } from "@/lib/volunteer-queries"
+import { fetchVolunteers, getVolunteerMutationError, saveAssistedVolunteer, setVolunteerArchived, setVolunteerStatus } from "@/lib/volunteer-queries"
 
 const PAGE_SIZE = 10
 const statusLabel: Record<VolunteerStatus, string> = { aguardando_validacao: "Aguardando validação", ativo: "Ativo", sem_confirmacao: "Sem confirmação", inativo: "Inativo" }
@@ -45,8 +44,7 @@ export function VolunteersPage() {
   const [editing, setEditing] = useState<Volunteer | null>(null)
   const [details, setDetails] = useState<Volunteer | null>(null)
   const [confirming, setConfirming] = useState<Volunteer | null>(null)
-  const [campaign, setCampaign] = useState<VolunteerCampaign | null>(null)
-  const [campaignOpen, setCampaignOpen] = useState(false)
+  const [registrationUrl, setRegistrationUrl] = useState("")
   const [copyStatus, setCopyStatus] = useState<"idle" | "copying" | "success" | "error">("idle")
   const [search, setSearch] = useState("")
   const [status, setStatus] = useState<VolunteerStatus | "all">("all")
@@ -62,10 +60,9 @@ export function VolunteersPage() {
   const load = useCallback(async () => {
     try {
       setLoading(true)
-      const [result, current] = await Promise.all([fetchVolunteers(filters, page, PAGE_SIZE), fetchVolunteerCampaign()])
+      const result = await fetchVolunteers(filters, page, PAGE_SIZE)
       setVolunteers(result.volunteers)
       setTotal(result.total)
-      setCampaign(current)
       if (page > 1 && !result.volunteers.length) setPage(page - 1)
     } catch (error) {
       toast.error("Não foi possível carregar os voluntários", { description: getVolunteerMutationError(error) })
@@ -73,6 +70,7 @@ export function VolunteersPage() {
   }, [filters, page])
 
   useEffect(() => { void load() }, [load])
+  useEffect(() => { setRegistrationUrl(new URL(VOLUNTEER_REGISTRATION_PATH, window.location.origin).href) }, [])
   useEffect(() => setPage(1), [search, status, city, neighborhood, activity, frequency, archive])
 
   const clearFilters = () => {
@@ -105,33 +103,9 @@ export function VolunteersPage() {
     } catch (error) { toast.error("Não foi possível concluir", { description: getVolunteerMutationError(error) }) }
     finally { setSaving(false) }
   }
-  const saveCampaign = async (input: any) => {
-    try {
-      setSaving(true)
-      const id = await saveVolunteerCampaign(input)
-      setCampaign({
-        ...input,
-        id,
-        updatedAt: new Date().toISOString(),
-      })
-      setCopyStatus("idle")
-      toast.success("Campanha salva!")
-      return true
-    }
-    catch (error) { toast.error("Não foi possível salvar a campanha", { description: getVolunteerMutationError(error) }); return false }
-    finally { setSaving(false) }
-  }
   const copyLink = async () => {
-    if (!campaign?.active) {
-      setCopyStatus("error")
-      toast.error("Não há uma campanha ativa", {
-        description: "Crie ou ative uma campanha antes de copiar o link.",
-      })
-      return
-    }
-
     setCopyStatus("copying")
-    const copied = await copyTextToClipboard(`${window.location.origin}/voluntariado/cadastro`)
+    const copied = await copyTextToClipboard(new URL(VOLUNTEER_REGISTRATION_PATH, window.location.origin).href)
     if (copied) {
       setCopyStatus("success")
       toast.success("Link copiado com sucesso!")
@@ -140,14 +114,14 @@ export function VolunteersPage() {
 
     setCopyStatus("error")
     toast.error("Não foi possível copiar o link", {
-      description: "Copie o endereço diretamente da barra do navegador.",
+      description: "Copie manualmente o endereço exibido em Link do formulário.",
     })
   }
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
   return <div className="space-y-6">
-    <div className="flex flex-col gap-4 sm:flex-row sm:justify-between"><div><h2 className="text-2xl font-bold">Voluntários</h2><p className="text-muted-foreground">Cadastro e confirmação dos voluntários da AFAPAN.</p></div><div className="flex flex-wrap items-center gap-2"><Button type="button" variant="outline" onClick={() => setCampaignOpen(true)}><Settings size={16} />Campanha</Button><Button type="button" variant="outline" onClick={() => void copyLink()} disabled={copyStatus === "copying"}>{copyStatus === "success" ? <Check size={16} /> : <Copy size={16} />}{copyStatus === "copying" ? "Copiando..." : copyStatus === "success" ? "Link copiado!" : "Copiar link"}</Button><span className={copyStatus === "error" ? "text-sm text-destructive" : "sr-only"} role="status" aria-live="polite">{copyStatus === "success" ? "O link foi copiado com sucesso." : copyStatus === "error" ? campaign?.active ? "Não foi possível copiar o link. Copie o endereço diretamente da barra do navegador." : "Crie ou ative uma campanha antes de copiar o link." : ""}</span><Button type="button" onClick={() => { setEditing(null); setFormOpen(true) }}><Plus size={16} />Cadastrar</Button></div></div>
-    {campaign && <Card><CardContent className="flex justify-between py-4"><div><p className="font-medium">{campaign.name}</p><p className="text-sm text-muted-foreground">Prazo: {new Date(campaign.deadline).toLocaleString("pt-BR")}</p></div><Badge variant={campaign.active ? "default" : "secondary"}>{campaign.active ? "Ativa" : "Inativa"}</Badge></CardContent></Card>}
+    <div className="flex flex-col gap-4 sm:flex-row sm:justify-between"><div><h2 className="text-2xl font-bold">Voluntários</h2><p className="text-muted-foreground">Cadastro e gestão dos voluntários da AFAPAN.</p></div><div className="flex flex-wrap items-center gap-2"><Button type="button" variant="outline" onClick={() => void copyLink()} disabled={copyStatus === "copying"}>{copyStatus === "success" ? <Check size={16} /> : <Copy size={16} />}{copyStatus === "copying" ? "Copiando..." : copyStatus === "success" ? "Link copiado!" : "Copiar link"}</Button><Button type="button" onClick={() => { setEditing(null); setFormOpen(true) }}><Plus size={16} />Cadastrar</Button></div></div>
+    <section className="space-y-2 rounded-lg border bg-muted/20 p-4" aria-label="Link do formulário"><p className="font-medium">Link do formulário</p><a href={registrationUrl || VOLUNTEER_REGISTRATION_PATH} target="_blank" rel="noopener noreferrer" className="block break-all text-primary underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4" aria-label="Abrir formulário de cadastro em uma nova aba">{registrationUrl || VOLUNTEER_REGISTRATION_PATH}</a><span className={copyStatus === "error" ? "block text-sm text-destructive" : "sr-only"} role="status" aria-live="polite">{copyStatus === "success" ? "O link foi copiado com sucesso." : copyStatus === "error" ? "Não foi possível copiar o link. Copie manualmente o endereço exibido acima." : ""}</span></section>
     <Card><CardHeader className="flex-row items-center justify-between"><CardTitle className="text-lg">Cadastros</CardTitle><Button variant="outline" onClick={() => setFiltersOpen((open) => !open)} aria-expanded={filtersOpen} aria-controls="volunteer-filters"><SlidersHorizontal size={16} />Filtros{activeFilterCount > 0 && <Badge className="ml-1" aria-label={`${activeFilterCount} filtros ativos`}>{activeFilterCount}</Badge>}{filtersOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}</Button></CardHeader><CardContent className="space-y-4">
       {filtersOpen && <div id="volunteer-filters" className="grid gap-3 rounded-lg border bg-muted/20 p-4 md:grid-cols-3 xl:grid-cols-4"><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar nome ou telefone" aria-label="Buscar nome ou telefone" /><Select value={status} onValueChange={(value: VolunteerStatus | "all") => setStatus(value)}><SelectTrigger aria-label="Situação"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Todas as situações</SelectItem>{Object.entries(statusLabel).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select><Input value={city} onChange={(event) => setCity(event.target.value)} placeholder="Cidade" aria-label="Cidade" /><Input value={neighborhood} onChange={(event) => setNeighborhood(event.target.value)} placeholder="Bairro" aria-label="Bairro" /><Select value={activity} onValueChange={(value: VolunteerActivity | "all") => setActivity(value)}><SelectTrigger aria-label="Atividade"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Todas as atividades</SelectItem>{VOLUNTEER_ACTIVITIES.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent></Select><Select value={frequency} onValueChange={(value: VolunteerFrequency | "all") => setFrequency(value)}><SelectTrigger aria-label="Frequência"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Todas as frequências</SelectItem>{VOLUNTEER_FREQUENCIES.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent></Select><Select value={archive} onValueChange={(value: "active" | "archived" | "all") => setArchive(value)}><SelectTrigger aria-label="Arquivamento"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="active">Não arquivados</SelectItem><SelectItem value="archived">Arquivados</SelectItem><SelectItem value="all">Todos</SelectItem></SelectContent></Select><Button variant="outline" onClick={clearFilters}>Limpar filtros</Button></div>}
       {loading ? <><Skeleton className="h-10" /><Skeleton className="h-10" /></> : !volunteers.length ? <div className="py-10 text-center"><HeartHandshake className="mx-auto mb-2" /><p>Nenhum voluntário encontrado.</p></div> : <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Voluntário</TableHead><TableHead>Telefone</TableHead><TableHead>Idade</TableHead><TableHead>Aniversário</TableHead><TableHead>Início AFAPAN</TableHead><TableHead>Situação</TableHead><TableHead>Ações</TableHead></TableRow></TableHeader><TableBody>{volunteers.map((volunteer) => <TableRow key={volunteer.id}><TableCell className="font-medium">{volunteer.firstName} {volunteer.lastName}</TableCell><TableCell>{volunteer.phone}</TableCell><TableCell>{calculateAge(volunteer.birthDate)} anos</TableCell><TableCell>{formatBirthday(volunteer.birthDate)}</TableCell><TableCell>{formatActivityStart(volunteer.activityStartMonth, volunteer.activityStartYear)}</TableCell><TableCell><Select value={volunteer.status} onValueChange={(next: VolunteerStatus) => void changeStatus(volunteer, next)}><SelectTrigger className="w-44"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(statusLabel).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select></TableCell><TableCell><div className="flex"><Button variant="ghost" size="icon" onClick={() => setDetails(volunteer)} aria-label={`Ver ${volunteer.firstName}`}><Eye size={16} /></Button><Button variant="ghost" size="icon" onClick={() => { setEditing(volunteer); setFormOpen(true) }} aria-label={`Editar ${volunteer.firstName}`}><Pencil size={16} /></Button><Button variant="ghost" size="icon" onClick={() => setConfirming(volunteer)} aria-label={`${volunteer.archivedAt ? "Restaurar" : "Arquivar"} ${volunteer.firstName}`}>{volunteer.archivedAt ? <RotateCcw size={16} /> : <Archive size={16} />}</Button></div></TableCell></TableRow>)}</TableBody></Table></div>}
@@ -155,7 +129,6 @@ export function VolunteersPage() {
     </CardContent></Card>
     <VolunteerFormDialog open={formOpen} onOpenChange={(open) => { setFormOpen(open); if (!open) setEditing(null) }} volunteer={editing} onSave={save} saving={saving} />
     <VolunteerDetailsDialog volunteer={details} open={Boolean(details)} onOpenChange={(open) => { if (!open) setDetails(null) }} />
-    <VolunteerCampaignDialog open={campaignOpen} onOpenChange={setCampaignOpen} campaign={campaign} onSave={saveCampaign} saving={saving} />
     <AlertDialog open={Boolean(confirming)} onOpenChange={(open) => { if (!open) setConfirming(null) }}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>{confirming?.archivedAt ? "Restaurar voluntário?" : "Arquivar voluntário?"}</AlertDialogTitle><AlertDialogDescription>{confirming?.firstName} {confirming?.lastName}. O histórico será preservado.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={(event) => { event.preventDefault(); void archiveVolunteer() }}>{saving ? "Salvando..." : confirming?.archivedAt ? "Restaurar" : "Arquivar"}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
   </div>
 }

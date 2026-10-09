@@ -3,7 +3,6 @@ import {
   brazilianDateToIso,
   normalizeBrazilianPhone,
   type Volunteer,
-  type VolunteerCampaign,
   type VolunteerFilters,
   type VolunteerInput,
   type VolunteerStatus,
@@ -151,39 +150,6 @@ export async function setVolunteerStatus(volunteer: Volunteer, status: Volunteer
 export async function setVolunteerArchived(volunteer: Volunteer, archived: boolean) {
   const { error } = await supabase.rpc("set_volunteer_archived", { p_id: volunteer.id, p_expected_updated_at: volunteer.updatedAt, p_archived: archived })
   if (error) throw error
-}
-
-export async function fetchVolunteerCampaign(): Promise<VolunteerCampaign | null> {
-  const { data, error } = await supabase.from("volunteer_campaigns").select("*").order("criado_em", { ascending: false }).limit(1).maybeSingle()
-  if (error) throw error
-  if (!data) return null
-  return {
-    id: data.id,
-    name: data.nome,
-    deadline: data.prazo,
-    active: data.ativa,
-    privacyText: data.privacy_text,
-    privacyVersion: data.privacy_version,
-    participationText: data.participation_text,
-    participationVersion: data.participation_version,
-    updatedAt: data.atualizado_em,
-  }
-}
-
-export async function saveVolunteerCampaign(input: Omit<VolunteerCampaign, "id" | "updatedAt"> & { id?: string; expectedUpdatedAt?: string }) {
-  const { data, error } = await supabase.rpc("save_volunteer_campaign", {
-    p_id: input.id || null,
-    p_expected_updated_at: input.expectedUpdatedAt || null,
-    p_name: input.name,
-    p_deadline: input.deadline,
-    p_active: input.active,
-    p_privacy_text: input.privacyText,
-    p_privacy_version: input.privacyVersion,
-    p_participation_text: input.participationText,
-    p_participation_version: input.participationVersion,
-  })
-  if (error) throw error
-  return data as string
 }
 
 export function getVolunteerMutationError(error: unknown) {

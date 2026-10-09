@@ -115,18 +115,6 @@ export interface VolunteerFilters {
   archive?: "active" | "archived" | "all"
 }
 
-export interface VolunteerCampaign {
-  id: string
-  name: string
-  deadline: string
-  active: boolean
-  privacyText: string
-  privacyVersion: string
-  participationText: string
-  participationVersion: string
-  updatedAt: string
-}
-
 export interface VolunteerValidationError {
   field: keyof VolunteerInput | "form"
   message: string

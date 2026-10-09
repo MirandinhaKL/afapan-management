@@ -1,5 +1,7 @@
 # Decisões — Cadastro e confirmação de voluntários AFAPAN
 
+> Revisão aprovada em 2026-10-09: [cadastro permanente](../cadastro-voluntarios-permanente/specification.md) substitui as regras de campanha, prazo, ativação e expiração deste documento. RF-026, RF-027, RF-029, RF-033, RF-034 e os critérios/cenários associados são históricos e não orientam a implementação atual. O link permanece /voluntariado/cadastro; os novos consentimentos seguem a configuração permanente. Não instalar a migração 002 nem criar campanha como pré-requisito. Consulte o [plano atual](../cadastro-voluntarios-permanente/technical-plan.md) e o [roteiro de implantação](../cadastro-voluntarios-permanente/deployment.md).
+
 - **DEC-001:** será criada uma página integrada ao sistema, não um Google Forms.
 - **DEC-002:** haverá um único link compartilhado no grupo de WhatsApp.
 - **DEC-003:** telefone com WhatsApp será obrigatório e e-mail será opcional.
@@ -31,3 +33,5 @@
 - **DEC-025:** todas as novas perguntas de perfil incorporadas do formulário de referência serão opcionais.
 - **DEC-026:** a decisão `DEC-007` foi substituída: a seção de disponibilidade solicitará somente a frequência (`Diariamente`, `Uma vez por semana`, `A cada 15 dias`, `Uma vez por mês` ou `Eventualmente`), sem dias da semana, turnos, horários ou observações.
 - **DEC-027:** na tela interna de voluntários, a área de busca e filtros iniciará recolhida e será controlada pelo botão `Filtros`; filtros ativos continuarão aplicados quando a área for recolhida e serão indicados numericamente no botão.
+
+- **DEC-028 — Cadastro permanente aprovado em 2026-10-09:** substitui DEC-010, DEC-011 e a exigência de campanha ativa em DEC-020. Preservar dados históricos; sem prazo ou reclassificação automática. Ver decisões da iniciativa cadastro-voluntarios-permanente.

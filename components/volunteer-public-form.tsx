@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { fetchVolunteerFormSettings, type VolunteerFormSettings } from "@/lib/volunteer-registration"
 import {
   AFAPAN_CONTACT_EMAIL,
   AFAPAN_CONTACT_WHATSAPP,
@@ -30,13 +31,6 @@ import {
   type VolunteerInput,
 } from "@/lib/volunteers"
 
-interface CampaignData {
-  name: string
-  deadline: string
-  privacyText: string
-  participationText: string
-}
-
 const initialValue: VolunteerInput = {
   firstName: "", lastName: "", birthDate: "", phone: "", email: "", street: "", number: "", complement: "",
   neighborhood: "", city: "Farroupilha", state: "RS", profession: "", skills: "", activityStartMonth: null,
@@ -50,7 +44,10 @@ function CheckOption({ checked, onChange, label }: { checked: boolean; onChange:
   return <label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm hover:bg-muted/50"><input type="checkbox" className="mt-1 h-4 w-4 accent-primary" checked={checked} onChange={(event) => onChange(event.target.checked)} /><span>{label}</span></label>
 }
 
-export function VolunteerPublicForm({ campaign }: { campaign: CampaignData }) {
+export function VolunteerPublicForm({ configuration }: { configuration: VolunteerFormSettings }) {
+  const [settings, setSettings] = useState(configuration)
+  const [textsOutdated, setTextsOutdated] = useState(false)
+  const [refreshingTexts, setRefreshingTexts] = useState(false)
   const [value, setValue] = useState<VolunteerInput>(initialValue)
   const [website, setWebsite] = useState("")
   const [startMonth, setStartMonth] = useState("")
@@ -105,8 +102,24 @@ export function VolunteerPublicForm({ campaign }: { campaign: CampaignData }) {
     if (emailError || !next.trim()) validateEmail(next)
   }
 
+  const refreshTexts = async () => {
+    try {
+      setRefreshingTexts(true)
+      const next = await fetchVolunteerFormSettings()
+      setSettings(next)
+      setValue((current) => ({ ...current, privacyAccepted: false, participationAccepted: false }))
+      setTextsOutdated(false)
+      setError("Os textos foram atualizados. Leia e confirme novamente antes de enviar.")
+    } catch {
+      setError("Não foi possível atualizar os textos. Seus dados foram mantidos. Tente novamente.")
+    } finally {
+      setRefreshingTexts(false)
+    }
+  }
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
+    if (submitting || textsOutdated) return
     const errors = validateVolunteerInput(value)
     if (errors.length > 0) {
       setInvalidFields(errors.map((item) => String(item.field)))
@@ -120,13 +133,14 @@ export function VolunteerPublicForm({ campaign }: { campaign: CampaignData }) {
       const response = await fetch("/api/volunteers/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ website, ...value }),
+        body: JSON.stringify({ website, ...value, privacyVersion: settings.privacyVersion, participationVersion: settings.participationVersion }),
       })
       const result = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(result?.error || "Não foi possível enviar o cadastro.")
+      if (!response.ok && result?.code === "FORM_VERSION_OUTDATED") setTextsOutdated(true)
+      if (!response.ok || result?.success !== true) throw new Error(result?.error || "Não foi possível enviar o cadastro. Tente novamente.")
       setSubmitted(true)
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Não foi possível enviar o cadastro.")
+      setError(caught instanceof Error && !(caught instanceof TypeError) ? caught.message : "Não foi possível enviar o cadastro. Tente novamente.")
     } finally {
       setSubmitting(false)
     }
@@ -137,7 +151,7 @@ export function VolunteerPublicForm({ campaign }: { campaign: CampaignData }) {
   return <Card className="w-full max-w-4xl overflow-hidden py-0 shadow-lg">
     <CardHeader className="relative flex min-h-28 items-center justify-center border-b bg-primary px-16 py-6 text-center text-primary-foreground">
       <HeartHandshake className="absolute left-5 h-8 w-8 sm:left-8" aria-hidden="true" />
-      <div className="flex flex-col items-center justify-center gap-2"><CardTitle className="text-2xl">Voluntariado AFAPAN</CardTitle><CardDescription className="text-center text-primary-foreground/80">{campaign.name} · Responda até {new Date(campaign.deadline).toLocaleDateString("pt-BR")}</CardDescription></div>
+      <div className="flex flex-col items-center justify-center gap-2"><CardTitle className="text-2xl">Voluntariado AFAPAN</CardTitle><CardDescription className="text-center text-primary-foreground/80">Cadastro de novos voluntários</CardDescription></div>
     </CardHeader>
     <div className="relative aspect-[4/3] w-full bg-muted sm:aspect-[16/7]"><Image src="/voluntarios-afapan-rosto-crianca-desfocado.png" alt="Voluntários da AFAPAN reunidos" fill priority sizes="(max-width: 896px) 100vw, 896px" className="object-cover object-center" /></div>
     <CardContent className="p-5 sm:p-8">
@@ -186,9 +200,10 @@ export function VolunteerPublicForm({ campaign }: { campaign: CampaignData }) {
 
         {minor && <section className="space-y-4 rounded-lg border border-amber-300 bg-amber-50 p-4"><h2 className="text-xl font-semibold">Responsável pelo menor</h2><div className="grid gap-4 sm:grid-cols-2"><div><Label className="font-bold" htmlFor="guardianName">Nome do responsável *</Label><Input id="guardianName" value={value.guardianName} onChange={(event) => update("guardianName", event.target.value)} /></div><div><Label className="font-bold" htmlFor="guardianPhone">Telefone do responsável *</Label><Input id="guardianPhone" inputMode="tel" maxLength={15} value={value.guardianPhone} onChange={(event) => update("guardianPhone", maskBrazilianPhone(event.target.value))} /></div></div><CheckOption label="Declaro que o responsável autoriza a participação do menor nas atividades de voluntariado da AFAPAN." checked={Boolean(value.guardianAuthorized)} onChange={(checked) => update("guardianAuthorized", checked)} /></section>}
 
-        <section className="space-y-3 border-t pt-6"><h2 className="text-xl font-semibold">Confirmações</h2><CheckOption label={campaign.privacyText} checked={value.privacyAccepted} onChange={(checked) => update("privacyAccepted", checked)} /><CheckOption label={campaign.participationText} checked={value.participationAccepted} onChange={(checked) => update("participationAccepted", checked)} /></section>
+        <section className="space-y-3 border-t pt-6"><h2 className="text-xl font-semibold">Confirmações</h2><CheckOption label={settings.privacyText} checked={value.privacyAccepted} onChange={(checked) => update("privacyAccepted", checked)} /><CheckOption label={settings.participationText} checked={value.participationAccepted} onChange={(checked) => update("participationAccepted", checked)} /></section>
         {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
-        <Button type="submit" size="lg" className="w-full text-base" disabled={submitting}>{submitting ? "Enviando..." : "Enviar cadastro"}</Button>
+        {textsOutdated && <Button type="button" variant="outline" className="w-full" onClick={() => void refreshTexts()} disabled={refreshingTexts}>{refreshingTexts ? "Atualizando textos..." : "Atualizar textos de confirmação"}</Button>}
+        <Button type="submit" size="lg" className="w-full text-base" disabled={submitting || textsOutdated || refreshingTexts}>{submitting ? "Enviando..." : "Enviar cadastro"}</Button>
         <p className="text-center text-sm text-muted-foreground">Precisa corrigir um cadastro? WhatsApp {AFAPAN_CONTACT_WHATSAPP} · {AFAPAN_CONTACT_EMAIL}</p>
       </form>
     </CardContent>

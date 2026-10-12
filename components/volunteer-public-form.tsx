@@ -34,7 +34,7 @@ import {
 const initialValue: VolunteerInput = {
   firstName: "", lastName: "", birthDate: "", phone: "", email: "", street: "", number: "", complement: "",
   neighborhood: "", city: "Farroupilha", state: "RS", profession: "", skills: "", activityStartMonth: null,
-  activityStartYear: null, frequency: "eventual", activities: [], expectations: "",
+  activityStartYear: null, frequency: "eventual", activities: [],
   discoverySource: "", previousVolunteering: null, communicationChannels: [], projectIdea: "", imageUseAuthorized: null,
   afapanStory: "", guardianName: "", guardianPhone: "", guardianAuthorized: false,
   privacyAccepted: false, participationAccepted: false,
@@ -151,9 +151,9 @@ export function VolunteerPublicForm({ configuration }: { configuration: Voluntee
   return <Card className="w-full max-w-4xl overflow-hidden py-0 shadow-lg">
     <CardHeader className="relative flex min-h-28 items-center justify-center border-b bg-primary px-16 py-6 text-center text-primary-foreground">
       <HeartHandshake className="absolute left-5 h-8 w-8 sm:left-8" aria-hidden="true" />
-      <div className="flex flex-col items-center justify-center gap-2"><CardTitle className="text-2xl">Voluntariado AFAPAN</CardTitle><CardDescription className="text-center text-primary-foreground/80">Cadastro de novos voluntários</CardDescription></div>
+      <div className="flex flex-col items-center justify-center gap-2"><CardTitle className="text-2xl">Voluntariado AFAPAN</CardTitle><CardDescription className="text-center text-primary-foreground/80">Cadastro de voluntário</CardDescription></div>
     </CardHeader>
-    <div className="relative aspect-[4/3] w-full bg-muted sm:aspect-[16/7]"><Image src="/voluntarios-afapan-rosto-crianca-desfocado.png" alt="Voluntários da AFAPAN reunidos" fill priority sizes="(max-width: 896px) 100vw, 896px" className="object-cover object-center" /></div>
+    <div className="relative aspect-[4/3] w-full bg-muted"><Image src="/afapan-voluntarios-a.jpeg" alt="Voluntários da AFAPAN reunidos" fill priority sizes="(max-width: 896px) 100vw, 896px" className="object-contain object-center" /></div>
     <CardContent className="p-5 sm:p-8">
       <div className="mb-8 space-y-3 rounded-xl bg-green-50 p-5 text-green-950">
         <h2 className="text-xl font-semibold">Que bom ter você por aqui! 💚</h2>
@@ -189,7 +189,6 @@ export function VolunteerPublicForm({ configuration }: { configuration: Voluntee
         <section className="space-y-4 border-t pt-6"><h2 className="text-xl font-semibold">Disponibilidade</h2><div><Label className="font-bold" htmlFor="frequency">Com que frequência você poderia participar? *</Label><Select value={value.frequency} onValueChange={(next: VolunteerFrequency) => update("frequency", next)}><SelectTrigger id="frequency"><SelectValue /></SelectTrigger><SelectContent>{VOLUNTEER_FREQUENCIES.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent></Select></div></section>
 
         <section className="space-y-4 border-t pt-6"><div><h2 className="text-xl font-semibold">Conte um pouco mais sobre você</h2></div>
-          <div><Label htmlFor="expectations">O que você espera da AFAPAN?</Label><Textarea id="expectations" value={value.expectations} onChange={(event) => update("expectations", event.target.value)} /></div>
           <div><Label htmlFor="discoverySource">Como você conheceu a AFAPAN?</Label><Textarea id="discoverySource" value={value.discoverySource} onChange={(event) => update("discoverySource", event.target.value)} /></div>
           <div><Label htmlFor="previousVolunteering">Você é ou já foi voluntário(a) em outra instituição?</Label><Select value={value.previousVolunteering || "nao_informado"} onValueChange={(next) => update("previousVolunteering", next === "nao_informado" ? null : next as VolunteerInput["previousVolunteering"])}><SelectTrigger id="previousVolunteering"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="nao_informado">Prefiro não responder</SelectItem>{PREVIOUS_VOLUNTEERING_OPTIONS.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent></Select></div>
           <fieldset><legend className="mb-2 font-medium">Por onde você acompanha a AFAPAN?</legend><div className="grid gap-2 sm:grid-cols-2">{VOLUNTEER_COMMUNICATION_CHANNELS.map((item) => <CheckOption key={item.value} label={item.label} checked={(value.communicationChannels || []).includes(item.value)} onChange={(checked) => toggleChannel(item.value, checked)} />)}</div></fieldset>

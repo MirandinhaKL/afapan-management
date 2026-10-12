@@ -9,7 +9,10 @@ const configuration = { privacyText: "Estou ciente do uso dos dados.", privacyVe
 describe("formulário público de voluntários", () => {
   it("apresenta a foto, os textos aprovados e datas no padrão brasileiro", () => {
     render(<VolunteerPublicForm configuration={configuration} />)
-    expect(screen.getByAltText("Voluntários da AFAPAN reunidos")).toBeInTheDocument()
+    const photo = screen.getByAltText("Voluntários da AFAPAN reunidos")
+    expect(photo.getAttribute("src")).toContain("afapan-voluntarios-a.jpeg")
+    expect(photo).toHaveClass("object-contain")
+    expect(screen.queryByLabelText("O que você espera da AFAPAN?")).not.toBeInTheDocument()
     expect(screen.getByText(configuration.privacyText)).toBeInTheDocument()
     expect(screen.getByText(configuration.participationText)).toBeInTheDocument()
     expect(screen.getByLabelText(/Data de nascimento/)).toHaveAttribute("placeholder", "dd/mm/aaaa")
@@ -27,7 +30,7 @@ describe("formulário público de voluntários", () => {
     const header = screen.getByText("Voluntariado AFAPAN").closest('[data-slot="card-header"]')
     expect(header).toHaveClass("flex", "items-center", "justify-center", "text-center", "py-6")
     expect(screen.getByText("Voluntariado AFAPAN").parentElement).toHaveClass("items-center", "justify-center")
-    expect(screen.getByText("Cadastro de novos voluntários")).toHaveClass("text-center")
+    expect(screen.getByText("Cadastro de voluntário")).toHaveClass("text-center")
   })
 
   it("diferencia campos obrigatórios sem escrever opcional nos demais", () => {

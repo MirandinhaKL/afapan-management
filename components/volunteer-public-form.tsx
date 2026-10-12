@@ -35,7 +35,7 @@ const initialValue: VolunteerInput = {
   firstName: "", lastName: "", birthDate: "", phone: "", email: "", street: "", number: "", complement: "",
   neighborhood: "", city: "Farroupilha", state: "RS", profession: "", skills: "", activityStartMonth: null,
   activityStartYear: null, frequency: "eventual", activities: [],
-  discoverySource: "", previousVolunteering: null, communicationChannels: [], projectIdea: "", imageUseAuthorized: null,
+  previousVolunteering: null, communicationChannels: [], projectIdea: "", imageUseAuthorized: null,
   afapanStory: "", guardianName: "", guardianPhone: "", guardianAuthorized: false,
   privacyAccepted: false, participationAccepted: false,
 }
@@ -189,11 +189,10 @@ export function VolunteerPublicForm({ configuration }: { configuration: Voluntee
         <section className="space-y-4 border-t pt-6"><h2 className="text-xl font-semibold">Disponibilidade</h2><div><Label className="font-bold" htmlFor="frequency">Com que frequência você poderia participar? *</Label><Select value={value.frequency} onValueChange={(next: VolunteerFrequency) => update("frequency", next)}><SelectTrigger id="frequency"><SelectValue /></SelectTrigger><SelectContent>{VOLUNTEER_FREQUENCIES.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent></Select></div></section>
 
         <section className="space-y-4 border-t pt-6"><div><h2 className="text-xl font-semibold">Conte um pouco mais sobre você</h2></div>
-          <div><Label htmlFor="discoverySource">Como você conheceu a AFAPAN?</Label><Textarea id="discoverySource" value={value.discoverySource} onChange={(event) => update("discoverySource", event.target.value)} /></div>
           <div><Label htmlFor="previousVolunteering">Você é ou já foi voluntário(a) em outra instituição?</Label><Select value={value.previousVolunteering || "nao_informado"} onValueChange={(next) => update("previousVolunteering", next === "nao_informado" ? null : next as VolunteerInput["previousVolunteering"])}><SelectTrigger id="previousVolunteering"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="nao_informado">Prefiro não responder</SelectItem>{PREVIOUS_VOLUNTEERING_OPTIONS.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent></Select></div>
           <fieldset><legend className="mb-2 font-medium">Por onde você acompanha a AFAPAN?</legend><div className="grid gap-2 sm:grid-cols-2">{VOLUNTEER_COMMUNICATION_CHANNELS.map((item) => <CheckOption key={item.value} label={item.label} checked={(value.communicationChannels || []).includes(item.value)} onChange={(checked) => toggleChannel(item.value, checked)} />)}</div></fieldset>
           <div><Label htmlFor="projectIdea">Tem algum projeto que gostaria de criar ou desenvolver na AFAPAN?</Label><Textarea id="projectIdea" value={value.projectIdea} onChange={(event) => update("projectIdea", event.target.value)} /></div>
-          <div><Label htmlFor="afapanStory">Conte um pouco da sua história e do seu vínculo com a AFAPAN</Label><Textarea id="afapanStory" value={value.afapanStory} onChange={(event) => update("afapanStory", event.target.value)} /></div>
+          <div><Label htmlFor="afapanStory">Como você conheceu a AFAPAN? Conte um pouco da sua história e da sua trajetória junto à associação. Fique à vontade para compartilhar suas experiências, lembranças e momentos marcantes! 💚🌱</Label><Textarea id="afapanStory" value={value.afapanStory} onChange={(event) => update("afapanStory", event.target.value)} /></div>
           <div><Label htmlFor="imageUseAuthorized">Você autoriza o uso da sua imagem em divulgações da AFAPAN?</Label><Select value={value.imageUseAuthorized == null ? "nao_informado" : value.imageUseAuthorized ? "sim" : "nao"} onValueChange={(next) => update("imageUseAuthorized", next === "nao_informado" ? null : next === "sim")}><SelectTrigger id="imageUseAuthorized"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="nao_informado">Prefiro não responder</SelectItem><SelectItem value="sim">Autorizo</SelectItem><SelectItem value="nao">Não autorizo</SelectItem></SelectContent></Select></div>
         </section>
 

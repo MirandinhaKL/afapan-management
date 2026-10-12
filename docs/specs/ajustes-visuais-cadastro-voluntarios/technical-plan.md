@@ -4,4 +4,6 @@ Aplicar os três ajustes juntos no componente público. Copiar a imagem original
 
 Sem migração, alteração de RLS ou operação externa. Reversão: restaurar apresentação anterior, sem alteração dos registros.
 
+Pergunta unificada: remover controle e inicialização públicos de discoverySource; reutilizar afapanStory com o texto aprovado. Não concatenar nem reescrever dados históricos. Campos opcionais e administração permanecem compatíveis. Cobrir ausência das duas perguntas antigas e preenchimento da nova pergunta nos testes.
+
 Revisão autorizada em 2026-10-12: usar object-cover e posição 50%/40% com proporção 16:7 a partir de sm; manter 4:3 no celular. Substitui object-contain e o enquadramento integral anterior. Não editar o bitmap nem retocar rostos.

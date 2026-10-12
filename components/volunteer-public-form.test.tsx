@@ -7,6 +7,14 @@ import { VOLUNTEER_ACTIVITIES, VOLUNTEER_ACTIVITY_GROUPS } from "@/lib/volunteer
 const configuration = { privacyText: "Estou ciente do uso dos dados.", privacyVersion: "permanente-1", participationText: "Quero participar como voluntário.", participationVersion: "permanente-1" }
 
 describe("formulário público de voluntários", () => {
+  it("CA-004: reúne descoberta e trajetória em uma única pergunta e permite registrar a resposta", () => {
+    render(<VolunteerPublicForm configuration={configuration} />)
+    const story = screen.getByLabelText("Como você conheceu a AFAPAN? Conte um pouco da sua história e da sua trajetória junto à associação. Fique à vontade para compartilhar suas experiências, lembranças e momentos marcantes! 💚🌱")
+    expect(screen.queryByLabelText("Como você conheceu a AFAPAN?")).not.toBeInTheDocument()
+    expect(screen.queryByLabelText("Conte um pouco da sua história e do seu vínculo com a AFAPAN")).not.toBeInTheDocument()
+    fireEvent.change(story, { target: { value: "Conheci a associação em uma ação de plantio." } })
+    expect(story).toHaveValue("Conheci a associação em uma ação de plantio.")
+  })
   it("apresenta a foto, os textos aprovados e datas no padrão brasileiro", () => {
     render(<VolunteerPublicForm configuration={configuration} />)
     const photo = screen.getByAltText("Voluntários da AFAPAN reunidos")

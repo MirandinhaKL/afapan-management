@@ -17,3 +17,8 @@
 
 - [x] T-004 (RF-002 / CA-002): recorte responsivo somente na exibição, semelhante à primeira versão, sem editar a foto ou retocar rostos.
 - Revalidação: 21 testes relevantes aprovados e TypeScript sem erros. Arquivo original preservado. Publicação não executada.
+
+## Pergunta unificada
+
+- [x] T-005 (RF-004 / CA-004): substituir as duas perguntas por uma única, reutilizando afapanStory e preservando dados existentes.
+- Validação: 22 testes relevantes aprovados nos dois arquivos do formulário/página e TypeScript sem erros. Nenhuma migração ou publicação executada.

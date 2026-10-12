@@ -12,3 +12,8 @@
 - `git diff --check` sem erros.
 - Primeira tentativa de testes bloqueada por EPERM no cache temporário do sandbox; repetição fora do isolamento aprovada.
 - Publicação e inspeção visual em produção não executadas nesta revisão.
+
+## Revisão do enquadramento — 2026-10-12
+
+- [x] T-004 (RF-002 / CA-002): recorte responsivo somente na exibição, semelhante à primeira versão, sem editar a foto ou retocar rostos.
+- Revalidação: 21 testes relevantes aprovados e TypeScript sem erros. Arquivo original preservado. Publicação não executada.

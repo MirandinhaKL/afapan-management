@@ -11,7 +11,7 @@ describe("formulário público de voluntários", () => {
     render(<VolunteerPublicForm configuration={configuration} />)
     const photo = screen.getByAltText("Voluntários da AFAPAN reunidos")
     expect(photo.getAttribute("src")).toContain("afapan-voluntarios-a.jpeg")
-    expect(photo).toHaveClass("object-contain")
+    expect(photo).toHaveClass("object-cover", "object-[50%_40%]")
     expect(screen.queryByLabelText("O que você espera da AFAPAN?")).not.toBeInTheDocument()
     expect(screen.getByText(configuration.privacyText)).toBeInTheDocument()
     expect(screen.getByText(configuration.participationText)).toBeInTheDocument()

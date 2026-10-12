@@ -153,7 +153,7 @@ export function VolunteerPublicForm({ configuration }: { configuration: Voluntee
       <HeartHandshake className="absolute left-5 h-8 w-8 sm:left-8" aria-hidden="true" />
       <div className="flex flex-col items-center justify-center gap-2"><CardTitle className="text-2xl">Voluntariado AFAPAN</CardTitle><CardDescription className="text-center text-primary-foreground/80">Cadastro de voluntário</CardDescription></div>
     </CardHeader>
-    <div className="relative aspect-[4/3] w-full bg-muted"><Image src="/afapan-voluntarios-a.jpeg" alt="Voluntários da AFAPAN reunidos" fill priority sizes="(max-width: 896px) 100vw, 896px" className="object-contain object-center" /></div>
+    <div className="relative aspect-[4/3] w-full bg-muted sm:aspect-[16/7]"><Image src="/afapan-voluntarios-a.jpeg" alt="Voluntários da AFAPAN reunidos" fill priority sizes="(max-width: 896px) 100vw, 896px" className="object-cover object-[50%_40%]" /></div>
     <CardContent className="p-5 sm:p-8">
       <div className="mb-8 space-y-3 rounded-xl bg-green-50 p-5 text-green-950">
         <h2 className="text-xl font-semibold">Que bom ter você por aqui! 💚</h2>

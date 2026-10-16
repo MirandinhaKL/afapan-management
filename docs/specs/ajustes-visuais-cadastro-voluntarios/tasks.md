@@ -22,3 +22,9 @@
 
 - [x] T-005 (RF-004 / CA-004): substituir as duas perguntas por uma única, reutilizando afapanStory e preservando dados existentes.
 - Validação: 22 testes relevantes aprovados nos dois arquivos do formulário/página e TypeScript sem erros. Nenhuma migração ou publicação executada.
+
+## Retirada do endereço explícito na gestão
+
+- [x] T-006 (RF-005 / CA-005): remover bloco de link explícito, preservar Copiar link e mensagens acessíveis, corrigir orientação em falha. Validação: 10 testes da gestão aprovados e TypeScript sem erros. Sem banco ou publicação.
+
+- [x] T-007 (RF-006 / CA-006): adicionar tooltip do link público por hover/foco, com fechamento por Escape. Validação: 11 testes da gestão aprovados e TypeScript sem erros. ResizeObserver simulado apenas nos testes para o posicionamento Radix em jsdom. Sem banco ou publicação.

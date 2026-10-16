@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+vi.mock("@/lib/volunteer-export-query", () => ({ fetchVolunteerExport: vi.fn() }))
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const { fetchVolunteers, saveAssistedVolunteer, setVolunteerArchived, setVolunteerStatus } = vi.hoisted(() => ({
@@ -20,14 +21,31 @@ const volunteer: Volunteer = {
 }
 
 describe("listagem de voluntários com cadastro permanente", () => {
+  it("CA-006: explica o link público ao passar o mouse ou focar pelo teclado", async () => {
+    const user = userEvent.setup()
+    render(<VolunteersPage />)
+    const button = screen.getByRole("button", { name: "Copiar link" })
+    await user.hover(button)
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("Link público para cadastro de voluntários")
+    await user.unhover(button)
+    await user.keyboard("{Escape}")
+    await waitFor(() => expect(screen.queryByRole("tooltip")).not.toBeInTheDocument())
+    button.focus()
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("Link público para cadastro de voluntários")
+  })
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.stubGlobal("ResizeObserver", class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    })
     fetchVolunteers.mockResolvedValue({ volunteers: [], total: 0 })
     saveAssistedVolunteer.mockResolvedValue("volunteer-1")
     setVolunteerArchived.mockResolvedValue(undefined)
     setVolunteerStatus.mockResolvedValue(undefined)
   })
-  afterEach(() => vi.restoreAllMocks())
+  afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals() })
 
   it("inicia com filtros recolhidos e permite expandir", async () => {
     const user = userEvent.setup()
@@ -56,21 +74,20 @@ describe("listagem de voluntários com cadastro permanente", () => {
   })
 
 
-  it("CA-003/CA-004: exibe, abre e copia o link sem configurar campanha", async () => {
+  it("CA-005: copia o link sem exibir o endereço na tela", async () => {
     const user = userEvent.setup()
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } })
     render(<VolunteersPage />)
-    const link = screen.getByRole("link", { name: "Abrir formulário de cadastro em uma nova aba" })
-    expect(link).toHaveTextContent(`${window.location.origin}/voluntariado/cadastro`)
-    expect(link).toHaveAttribute("href", `${window.location.origin}/voluntariado/cadastro`)
-    expect(link).toHaveAttribute("target", "_blank")
+    expect(screen.queryByText("Link do formulário")).not.toBeInTheDocument()
+    expect(screen.queryByRole("link", { name: "Abrir formulário de cadastro em uma nova aba" })).not.toBeInTheDocument()
+    expect(screen.queryByText(`${window.location.origin}/voluntariado/cadastro`)).not.toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Campanha" })).not.toBeInTheDocument()
     expect(screen.queryByText(/Prazo:/)).not.toBeInTheDocument()
     await user.click(screen.getByRole("button", { name: "Copiar link" }))
-    expect(writeText).toHaveBeenCalledWith(link.getAttribute("href"))
+    expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/voluntariado/cadastro`)
     expect(await screen.findByRole("button", { name: "Link copiado!" })).toBeInTheDocument()
-    expect(screen.getByRole("status")).toHaveTextContent("O link foi copiado com sucesso.")
+    expect(screen.getAllByRole("status").find(element=>element.textContent?.includes("O link foi copiado"))).toHaveTextContent("O link foi copiado com sucesso.")
   })
 
   it("CA-003: listagem indisponível não impede acesso e cópia do link", async () => {
@@ -85,14 +102,14 @@ describe("listagem de voluntários com cadastro permanente", () => {
     expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/voluntariado/cadastro`)
   })
 
-  it("CA-003: falha de cópia oferece o endereço visível para cópia manual", async () => {
+  it("CA-005: falha de cópia orienta nova tentativa sem exibir o endereço", async () => {
     const user = userEvent.setup()
     Object.defineProperty(navigator, "clipboard", { configurable: true, value: undefined })
     Object.defineProperty(document, "execCommand", { configurable: true, value: undefined })
     render(<VolunteersPage />)
     await user.click(screen.getByRole("button", { name: "Copiar link" }))
-    expect(screen.getByRole("status")).toHaveTextContent("Copie manualmente o endereço exibido acima.")
-    expect(screen.getByRole("link", { name: /Abrir formulário/ })).toHaveTextContent(`${window.location.origin}/voluntariado/cadastro`)
+    expect(screen.getByRole("status", { name: "Estado da cópia do link" })).toHaveTextContent("Tente novamente ou verifique as permissões de cópia do navegador.")
+    expect(screen.queryByText(`${window.location.origin}/voluntariado/cadastro`)).not.toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Link copiado!" })).not.toBeInTheDocument()
   })
 

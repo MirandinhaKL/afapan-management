@@ -15,6 +15,7 @@ interface ExportButtonProps {
   variant?: "default" | "outline" | "ghost" | "secondary"
   size?: "default" | "sm" | "lg" | "icon"
   label?: string
+  disabled?: boolean
 }
 
 export function ExportButton({
@@ -23,11 +24,12 @@ export function ExportButton({
   variant = "outline",
   size = "sm",
   label = "Exportar",
+  disabled = false,
 }: ExportButtonProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant={variant} size={size} className="gap-2">
+        <Button variant={variant} size={size} className="gap-2" disabled={disabled} aria-label={label}>
           <Download size={16} />
           <span className="hidden sm:inline">{label}</span>
         </Button>

@@ -5,6 +5,7 @@ import { Archive, Check, ChevronDown, ChevronUp, Copy, Eye, HeartHandshake, Penc
 import { toast } from "sonner"
 import { VolunteerDetailsDialog } from "@/components/dialogs/volunteer-details-dialog"
 import { VolunteerExportActions } from "@/components/volunteer-export-actions"
+import { VolunteerStatisticsCards } from "@/components/volunteer-statistics-cards"
 import { VolunteerFormDialog } from "@/components/dialogs/volunteer-form-dialog"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
@@ -47,6 +48,7 @@ export function VolunteersPage() {
   const [details, setDetails] = useState<Volunteer | null>(null)
   const [confirming, setConfirming] = useState<Volunteer | null>(null)
   const [copyStatus, setCopyStatus] = useState<"idle" | "copying" | "success" | "error">("idle")
+  const [statisticsRevision, setStatisticsRevision] = useState(0)
   const [search, setSearch] = useState("")
   const [status, setStatus] = useState<VolunteerStatus | "all">("all")
   const [city, setCity] = useState("")
@@ -80,6 +82,7 @@ export function VolunteersPage() {
     try {
       setSaving(true)
       await saveAssistedVolunteer({ ...input, id: editing?.id, expectedUpdatedAt: editing?.updatedAt })
+      setStatisticsRevision(value => value + 1)
       toast.success(editing ? "Voluntário atualizado!" : "Voluntário cadastrado!")
       await load()
       return true
@@ -89,7 +92,7 @@ export function VolunteersPage() {
     } finally { setSaving(false) }
   }
   const changeStatus = async (volunteer: Volunteer, next: VolunteerStatus) => {
-    try { await setVolunteerStatus(volunteer, next); toast.success("Situação atualizada!"); await load() }
+    try { await setVolunteerStatus(volunteer, next); setStatisticsRevision(value => value + 1); toast.success("Situação atualizada!"); await load() }
     catch (error) { toast.error("Não foi possível atualizar", { description: getVolunteerMutationError(error) }) }
   }
   const archiveVolunteer = async () => {
@@ -97,6 +100,7 @@ export function VolunteersPage() {
     try {
       setSaving(true)
       await setVolunteerArchived(confirming, !confirming.archivedAt)
+      setStatisticsRevision(value => value + 1)
       toast.success(confirming.archivedAt ? "Voluntário restaurado!" : "Voluntário arquivado!")
       setConfirming(null)
       await load()
@@ -121,6 +125,7 @@ export function VolunteersPage() {
 
   return <div className="space-y-6">
     <div className="flex flex-col gap-4 sm:flex-row sm:justify-between"><div><h2 className="text-2xl font-bold">Voluntários</h2><p className="text-muted-foreground">Cadastro e gestão dos voluntários da AFAPAN.</p></div><div className="flex flex-wrap items-center gap-2"><VolunteerExportActions /><Tooltip><TooltipTrigger asChild><Button type="button" variant="outline" onClick={() => void copyLink()} disabled={copyStatus === "copying"}>{copyStatus === "success" ? <Check size={16} /> : <Copy size={16} />}{copyStatus === "copying" ? "Copiando..." : copyStatus === "success" ? "Link copiado!" : "Copiar link"}</Button></TooltipTrigger><TooltipContent>Link público para cadastro de voluntários</TooltipContent></Tooltip><Button type="button" onClick={() => { setEditing(null); setFormOpen(true) }}><Plus size={16} />Cadastrar</Button></div></div>
+    <VolunteerStatisticsCards revision={statisticsRevision} />
     <p className={copyStatus === "error" ? "text-sm text-destructive" : "sr-only"} role="status" aria-label="Estado da cópia do link" aria-live="polite">{copyStatus === "success" ? "O link foi copiado com sucesso." : copyStatus === "error" ? "Não foi possível copiar o link. Tente novamente ou verifique as permissões de cópia do navegador." : ""}</p>
     <Card><CardHeader className="flex-row items-center justify-between"><CardTitle className="text-lg">Cadastros</CardTitle><Button variant="outline" onClick={() => setFiltersOpen((open) => !open)} aria-expanded={filtersOpen} aria-controls="volunteer-filters"><SlidersHorizontal size={16} />Filtros{activeFilterCount > 0 && <Badge className="ml-1" aria-label={`${activeFilterCount} filtros ativos`}>{activeFilterCount}</Badge>}{filtersOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}</Button></CardHeader><CardContent className="space-y-4">
       {filtersOpen && <div id="volunteer-filters" className="grid gap-3 rounded-lg border bg-muted/20 p-4 md:grid-cols-3 xl:grid-cols-4"><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar nome ou telefone" aria-label="Buscar nome ou telefone" /><Select value={status} onValueChange={(value: VolunteerStatus | "all") => setStatus(value)}><SelectTrigger aria-label="Situação"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Todas as situações</SelectItem>{Object.entries(statusLabel).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select><Input value={city} onChange={(event) => setCity(event.target.value)} placeholder="Cidade" aria-label="Cidade" /><Input value={neighborhood} onChange={(event) => setNeighborhood(event.target.value)} placeholder="Bairro" aria-label="Bairro" /><Select value={activity} onValueChange={(value: VolunteerActivity | "all") => setActivity(value)}><SelectTrigger aria-label="Atividade"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Todas as atividades</SelectItem>{VOLUNTEER_ACTIVITIES.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent></Select><Select value={frequency} onValueChange={(value: VolunteerFrequency | "all") => setFrequency(value)}><SelectTrigger aria-label="Frequência"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Todas as frequências</SelectItem>{VOLUNTEER_FREQUENCIES.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent></Select><Select value={archive} onValueChange={(value: "active" | "archived" | "all") => setArchive(value)}><SelectTrigger aria-label="Arquivamento"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="active">Não arquivados</SelectItem><SelectItem value="archived">Arquivados</SelectItem><SelectItem value="all">Todos</SelectItem></SelectContent></Select><Button variant="outline" onClick={clearFilters}>Limpar filtros</Button></div>}

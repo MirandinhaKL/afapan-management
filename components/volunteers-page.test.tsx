@@ -1,6 +1,8 @@
-import { render, screen, waitFor } from "@testing-library/react"
+import { render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 vi.mock("@/lib/volunteer-export-query", () => ({ fetchVolunteerExport: vi.fn() }))
+const { fetchStatistics } = vi.hoisted(() => ({ fetchStatistics: vi.fn() }))
+vi.mock("@/lib/volunteer-statistics", () => ({ fetchVolunteerStatistics: fetchStatistics }))
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const { fetchVolunteers, saveAssistedVolunteer, setVolunteerArchived, setVolunteerStatus } = vi.hoisted(() => ({
@@ -20,6 +22,9 @@ const volunteer: Volunteer = {
   status: "aguardando_validacao", origin: "publico", createdAt: "2026-10-01", updatedAt: "2026-10-01T10:00:00Z",
 }
 
+const browserMethods = ["hasPointerCapture", "setPointerCapture", "releasePointerCapture", "scrollIntoView"] as const
+const originalMethods = new Map(browserMethods.map(name => [name, Object.getOwnPropertyDescriptor(HTMLElement.prototype, name)]))
+
 describe("listagem de voluntários com cadastro permanente", () => {
   it("CA-006: explica o link público ao passar o mouse ou focar pelo teclado", async () => {
     const user = userEvent.setup()
@@ -35,17 +40,26 @@ describe("listagem de voluntários com cadastro permanente", () => {
   })
   beforeEach(() => {
     vi.clearAllMocks()
+    fetchStatistics.mockResolvedValue({ active: 12, awaitingValidation: 4, startedThisYear: 8, year: 2026 })
     vi.stubGlobal("ResizeObserver", class {
       observe() {}
       unobserve() {}
       disconnect() {}
     })
+    for (const name of browserMethods) Object.defineProperty(HTMLElement.prototype, name, { configurable: true, value: vi.fn(() => name === "hasPointerCapture" ? false : undefined) })
     fetchVolunteers.mockResolvedValue({ volunteers: [], total: 0 })
     saveAssistedVolunteer.mockResolvedValue("volunteer-1")
     setVolunteerArchived.mockResolvedValue(undefined)
     setVolunteerStatus.mockResolvedValue(undefined)
   })
-  afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals() })
+  afterEach(() => {
+    vi.restoreAllMocks(); vi.unstubAllGlobals()
+    for (const name of browserMethods) {
+      const descriptor = originalMethods.get(name)
+      if (descriptor) Object.defineProperty(HTMLElement.prototype, name, descriptor)
+      else Reflect.deleteProperty(HTMLElement.prototype, name)
+    }
+  })
 
   it("inicia com filtros recolhidos e permite expandir", async () => {
     const user = userEvent.setup()
@@ -64,6 +78,7 @@ describe("listagem de voluntários com cadastro permanente", () => {
     render(<VolunteersPage />)
     await user.click(screen.getByRole("button", { name: /^Filtros/ }))
     await user.type(screen.getByPlaceholderText("Cidade"), "Farroupilha")
+    expect(fetchStatistics).toHaveBeenCalledTimes(1)
     expect(screen.getByLabelText("1 filtros ativos")).toBeInTheDocument()
     await user.click(screen.getByRole("button", { name: /^Filtros/ }))
     expect(screen.queryByPlaceholderText("Cidade")).not.toBeInTheDocument()
@@ -131,6 +146,7 @@ describe("listagem de voluntários com cadastro permanente", () => {
     await screen.findByRole("button", { name: "Ver Ana" })
     await user.click(screen.getByRole("button", { name: "Próxima" }))
     await waitFor(() => expect(fetchVolunteers).toHaveBeenLastCalledWith(expect.anything(), 2, 10))
+    expect(fetchStatistics).toHaveBeenCalledTimes(1)
     await user.click(screen.getByRole("button", { name: "Cadastrar" }))
     expect(await screen.findByRole("dialog", { name: "Cadastrar voluntário" })).toBeInTheDocument()
   })
@@ -147,6 +163,7 @@ describe("listagem de voluntários com cadastro permanente", () => {
     await waitFor(() => expect(saveAssistedVolunteer).toHaveBeenCalledWith(expect.objectContaining({
       id: volunteer.id, expectedUpdatedAt: volunteer.updatedAt, status: "aguardando_validacao", activities: ["plantio_arvores_nativas"],
     })))
+    await waitFor(() => expect(fetchStatistics).toHaveBeenCalledTimes(2))
   })
 
   it.each([false, true])("CA-009: mantém arquivamento/restauração com confirmação (arquivado: %s)", async (archived) => {
@@ -158,5 +175,27 @@ describe("listagem de voluntários com cadastro permanente", () => {
     expect(setVolunteerArchived).not.toHaveBeenCalled()
     await user.click(screen.getByRole("button", { name: archived ? "Restaurar" : "Arquivar" }))
     await waitFor(() => expect(setVolunteerArchived).toHaveBeenCalledWith(current, !archived))
+    await waitFor(() => expect(fetchStatistics).toHaveBeenCalledTimes(2))
+  })
+  it.each([false,true])("CA-004: estatísticas recarregam somente após mudança de situação bem-sucedida (falha: %s)",async(failed)=>{
+    const user=userEvent.setup();fetchVolunteers.mockResolvedValue({volunteers:[volunteer],total:1})
+    if(failed)setVolunteerStatus.mockRejectedValueOnce(new Error("Falha ao salvar"))
+    render(<VolunteersPage/>);await screen.findByRole("button",{name:"Ver Ana"})
+    await user.click(screen.getByRole("combobox"));await user.click(screen.getByRole("option",{name:"Ativo"}))
+    await waitFor(()=>expect(setVolunteerStatus).toHaveBeenCalledWith(volunteer,"ativo"))
+    await waitFor(()=>expect(fetchStatistics).toHaveBeenCalledTimes(failed?1:2))
+  })
+  it("CA-005: falha dos indicadores mantém listagem, exportação e filtros disponíveis",async()=>{
+    fetchStatistics.mockRejectedValue(new Error("Indicadores indisponíveis"));fetchVolunteers.mockResolvedValue({volunteers:[volunteer],total:1})
+    render(<VolunteersPage/>);expect(await screen.findByRole("alert")).toHaveTextContent("Indicadores indisponíveis")
+    expect(screen.getByRole("button",{name:"Ver Ana"})).toBeInTheDocument();expect(screen.getByRole("button",{name:"Exportar"})).toBeEnabled();expect(screen.getByRole("button",{name:/^Filtros/})).toBeEnabled()
+  })
+  it("CA-004: cadastro assistido novo recarrega os indicadores",async()=>{
+    const user=userEvent.setup();render(<VolunteersPage/>);await screen.findByText("12")
+    await user.click(screen.getByRole("button",{name:"Cadastrar"}));const dialog=await screen.findByRole("dialog",{name:"Cadastrar voluntário"})
+    const inputs=within(dialog).getAllByRole("textbox")
+    await user.type(inputs[0],"Bia");await user.type(inputs[1],"Santos");await user.type(inputs[2],"15031990");await user.type(inputs[3],"54999991234");await user.type(inputs[6],"Centro")
+    await user.click(within(dialog).getByLabelText("Plantio de árvores nativas"));await user.click(within(dialog).getByRole("button",{name:"Salvar"}))
+    await waitFor(()=>expect(saveAssistedVolunteer).toHaveBeenCalled());await waitFor(()=>expect(fetchStatistics).toHaveBeenCalledTimes(2))
   })
 })

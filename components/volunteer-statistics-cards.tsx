@@ -34,9 +34,9 @@ export function VolunteerStatisticsCards({ revision = 0 }: { revision?: number }
   const data = current?.data
   const loading = !current
   const cards = [
-    { title: "Ativos", value: data?.active, note: "Voluntários não arquivados", Icon: Users },
-    { title: "Aguardando validação", value: data?.awaitingValidation, note: "Cadastros não arquivados", Icon: Clock },
-    { title: `Novos voluntários em ${year}`, value: data?.startedThisYear, note: "Início das atividades na AFAPAN no ano · Não arquivados", Icon: CalendarDays },
+    { title: "Ativos", value: data?.active, note: "Voluntários", Icon: Users },
+    { title: "Aguardando validação", value: data?.awaitingValidation, note: "Cadastros", Icon: Clock },
+    { title: `Novos voluntários em ${year}`, value: data?.startedThisYear, note: "Início das atividades na AFAPAN no ano", Icon: CalendarDays },
   ]
   return <section aria-label="Indicadores de voluntários" aria-busy={loading} className="space-y-3">
     <div className="grid grid-cols-1 gap-4 md:grid-cols-3">

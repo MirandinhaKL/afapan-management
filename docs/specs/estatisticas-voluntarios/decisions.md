@@ -10,3 +10,5 @@
 
 - **DEC-008 — Aprovação do plano:** a mensagem “Aprovado” de 2026-10-15 autoriza implementar localmente T-001 a T-005. Não autoriza publicação ou alteração remota.
 - **DEC-009 — Estados:** falha de qualquer uma das três contagens invalida o conjunto, sem converter ausência em zero. Nova revisão oculta valores anteriores até receber resposta atual; respostas obsoletas são descartadas.
+
+- **DEC-010 — Revisão visual em 2026-10-21:** responsável solicita remover “não arquivados” dos textos dos cards. Ajustar somente as descrições, preservando consultas e critérios de contagem. Sem banco ou publicação.

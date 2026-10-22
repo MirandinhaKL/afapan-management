@@ -8,6 +8,13 @@ const data={active:12,awaitingValidation:4,startedThisYear:8,year:2026}
 beforeEach(()=>{vi.clearAllMocks();fetchStatistics.mockResolvedValue(data)})
 afterEach(()=>vi.useRealTimers())
 describe("cards de voluntários",()=>{
+  it("CA-008: descrições não exibem a expressão não arquivados",async()=>{
+    render(<VolunteerStatisticsCards/>);await screen.findByText("12")
+    expect(screen.queryByText(/não arquivados/i)).not.toBeInTheDocument()
+    expect(screen.getByText("Voluntários")).toBeInTheDocument()
+    expect(screen.getByText("Cadastros")).toBeInTheDocument()
+    expect(screen.getByText("Início das atividades na AFAPAN no ano")).toBeInTheDocument()
+  })
   it("CA-005: skeleton sem zero falso e depois valores completos",async()=>{
     let done:(v:typeof data)=>void=()=>{}
     fetchStatistics.mockReturnValue(new Promise(resolve=>{done=resolve}))

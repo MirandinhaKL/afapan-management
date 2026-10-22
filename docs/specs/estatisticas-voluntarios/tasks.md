@@ -25,3 +25,5 @@ Data: 2026-10-15. Especificação aprovada. Plano e implementação local aprova
 Dependências: aprovação do plano → T-001 → T-002 → T-003 → T-004 → T-005. T-006 exige autorização separada e validações locais aprovadas.
 
 Evidências: validation.md. 171 testes, TypeScript e build aprovados; visual móvel/computador conferido com valores fictícios. Sem publicação ou consulta remota nesta implementação.
+
+- [x] **T-007 — Simplificar descrições dos cards** (CA-008): revisão de 2026-10-21 remove “não arquivados” somente dos textos. 15 testes relevantes e TypeScript aprovados. Consultas e banco inalterados; sem publicação.

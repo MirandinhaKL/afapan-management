@@ -1,5 +1,7 @@
 # Validação local — Estatísticas de voluntários
 
+Revisão visual de 2026-10-21 (CA-008): retirado “não arquivados” das três descrições. 15 testes relevantes aprovados, incluindo preservação das regras de contagem, e TypeScript sem erros. Nenhuma consulta ou alteração de banco; publicação não executada.
+
 Data: 2026-10-15. Plano aprovado e implementação local T-001 a T-005 concluída. T-006 (publicação/verificação remota) não executada.
 
 ## Verificações

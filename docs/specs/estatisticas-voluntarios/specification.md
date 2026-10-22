@@ -18,6 +18,8 @@ Definições aprovadas pela responsável, incluindo sua correção explícita pa
 
 ## Requisitos funcionais
 
+Revisão visual aprovada em 2026-10-21: retirar a expressão “não arquivados” das descrições dos três cards. Textos: “Voluntários”, “Cadastros” e “Início das atividades na AFAPAN no ano”. Regras de contagem e exclusão de arquivados permanecem iguais. Risco restrito à regressão de apresentação; validar teste de textos e TypeScript.
+
 - **RF-001:** apresentar cards Ativos, Aguardando validação e Novos voluntários em AAAA, com quantidade, ícone e descrição curta da regra de cada indicador.
 - **RF-002:** aplicar as definições acima à base completa autorizada de não arquivados, sem usar apenas os registros carregados na página nem os filtros da listagem.
 - **RF-003:** carregar estatísticas ao abrir a tela e atualizá-las após cadastro assistido, edição, mudança de situação, arquivamento e restauração realizados pela tela. Cadastro público feito em outra sessão aparece no próximo carregamento; atualização em tempo real entre sessões fica fora do escopo.
@@ -40,6 +42,8 @@ Definições aprovadas pela responsável, incluindo sua correção explícita pa
 - **CA-005** (RF-004, RF-005): carregamento não exibe zero falso; erro mostra indisponibilidade e nova tentativa sem impedir listagem/exportação. Base vazia validada mostra zero nos três cards.
 - **CA-006** (RNF-001, RNF-002): somente equipe autorizada consulta os indicadores, sem mudar políticas/dados; celular, computador e estados acessíveis funcionam.
 - **CA-007** (RNF-004): testes e TypeScript aprovados, com evidências e limitações registradas antes da conclusão.
+
+- **CA-008:** descrições dos cards não apresentam “não arquivados”; mantêm os textos definidos na revisão visual, sem alterar títulos, números ou consultas.
 
 ## Riscos e limites
 

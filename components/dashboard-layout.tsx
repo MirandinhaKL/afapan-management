@@ -25,10 +25,11 @@ import {
   ChevronRight,
   Truck,
   HeartHandshake,
+  GraduationCap,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-type Page = "dashboard" | "usuarios" | "compostagem" | "eco-drive" | "voluntarios"
+type Page = "dashboard" | "usuarios" | "compostagem" | "eco-drive" | "voluntarios" | "conecta"
 
 interface DashboardLayoutProps {
   currentPage: Page
@@ -42,6 +43,7 @@ const navItems: { id: Page; label: string; icon: React.ElementType }[] = [
   { id: "compostagem", label: "Compostagem", icon: Recycle },
   { id: "eco-drive", label: "Eco Drive", icon: Truck },
   { id: "voluntarios", label: "Voluntários", icon: HeartHandshake },
+  { id: "conecta", label: "Conecta AFAPAN", icon: GraduationCap },
 ]
 
 export function DashboardLayout({ currentPage, onNavigate, children }: DashboardLayoutProps) {

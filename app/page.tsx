@@ -9,8 +9,9 @@ import { UsersPage } from "@/components/users-page"
 import { CompostagemPage } from "@/components/compostagem-page"
 import { EcoDrivePage } from "@/components/eco-drive-page"
 import { VolunteersPage } from "@/components/volunteers-page"
+import { ConectaPage } from "@/components/conecta-page"
 
-type Page = "dashboard" | "usuarios" | "compostagem" | "eco-drive" | "voluntarios"
+type Page = "dashboard" | "usuarios" | "compostagem" | "eco-drive" | "voluntarios" | "conecta"
 
 function AppContent() {
   const { isAuthenticated, isPasswordRecovery, loading } = useAuth()
@@ -38,6 +39,7 @@ function AppContent() {
       {currentPage === "compostagem" && <CompostagemPage />}
       {currentPage === "eco-drive" && <EcoDrivePage />}
       {currentPage === "voluntarios" && <VolunteersPage />}
+      {currentPage === "conecta" && <ConectaPage />}
     </DashboardLayout>
   )
 }

@@ -18,6 +18,8 @@ Jornadas públicas: registro de atividade e consulta de autenticidade. Jornada a
 - **RF-020 — Validação de e-mail:** validar formato e tamanho no navegador e no servidor. Mensagens identificam o campo e preservam os dados digitados.
 - **RF-021 — Máscaras:** formatar CPF como `000.000.000-00` e WhatsApp em formato brasileiro durante a digitação. Aceitar colagem e normalizar para dígitos antes de validar e persistir.
 - **RF-022 — Envio:** o botão “Enviar para validação” submete pela jornada normal, indica processamento, impede envios concorrentes e confirma somente após persistência. Falhas em banco, reserva de anexos ou armazenamento devem ser informadas sem limpar o formulário, permitindo nova tentativa.
+- **RF-023 — Comprovante opcional:** o estudante pode enviar atividade sem anexar arquivos. Se optar por anexar, os arquivos precisam respeitar formatos, quantidade e tamanhos permitidos; arquivos inválidos continuam impedindo o envio.
+- **RF-024 — Espaçamento dos últimos campos:** os rótulos dos campos de relato e comprovantes devem ter espaçamento consistente em relação aos seus controles, incluindo o campo de arquivo.
 
 Critérios de aceite desta revisão:
 
@@ -25,6 +27,9 @@ Critérios de aceite desta revisão:
 - **CA-020:** e-mail inválido é indicado no formulário e rejeitado também pela API.
 - **CA-021:** máscaras aceitam digitação e colagem; payload contém valores normalizados e compatíveis com validação de servidor.
 - **CA-022:** envio válido percorre upload e gravação, confirma após persistência; falhas preservam os campos e permitem retentativa.
+- **CA-023:** solicitação sem comprovantes pode ser enviada; quando houver anexos, validação de tipo, quantidade e tamanho continua aplicada.
+- A mesma opcionalidade se aplica à análise: ausência de anexo não bloqueia aprovação. Alteração de tarefas ou horas continua exigindo justificativa conforme RF-006.
+- **CA-024:** relato e comprovantes exibem separação visual consistente entre rótulo e campo.
 
 - **RF-001:** oferecer link público para registrar atividade, sem exigir login do aluno, com nome completo, CPF, data de nascimento completa (para conferência na solicitação de reenvio), WhatsApp, instituição, curso, e-mail, Instagram opcional, atividade, data e relato. Os demais campos são propostos como obrigatórios, sujeitos à aprovação.
 - **RF-002:** substituir o catálogo do MVP pela proposta da PO: Compostando Juntos (10 h), Compostando nas Escolas (12 h), Marketing A — redes sociais (7 h), Marketing B — materiais educativos/institucionais (16 h), Eco Drive (5 h por ação), Caminhos dos Resíduos (5 h por visita), Oficinas/palestras/eventos/mutirões (12 h) e Visitas técnicas (descrição e horas informadas pelo voluntário e conferidas pela equipe, sem carga fixa). Preservar etapas e distribuição em programa-conecta-afapan.md. Cargas são sugeridas por tarefa; apresentar checklist e somar apenas as tarefas efetivamente realizadas e reconhecidas na análise. Exemplo confirmado: primeira tarefa de Compostando nas Escolas rende 6 h; todas rendem 12 h. O aluno marca as tarefas realizadas e a equipe pode revisar, desmarcar entregas não realizadas e corrigir erros antes de aprovar. Não aplicar automaticamente o teto genérico de 10 h do MVP.

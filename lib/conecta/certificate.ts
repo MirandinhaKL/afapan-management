@@ -1,5 +1,6 @@
 import { jsPDF } from "jspdf"
 import { z } from "zod"
+import { participantSlug } from "./filenames"
 
 const text = z.string().trim().min(1).max(160)
 export const certificateSettings = z.object({ signer: text, title: text, city: text })
@@ -10,6 +11,11 @@ export const certificateSnapshot = certificateSettings.extend({
   issuedAt: z.string().datetime({ offset: true }),
 })
 export type CertificateSnapshot = z.infer<typeof certificateSnapshot>
+
+export function certificateFilename(name: string) {
+  const participant = participantSlug(name)
+  return `certificado-conecta-afapan${participant ? `-${participant}` : ""}.pdf`
+}
 
 const dateFormat = new Intl.DateTimeFormat("pt-BR", { dateStyle: "long", timeZone: "UTC" })
 const issuanceFormat = new Intl.DateTimeFormat("pt-BR", { dateStyle: "long", timeZone: "America/Sao_Paulo" })
@@ -26,7 +32,7 @@ export function certificateStatement(data: CertificateSnapshot) {
     hours && `${numberFormat.format(hours)} ${hours === 1 ? "hora" : "horas"}`,
     minutes && `${minutes} ${minutes === 1 ? "minuto" : "minutos"}`,
   ].filter(Boolean).join(" e ")
-  return `A AFAPAN certifica que o(a) estudante, inscrito(a) no CPF ${cpf}, do curso de ${data.course} da instituição ${data.institution}, participou da modalidade ${data.modality}, ${period}, totalizando a carga horária de ${duration}.`
+  return `A Associação Farroupilhense de Proteção ao Ambiente Natural (AFAPAN) certifica que o(a) estudante, inscrito(a) no CPF ${cpf}, do curso de ${data.course} da instituição ${data.institution}, participou da modalidade ${data.modality}, ${period}, totalizando a carga horária de ${duration}.`
 }
 
 export function renderCertificate(data: CertificateSnapshot, logo: Uint8Array, preview = false) {
@@ -43,13 +49,21 @@ export function renderCertificate(data: CertificateSnapshot, logo: Uint8Array, p
   pdf.setFont("helvetica", "bold").setFontSize(12).setTextColor("#ffffff").text("AFAPAN", 22.5, 50, { align: "center" })
   pdf.setFont("helvetica", "normal").setFontSize(9).text("CONECTA", 22.5, 57, { align: "center" })
   const center = 171.5
-  function centered(value: string, y: number, size: number, font = "helvetica", style = "normal") {
+  const textHeight = (lineCount: number) => lineCount * pdf.getLineHeight() / pdf.internal.scaleFactor
+
+  function centered(value: string, y: number, size: number, font = "helvetica", style = "normal", maxHeight = Infinity) {
     const line = value.normalize("NFC").replace(/\s+/gu, " ")
     if (/[^\x20-\x7e\xa0-\xff\u2013\u2014\u2018-\u201d]/u.test(line)) {
       throw new Error("O certificado contém caracteres incompatíveis com a fonte configurada.")
     }
     pdf.setFont(font, style).setFontSize(size)
-    const lines = pdf.splitTextToSize(line, 218) as string[]
+    let lines = pdf.splitTextToSize(line, 218) as string[]
+    while (textHeight(lines.length) > maxHeight && size > 9) {
+      size -= 1
+      pdf.setFontSize(size)
+      lines = pdf.splitTextToSize(line, 218) as string[]
+    }
+    if (textHeight(lines.length) > maxHeight) throw new Error("O texto ultrapassa a área do certificado.")
     pdf.text(lines, center, y, { align: "center" })
     return lines.length
   }
@@ -61,9 +75,8 @@ export function renderCertificate(data: CertificateSnapshot, logo: Uint8Array, p
   centered("CONFERIDO A", 86, 9, "helvetica", "bold")
   const nameLines = centered(data.name, 97, 22, "helvetica", "bold")
   const paragraphY = 112 + (nameLines - 1) * 9
-  const paragraphLines = centered(certificateStatement(data), paragraphY, 12)
-  const cityY = Math.max(143, paragraphY + paragraphLines * 5.3 + 4)
-  if (cityY > 164) throw new Error("O texto ultrapassa a área do certificado.")
+  const paragraphLines = centered(certificateStatement(data), paragraphY, 14, "helvetica", "normal", 160 - paragraphY)
+  const cityY = Math.max(143, paragraphY + textHeight(paragraphLines) + 4)
   centered(`${data.city}, ${issuanceFormat.format(issued)}`, cityY, 10)
   pdf.setDrawColor("#93aa9e").setLineWidth(0.25).line(center - 42, 177, center + 42, 177)
   const signerLines = centered(data.signer, 182, 10, "helvetica", "bold")

@@ -35,7 +35,7 @@ export const resendSchema = z.object({
 export const applicationSchema = z.object({
   cpf, birthDate: civilDate, startDate: civilDate, endDate: civilDate,
   name: z.string().trim().min(3).max(160),
-  email: z.string().trim().email().max(254),
+  email: z.string().trim().email("Informe um e-mail válido.").max(254, "O e-mail deve ter até 254 caracteres."),
   phone: z.string().trim().regex(/^\+?[\d ()-]{10,24}$/).refine(value => {
     const digits = value.replace(/\D/g, "")
     return digits.length === 10 || digits.length === 11 || /^55\d{10,11}$/.test(digits)
@@ -46,7 +46,7 @@ export const applicationSchema = z.object({
   activityReference: z.string().trim().max(160).optional(),
   report: z.string().trim().min(1).max(5000),
   modalityVersion: z.string().uuid(),
-  attachments: z.array(z.string().uuid()).min(1).max(5),
+  attachments: z.array(z.string().uuid()).max(5),
   tasks: z.array(z.string().uuid()).max(100),
   declaredMinutes: z.number().int().positive().max(2_147_483_647).optional(),
 }).strict().superRefine((input, context) => {

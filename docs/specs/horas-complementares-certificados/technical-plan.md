@@ -69,6 +69,14 @@ Usar atributos `inputMode` e estado de campo controlado somente para CPF e Whats
 
 Investigar o envio pela ordem formulário → reserva de upload → URL assinada → Storage → API de submit → RPC. Instrumentar erros com mensagens seguras no cliente, sem registrar dados pessoais ou segredo. Manter valores no formulário após falha; repetir upload somente quando a reserva anterior não puder ser retomada. Tratar clique repetido com estado ocupado. Confirmação de sucesso somente após resposta de persistência. Criar testes de máscara, validação e envio/erro e executar testes, TypeScript e build local. Sem alteração de schema, migração, dependências ou serviço externo.
 
+### T-016 — Comprovantes opcionais (2026-11-04)
+
+Correção de continuidade em 2026-11-05: migração 009 substitui somente conecta_review_application para remover a exigência de anexo na aprovação. Mantém autorização interna, lock de revisão, validação de tarefas, justificativa de ajustes, autoria e rejeição de decisão repetida. Sem alteração de tabelas, grants ou RLS. Reversão técnica: restaurar a função de revisão da migração 005, preservando decisões e solicitações existentes.
+
+Revisão solicitada durante homologação local que substitui RF-013 quanto à obrigatoriedade do anexo. Atualizar schemas de entrada e banco para aceitar lista vazia, reservar sessão e transferir arquivos apenas quando houver anexos, e manter validação integral de MIME, assinatura e limites quando houver arquivos. Não criar registros ou sessões artificiais sem arquivo. Manter correção de pedido devolvido com comprovantes obrigatórios, pois esse fluxo exige nova evidência. Não há remoção nem alteração de dados históricos.
+
+Aplicar espaçamento entre label e controle nos campos finais de relato e comprovantes. Adicionar teste de envio de nova solicitação sem anexos e testes de anexos válidos/inválidos. Migração, se necessária para constraint, será aditiva e sem apagar dados; confirmar a forma da migração após inspecionar o schema efetivamente criado nos scripts locais. Nenhuma mudança remota será executada.
+
 Zod/validações comuns no cliente e servidor: CPF com dígitos verificadores, nascimento completo válido e não futuro, telefone/e-mail, limites proporcionais de texto, período não futuro proposto e versão de modalidade vigente. Nome/CPF/nascimento nunca na URL. Checklist apresenta tarefas e horas; aluno marca o executado. Modalidade livre recebe descrição e horas. Mostrar prévia da soma declarada, claramente sujeita à conferência.
 
 Exigir ao menos uma evidência validada por solicitação/revisão. Proposta operacional inicial: até cinco anexos e 100 MiB no total; imagens JPEG/PNG/WebP até 10 MiB cada, PDF até 15 MiB e vídeo MP4/WebM até 50 MiB. Outros tipos não são aceitos silenciosamente: converter para PDF/imagem ou revisar a allowlist. Esses limites são de arquivo, não limite de horas ou participações.
@@ -88,6 +96,10 @@ Aprovação bloqueia/revalida a revisão atual em transação, verifica evidênc
 Busca administrativa por nome/CPF com normalização e escaping, paginação e contagem no servidor. Histórico por identidade exige acesso interno; CPF/nascimento incompatíveis não devem sobrescrever outro aluno automaticamente. Listagem não retorna anexos ou nascimento desnecessariamente; detalhe acessa os dados pertinentes. Ajuste de pessoa, correção e invalidação ficam auditados.
 
 ## 7. Certificados e consulta
+
+Revisão em 2026-11-09. Exibir o motivo registrado no cartão administrativo da emissão invalidada. A migração 011 acrescenta o campo à resposta da função de status existente, mantendo permissões, RLS e compatibilidade com os consumidores atuais. A reversão restaura a função da migração 007. Detalhes e verificação em [011-validation.md](011-validation.md).
+
+Correção de homologação em 2026-11-05: o signatário é o perfil do autor da decisão de aprovação, conforme orientação da responsável. A API fornece somente a cidade, com padrão Farroupilha, RS. Migração 010 remove a exigência antiga de signer em p_config e valida o nome obtido do perfil do aprovador. Mantém reserva idempotente e snapshots existentes. Não altera grants ou RLS. Reversão técnica: restaurar a função de reserva anterior, preservando emissões já criadas.
 
 Gerar um PDF A4 horizontal por solicitação/revisão aprovada conforme P-002. Template próprio e versionado, marca real existente, texto/nome/cargo/local aprovados; bloquear emissão real se configuração obrigatória faltar. Dados fictícios nos previews locais. Somente o total reconhecido no servidor vai ao certificado. Não escrever “assinatura verificada” por apenas ter upload.
 

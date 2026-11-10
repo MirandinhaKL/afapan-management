@@ -1,7 +1,9 @@
 "use client"
 
 import { useEffect, useState, type FormEvent } from "react"
+import { ArrowLeft, Loader2 } from "lucide-react"
 import { z } from "zod"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -39,6 +41,7 @@ function ApplicationReview({ item, close, refresh }: { item: Detail; close: () =
   const [reason, setReason] = useState("")
   const [error, setError] = useState("")
   const [busy, setBusy] = useState(false)
+  const [downloading, setDownloading] = useState<string | null>(null)
   const total = item.mode === "free" ? Number(minutes) : item.tasks.filter(task => chosen.includes(task.id)).reduce((sum, task) => sum + task.minutes, 0)
   async function decide(decision: "approved" | "rejected") {
     if (busy) return
@@ -58,17 +61,30 @@ function ApplicationReview({ item, close, refresh }: { item: Detail; close: () =
     finally { setBusy(false) }
   }
   async function download(id: string) {
+    if (downloading) return
+    setDownloading(id)
     setError("")
     try {
       const { data } = await supabase.auth.getSession()
       const token = data.session?.access_token
       if (!token) throw new Error()
-      const response = await fetch("/api/conecta/internal/evidence", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ id }) })
+      const response = await fetch("/api/conecta/internal/evidence", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ id, applicationId: item.id }) })
       if (!response.ok) throw new Error()
-      const url = new URL((await response.json()).url)
+      const { url: signedUrl, filename } = await response.json()
+      const url = new URL(signedUrl)
       if (url.protocol !== "https:" && !(url.protocol === "http:" && ["localhost", "127.0.0.1"].includes(url.hostname))) throw new Error()
-      window.location.assign(url.href)
+      const file = await fetch(url.href)
+      if (!file.ok) throw new Error()
+      const downloadUrl = URL.createObjectURL(await file.blob())
+      const link = document.createElement("a")
+      link.href = downloadUrl
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      setTimeout(() => URL.revokeObjectURL(downloadUrl), 60_000)
     } catch { setError("Não foi possível baixar o comprovante.") }
+    finally { setDownloading(null) }
   }
   async function requestCorrection() {
     if (busy) return
@@ -87,29 +103,131 @@ function ApplicationReview({ item, close, refresh }: { item: Detail; close: () =
     } catch (error) { setError(error instanceof Error ? error.message : "Não foi possível solicitar a correção.") }
     finally { setBusy(false) }
   }
-  return <Card><CardHeader><Button className="w-fit" variant="outline" onClick={close}>Voltar à lista</Button><CardTitle>{item.name}</CardTitle><p>{item.modality} · {period(item.starts_on, item.ends_on)} · {labels[item.status]}</p></CardHeader><CardContent className="space-y-5">
-    <dl className="grid gap-2 sm:grid-cols-2">{[["CPF",item.cpf],["E-mail",item.email],["WhatsApp",item.phone],["Instituição",item.institution],["Curso",item.course],["Instagram",item.instagram],["Turma, ação ou local",item.activity_reference]].filter(([,value]) => value).map(([label,value]) => <div key={label}><dt className="text-sm text-muted-foreground">{label}</dt><dd className="break-all">{value}</dd></div>)}</dl>
-    <div><h3 className="font-semibold">Relato do estudante</h3><p className="whitespace-pre-wrap break-words">{item.report}</p></div>
-    {item.status === "returned" && <p className="text-sm text-muted-foreground">O pedido de envio da orientação foi registrado.</p>}
-    {item.status === "approved" && <ConectaCertificateActions key={item.id} applicationId={item.id} />}
-    <div className="space-y-2"><h3 className="font-semibold">Comprovantes</h3>{item.attachments.map((file, index) => <Button key={file.id} className="mr-2" variant="outline" onClick={() => void download(file.id)}>Baixar comprovante {index + 1}</Button>)}</div>
-    <div><h3 className="font-semibold">Histórico na modalidade</h3><p>Total reconhecido: {duration(item.modality_minutes)}</p>{item.history.map(row => <p key={row.id} className="text-sm">{row.modality} · {period(row.starts_on,row.ends_on)} · {labels[row.status]}{row.minutes ? ` · ${duration(row.minutes)}` : ""}</p>)}</div>
-    {item.decisions.length > 0 && <div><h3 className="font-semibold">Decisões registradas</h3>{item.decisions.map(decision => <div key={decision.revision} className="text-sm"><p>{labels[decision.decision]} · revisão {decision.revision}{decision.minutes ? ` · ${duration(decision.minutes)}` : ""}</p>{decision.reason && <p>{decision.reason}</p>}</div>)}</div>}
-    {error && <p role="alert" className="text-destructive">{error}</p>}
-    {item.status === "pending" && <fieldset disabled={busy} className="space-y-3"><legend className="font-semibold">Conferência da equipe</legend>
-      {item.mode === "checklist" ? item.tasks.map(task => <label key={task.id} className="flex items-start gap-2">
-        <input type="checkbox" checked={chosen.includes(task.id)} onChange={event => setChosen(current => event.target.checked ? [...current, task.id] : current.filter(id => id !== task.id))} />
-        <span>{task.label} · {duration(task.minutes)}{item.declared_tasks.includes(task.id) ? " · Informada pelo aluno" : ""}</span>
-      </label>) : <div><p>Tempo informado: {duration(item.declared_minutes ?? 0)}</p><Label htmlFor="review-minutes">Tempo conferido (minutos)</Label><Input id="review-minutes" type="number" min={1} step={1} value={minutes} onChange={event => setMinutes(event.target.value)} /></div>}
-      <p>Tempo a reconhecer: {duration(total)}</p>
-      <div><Label htmlFor="review-reason">Justificativa para ajustes ou recusa</Label><Textarea id="review-reason" maxLength={3000} value={reason} onChange={event => setReason(event.target.value)} /></div>
-      <div className="flex flex-wrap gap-2"><Button onClick={() => void decide("approved")}>Aprovar</Button><Button variant="outline" onClick={() => void decide("rejected")}>Recusar</Button><Button variant="outline" onClick={() => void requestCorrection()}>Devolver para correção</Button></div>
-    </fieldset>}
-    {(item.status === "rejected" || item.status === "returned") && <fieldset disabled={busy} className="space-y-2">
-      <Label htmlFor="correction-reason">Orientação para correção</Label><Textarea id="correction-reason" maxLength={3000} value={reason} onChange={event => setReason(event.target.value)} />
-      <Button variant="outline" onClick={() => void requestCorrection()}>{item.status === "returned" ? "Renovar link de correção" : "Permitir correção"}</Button>
-    </fieldset>}
-  </CardContent></Card>
+  const studentFields = [
+    ["CPF", item.cpf], ["E-mail", item.email], ["WhatsApp", item.phone],
+    ["Instituição", item.institution], ["Curso", item.course], ["Instagram", item.instagram],
+    ["Turma, ação ou local", item.activity_reference],
+  ]
+
+  return <div className="space-y-4">
+    <Button variant="outline" onClick={close}><ArrowLeft aria-hidden="true" />Voltar à lista</Button>
+    <Card>
+      <CardHeader className="border-b">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="min-w-0 break-words text-xl font-semibold">{item.name}</h2>
+          <Badge variant={item.status === "approved" ? "default" : item.status === "rejected" ? "destructive" : "secondary"}>
+            {labels[item.status]}
+          </Badge>
+        </div>
+        <p className="text-sm text-muted-foreground">{item.modality} · {period(item.starts_on, item.ends_on)}</p>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <div className="space-y-3">
+          <h3 className="font-semibold">Dados do estudante</h3>
+          <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2 xl:grid-cols-3">
+            {studentFields.filter(([, value]) => value).map(([label, value]) => <div key={label} className="min-w-0">
+              <dt className="text-sm text-muted-foreground">{label}</dt>
+              <dd className="break-words">{value}</dd>
+            </div>)}
+          </dl>
+        </div>
+        <div className="space-y-2 rounded-lg bg-muted/50 p-4">
+          <h3 className="font-semibold">Relato do estudante</h3>
+          <p className="whitespace-pre-wrap break-words text-sm">{item.report}</p>
+        </div>
+      </CardContent>
+    </Card>
+    <Card>
+      <CardHeader className="border-b">
+        <h2 className="font-semibold">Comprovantes e histórico</h2>
+      </CardHeader>
+      <CardContent className="grid gap-6 lg:grid-cols-2">
+        <div className="min-w-0 space-y-3">
+          <h3 className="font-semibold">Comprovantes da atividade</h3>
+          {item.attachments.length === 0 ? <p className="text-sm text-muted-foreground">Nenhum comprovante anexado.</p> : <>
+            <p className="text-sm text-muted-foreground">Arquivos enviados pelo estudante para análise da atividade.</p>
+            <div className="flex flex-wrap gap-2">
+              {item.attachments.map((file, index) => <Button key={file.id} variant="outline" disabled={downloading !== null} onClick={() => void download(file.id)}>
+                {downloading === file.id && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
+                {downloading === file.id ? "Baixando comprovante…" : item.attachments.length === 1 ? "Baixar comprovante" : `Baixar comprovante ${index + 1}`}
+              </Button>)}
+            </div>
+          </>}
+        </div>
+        <div className="min-w-0 space-y-3 border-t pt-5 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
+          <h3 className="font-semibold">Histórico de solicitações</h3>
+          <p className="text-sm text-muted-foreground">Total reconhecido nesta modalidade <span className="font-semibold text-foreground">{duration(item.modality_minutes)}</span></p>
+          {item.history.length === 0 ? <p className="text-sm text-muted-foreground">Nenhuma outra solicitação no histórico.</p> :
+            <ul className="divide-y rounded-md border">
+              {item.history.map(row => <li key={row.id} className="space-y-1 px-3 py-2 text-sm">
+                <p className="break-words font-medium">{row.modality}</p>
+                <p className="text-muted-foreground">{period(row.starts_on, row.ends_on)} · {labels[row.status]}{row.minutes ? ` · ${duration(row.minutes)}` : ""}</p>
+              </li>)}
+            </ul>}
+          {item.decisions.length > 0 && <div className="space-y-2 border-t pt-3">
+            <h3 className="font-semibold">Decisões registradas</h3>
+            {item.decisions.map(decision => <div key={decision.revision} className="text-sm">
+              <p>{labels[decision.decision]} · revisão {decision.revision}{decision.minutes ? ` · ${duration(decision.minutes)}` : ""}</p>
+              {decision.reason && <p className="whitespace-pre-wrap break-words text-muted-foreground">{decision.reason}</p>}
+            </div>)}
+          </div>}
+        </div>
+      </CardContent>
+    </Card>
+    {downloading && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div role="status" className="flex flex-col items-center gap-4 rounded-xl bg-background p-8 text-center shadow-xl">
+        <Loader2 className="size-10 animate-spin text-primary motion-reduce:animate-none" aria-hidden="true" />
+        <p className="font-semibold">Baixando comprovante da atividade. Aguarde.</p>
+      </div>
+    </div>}
+    {error && <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}
+    {item.status === "pending" && <Card>
+      <CardHeader className="border-b"><h2 id="conecta-review-title" className="font-semibold">Conferência da equipe</h2></CardHeader>
+      <CardContent>
+        <fieldset disabled={busy} aria-labelledby="conecta-review-title" className="space-y-4">
+          {item.mode === "checklist" ? <div className="divide-y rounded-md border">
+            {item.tasks.map(task => <label key={task.id} className="flex items-start gap-3 px-3 py-3">
+              <input type="checkbox" className="mt-1 shrink-0" checked={chosen.includes(task.id)} onChange={event => setChosen(current => event.target.checked ? [...current, task.id] : current.filter(id => id !== task.id))} />
+              <span className="min-w-0 space-y-1">
+                <span className="block break-words text-sm font-medium">{task.label}</span>
+                <span className="block text-sm text-muted-foreground">{duration(task.minutes)}{item.declared_tasks.includes(task.id) ? " · Informada pelo aluno" : ""}</span>
+              </span>
+            </label>)}
+          </div> : <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">Tempo informado: {duration(item.declared_minutes ?? 0)}</p>
+            <Label htmlFor="review-minutes">Tempo conferido (minutos)</Label>
+            <Input id="review-minutes" className="max-w-xs" type="number" min={1} step={1} value={minutes} onChange={event => setMinutes(event.target.value)} />
+          </div>}
+          <p className="rounded-md bg-primary/5 px-3 py-2 text-sm">Tempo a reconhecer <span className="font-semibold text-primary">{duration(total)}</span></p>
+          <div className="space-y-2">
+            <Label htmlFor="review-reason">Justificativa para ajustes ou recusa</Label>
+            <Textarea id="review-reason" maxLength={3000} value={reason} onChange={event => setReason(event.target.value)} />
+          </div>
+          <div className="flex flex-wrap gap-2 border-t pt-4">
+            <Button onClick={() => void decide("approved")}>Aprovar</Button>
+            <Button variant="outline" onClick={() => void decide("rejected")}>Recusar</Button>
+            <Button variant="outline" onClick={() => void requestCorrection()}>Devolver para correção</Button>
+          </div>
+        </fieldset>
+      </CardContent>
+    </Card>}
+    {(item.status === "rejected" || item.status === "returned") && <Card>
+      <CardHeader className="border-b"><h2 className="font-semibold">Correção da solicitação</h2></CardHeader>
+      <CardContent>
+        <fieldset disabled={busy} className="space-y-3">
+          {item.status === "returned" && <p className="text-sm text-muted-foreground">O pedido de envio da orientação foi registrado.</p>}
+          <div className="space-y-2">
+            <Label htmlFor="correction-reason">Orientação para correção</Label>
+            <Textarea id="correction-reason" maxLength={3000} value={reason} onChange={event => setReason(event.target.value)} />
+          </div>
+          <Button variant="outline" onClick={() => void requestCorrection()}>{item.status === "returned" ? "Renovar link de correção" : "Permitir correção"}</Button>
+        </fieldset>
+      </CardContent>
+    </Card>}
+    {item.status === "approved" && <Card>
+      <CardContent><ConectaCertificateActions key={item.id} applicationId={item.id} /></CardContent>
+    </Card>}
+  </div>
 }
 
 function ConectaApplications() {

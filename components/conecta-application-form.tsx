@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { supabase } from "@/lib/supabase"
 import { applicationSchema, recognizedMinutes } from "@/lib/conecta/domain"
 import { catalogSchema } from "@/lib/conecta/catalog"
-import { uploadRequestSchema } from "@/lib/conecta/uploads"
+import { evidenceMetadata, uploadRequestSchema } from "@/lib/conecta/uploads"
 
 const publicCatalog = z.array(catalogSchema.element.pick({ versionId: true, project: true, name: true, description: true, mode: true, tasks: true }))
 const reservationSchema = z.object({ token: z.string(), files: z.array(z.object({ id: z.string().uuid(), path: z.string(), uploadToken: z.string() })) })
@@ -21,6 +21,12 @@ const fields = [
   ["startDate", "Início da atividade", "date", 10], ["endDate", "Fim da atividade", "date", 10],
   ["activityReference", "Turma, ação ou local (opcional)", "text", 160],
 ] as const
+
+function activityToday() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(new Date())
+}
 
 function formatCpf(value: string) {
   const digits = value.replace(/\D/g, "").slice(0, 11)
@@ -53,7 +59,10 @@ export function ConectaApplicationForm() {
   const [error, setError] = useState("")
   const [cpfValue, setCpfValue] = useState("")
   const [phoneValue, setPhoneValue] = useState("")
+  const [today, setToday] = useState("")
+  useEffect(() => { setToday(activityToday()) }, [])
   const lock = useRef(false)
+  const fileInput = useRef<HTMLInputElement>(null)
   const attempt = useRef<{ input: string; files: File[]; token: string; ids: string[] } | null>(null)
   useEffect(() => {
     const controller = new AbortController()
@@ -68,6 +77,19 @@ export function ConectaApplicationForm() {
   }, [reload])
   const modality = catalog?.find(item => item.versionId === versionId)
   const minutes = modality?.tasks.filter(task => selected.includes(task.id)).reduce((sum, task) => sum + task.minutes, 0) ?? 0
+  function addFiles(selectedFiles: File[]) {
+    const combined = [...files]
+    for (const file of selectedFiles) {
+      if (!combined.some(current => current.name === file.name && current.size === file.size && current.lastModified === file.lastModified && current.type === file.type)) combined.push(file)
+    }
+    const validation = uploadRequestSchema.safeParse({ files: combined.map(evidenceMetadata) })
+    if (!validation.success) {
+      setError("Não foi possível adicionar os arquivos. Escolha até 5 anexos, com até 50 MB no total, nos formatos e tamanhos permitidos.")
+      return
+    }
+    setFiles(combined)
+    setError("")
+  }
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (lock.current || !modality) return
@@ -78,8 +100,14 @@ export function ConectaApplicationForm() {
       report: String(form.get("report") ?? ""), modalityVersion: modality.versionId, tasks: selected,
       ...(modality.mode === "free" ? { declaredMinutes: Number(form.get("hours")) * 60 + Number(form.get("minutes")) } : {}),
     }
-    const metadata = uploadRequestSchema.safeParse({ files: files.map(file => ({ mime: file.type, bytes: file.size })) })
-    if (!metadata.success) { setError("Anexe de 1 a 5 comprovantes válidos, respeitando os limites de formato e tamanho."); return }
+    const metadata = uploadRequestSchema.safeParse({ files: files.map(evidenceMetadata) })
+    if (!metadata.success) {
+      const issue = metadata.error.issues[0]
+      const index = issue?.path[0] === "files" && typeof issue.path[1] === "number" ? issue.path[1] : null
+      setError(index === null ? "Escolha até 5 arquivos, com no máximo 50 MB no total."
+        : `Confira “${files[index].name}”. Use imagem, PDF ou vídeo dentro do tamanho permitido.`)
+      return
+    }
     const validated = applicationSchema.safeParse({ ...input, attachments: files.map((_, index) => `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`) })
     if (!validated.success) { setError(validated.error.issues[0]?.message ?? "Confira os dados informados."); return }
     try { recognizedMinutes(modality.mode === "free" ? { mode: "free" } : { mode: "checklist", tasks: modality.tasks }, selected, input.declaredMinutes) }
@@ -111,7 +139,7 @@ export function ConectaApplicationForm() {
     finally { lock.current = false; setBusy(false) }
   }
 
-  if (sent) return <Card><CardContent className="space-y-3"><h2 className="text-xl font-semibold">Atividade recebida</h2><p>O pedido está aguardando análise da equipe.</p><Button variant="outline" onClick={() => { attempt.current = null; setVersionId(""); setSelected([]); setFiles([]); setSent(false) }}>Registrar outra atividade</Button></CardContent></Card>
+  if (sent) return <Card><CardContent className="space-y-3"><h2 className="text-xl font-semibold">Atividade recebida</h2><p>O pedido está aguardando análise da equipe.</p><Button variant="outline" onClick={() => { attempt.current = null; setVersionId(""); setSelected([]); setFiles([]); setToday(activityToday()); setSent(false) }}>Registrar outra atividade</Button></CardContent></Card>
   if (catalogError) return <div className="space-y-3"><p role="alert">Não foi possível carregar as modalidades.</p><Button onClick={() => setReload(value => value + 1)}>Tentar novamente</Button></div>
   if (!catalog) return <p role="status">Carregando modalidades...</p>
   if (!catalog.length) return <p>Nenhuma modalidade está disponível para envio no momento.</p>
@@ -121,6 +149,7 @@ export function ConectaApplicationForm() {
         <div className="grid gap-4 sm:grid-cols-2">{fields.map(([key, label, type, max]) =>
           <div key={key} className="space-y-2"><Label htmlFor={`application-${key}`}>{label}</Label><Input id={`application-${key}`} name={key} type={type} maxLength={max} required={key !== "instagram" && key !== "activityReference"}
             value={key === "cpf" ? cpfValue : key === "phone" ? phoneValue : undefined}
+            defaultValue={key === "startDate" || key === "endDate" ? today : undefined}
             inputMode={key === "cpf" || key === "phone" ? "numeric" : undefined}
             autoComplete={key === "cpf" ? "off" : key === "phone" ? "tel" : key === "email" ? "email" : undefined}
             onChange={key === "cpf" ? event => setCpfValue(formatCpf(event.target.value)) : key === "phone" ? event => setPhoneValue(formatWhatsapp(event.target.value)) : undefined}
@@ -135,8 +164,33 @@ export function ConectaApplicationForm() {
           <span>{task.label} · {task.minutes} min</span>
         </label>)}<p className="text-sm text-muted-foreground">Tempo informado: {Math.floor(minutes / 60)} h {minutes % 60} min. A equipe fará a conferência.</p></fieldset>}
         {modality?.mode === "free" && <div className="grid grid-cols-2 gap-4"><div><Label htmlFor="application-hours">Horas realizadas</Label><Input id="application-hours" name="hours" type="number" min={0} step={1} defaultValue={0} required /></div><div><Label htmlFor="application-minutes">Minutos adicionais</Label><Input id="application-minutes" name="minutes" type="number" min={0} max={59} step={1} defaultValue={0} required /></div></div>}
-        <div><Label htmlFor="application-report">Descreva o que você realizou</Label><Textarea id="application-report" name="report" required maxLength={5000} /></div>
-        <div><Label htmlFor="application-evidence">Comprovantes obrigatórios</Label><Input id="application-evidence" type="file" multiple required accept="image/jpeg,image/png,image/webp,application/pdf,video/mp4,video/webm" onChange={event => setFiles(Array.from(event.target.files ?? []))} /><p className="text-sm text-muted-foreground">Até 5 arquivos: imagem (10 MB), PDF (15 MB) ou vídeo (50 MB), com até 100 MB no total.</p></div>
+        <div className="space-y-2"><Label htmlFor="application-report">Descreva o que você realizou</Label><Textarea id="application-report" name="report" required maxLength={5000} /></div>
+        <div className="space-y-2">
+          <Label htmlFor="application-evidence">Comprovantes (opcional)</Label>
+          <div className="flex flex-wrap items-center gap-3 rounded-md border p-3">
+            <Button type="button" variant="outline" onClick={() => fileInput.current?.click()}>Adicionar arquivos</Button>
+            <p className="text-sm text-muted-foreground" aria-live="polite">
+              {files.length === 0 ? "Nenhum arquivo adicionado." : `${files.length} ${files.length === 1 ? "arquivo selecionado" : "arquivos selecionados"}`}
+            </p>
+          </div>
+          <Input ref={fileInput} id="application-evidence" type="file" className="sr-only" tabIndex={-1} multiple
+            aria-describedby="application-evidence-help"
+            accept="image/jpeg,image/png,image/webp,application/pdf,video/mp4,video/webm"
+            onChange={event => {
+              addFiles(Array.from(event.target.files ?? []))
+              event.target.value = ""
+            }} />
+          <p id="application-evidence-help" className="text-sm text-muted-foreground">Selecione vários arquivos de uma vez ou adicione em etapas. Até 5 arquivos: imagem (10 MB), PDF (15 MB) ou vídeo (50 MB), com até 50 MB no total.</p>
+          {files.length > 0 && <ul aria-label="Arquivos selecionados" className="space-y-2">
+            {files.map((file, index) => <li key={`${file.name}-${file.size}-${file.lastModified}-${file.type}`} className="flex items-center justify-between gap-3 rounded-md border px-3 py-2">
+              <span className="min-w-0 break-all text-sm">{file.name}</span>
+              <Button type="button" variant="ghost" className="shrink-0" aria-label={`Remover ${file.name}`} onClick={() => {
+                setFiles(current => current.filter((_, position) => position !== index))
+                setError("")
+              }}>Remover</Button>
+            </li>)}
+          </ul>}
+        </div>
       </fieldset>
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
       <Button disabled={busy || !modality} type="submit">{busy ? "Enviando..." : "Enviar para validação"}</Button>

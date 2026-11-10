@@ -51,3 +51,7 @@ Ordem: aprovação do plano → T-001 → T-002 → T-003 → T-004 → T-005 �
 - [ ] **T-015 — Corrigir formulário público** (RF-019 a RF-022; CA-019 a CA-022).
   - Ajustar espaçamento, validação de e-mail no cliente e servidor e máscaras acessíveis de CPF e WhatsApp com envio normalizado.
   - Diagnosticar envio ponta a ponta, preservar os dados em falhas e confirmar apenas após persistência. Adicionar testes de formulário e APIs.
+- [ ] **T-016 — Permitir envio sem comprovantes** (RF-023, RF-024; CA-023, CA-024).
+  - Corrigir também a aprovação sem anexos pela migração 009, com teste de aprovação, justificativa de ajuste e rejeição de decisão repetida.
+  - Atualizar contrato de domínio, sessão de upload e persistência para aceitar zero anexos, preservando as validações quando forem fornecidos.
+  - Corrigir o espaçamento dos campos relato e comprovantes e cobrir submissão sem arquivo e com arquivos inválidos/válidos.

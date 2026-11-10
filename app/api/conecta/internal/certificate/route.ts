@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises"
 import { join } from "node:path"
 import { z } from "zod"
 import { createSupabaseServiceClient } from "@/lib/supabase-server"
-import { certificateSnapshot, renderCertificate } from "@/lib/conecta/certificate"
+import { certificateFilename, certificateSnapshot, renderCertificate } from "@/lib/conecta/certificate"
 import { conectaBucket, conectaResponse, readSmallJson } from "@/lib/conecta/http-server"
 import { conectaInternalSession } from "@/lib/conecta/internal-server"
 
@@ -42,11 +42,14 @@ export async function POST(request: Request) {
       if (result.error) throw result.error
       const current = z.object({ id: z.string().uuid(), generated: z.literal(true), invalidated: z.literal(false) }).safeParse(result.data)
       if (!current.success) return conectaResponse({ error: "O PDF da emissão vigente está indisponível." }, 409)
+      const application = await client.rpc("conecta_get_application", { p_id: id })
+      if (application.error) throw application.error
+      const filename = certificateFilename(z.object({ name: z.string() }).parse(application.data).name)
       const path = `certificates/${current.data.id}/original.pdf`
       const signed = await createSupabaseServiceClient().storage.from(conectaBucket)
-        .createSignedUrl(path, 60, { download: "certificado-conecta-afapan.pdf" })
+        .createSignedUrl(path, 60, { download: filename })
       if (signed.error) throw signed.error
-      return conectaResponse({ url: signed.data.signedUrl })
+      return conectaResponse({ url: signed.data.signedUrl, filename })
     }
     const supabase = createSupabaseServiceClient()
     const reserved = await supabase.rpc("conecta_reserve_certificate", {
@@ -76,9 +79,10 @@ export async function POST(request: Request) {
       const finalized = await supabase.rpc("conecta_finish_certificate", { p_id: certificate.id, p_hash: hash })
       if (finalized.error) throw finalized.error
     }
-    const signed = await bucket.createSignedUrl(path, 60, { download: "certificado-conecta-afapan.pdf" })
+    const filename = certificateFilename(certificate.snapshot.name)
+    const signed = await bucket.createSignedUrl(path, 60, { download: filename })
     if (signed.error) throw signed.error
-    return conectaResponse({ url: signed.data.signedUrl })
+    return conectaResponse({ url: signed.data.signedUrl, filename })
   } catch (error) {
     const code = (error as { code?: string })?.code
     if (code === "42501") return conectaResponse({ error: "Acesso interno necessário." }, 403)

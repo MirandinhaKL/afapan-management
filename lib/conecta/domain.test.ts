@@ -11,11 +11,12 @@ describe("Conecta AFAPAN", () => {
     expect(resendSchema.safeParse({ cpf: "52998224725", birthDate: "2000-01-01", email: "outro@example.test" }).success).toBe(false)
   })
 
-  it("rejeita solicitação sem comprovante e período invertido", () => {
+  it("aceita solicitação sem comprovante e rejeita período invertido", () => {
     const id = "8e11e491-1cbb-47ad-8b76-d605d7d270ff"
     const input = { cpf: "52998224725", birthDate: "2000-01-01", startDate: "2026-10-01", endDate: "2026-10-03", name: "Aluno Exemplo", email: "aluno@example.test", phone: "(54) 99999-0000", institution: "Exemplo", course: "Exemplo", report: "Atividade realizada", modalityVersion: id, tasks: [id], attachments: [id] }
     expect(applicationSchema.safeParse(input).success).toBe(true)
-    expect(applicationSchema.safeParse({ ...input, attachments: [] }).success).toBe(false)
+    expect(applicationSchema.safeParse({ ...input, attachments: [] }).success).toBe(true)
+    expect(applicationSchema.safeParse({ ...input, email: "email-invalido" }).success).toBe(false)
     expect(applicationSchema.safeParse({ ...input, endDate: "2026-09-30" }).success).toBe(false)
   })
 

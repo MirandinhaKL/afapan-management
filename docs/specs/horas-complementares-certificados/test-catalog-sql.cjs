@@ -16,11 +16,11 @@ async function run() {
       create role anon; create role authenticated; create role service_role bypassrls;
       create schema auth;
       create table auth.users(id uuid primary key);
-      create table profiles(id uuid primary key references auth.users, ativo boolean not null);
+      create table profiles(id uuid primary key references auth.users, ativo boolean not null, nome text default 'Aprovador Exemplo');
       create function auth.uid() returns uuid language sql stable as
         $$select nullif(current_setting('test.uid',true),'')::uuid$$;
       insert into auth.users values ('${active}'), ('${inactive}');
-      insert into profiles values ('${active}',true), ('${inactive}',false);
+      insert into profiles(id,ativo) values ('${active}',true), ('${inactive}',false);
     `)
     const apply = name => db.exec(readFileSync(join(__dirname, name), "utf8"))
     await apply("001-conecta-foundation.sql")
@@ -31,6 +31,10 @@ async function run() {
     await apply("005-conecta-review.sql")
     await apply("006-conecta-correction.sql")
     await apply("007-conecta-certificates.sql")
+    await apply("008-conecta-optional-evidence.sql")
+    await apply("009-conecta-approve-optional-evidence.sql")
+    await apply("010-conecta-certificate-approver.sql")
+    await apply("011-conecta-certificate-invalidation-reason.sql")
     const query = async (sql, args) => (await db.query(sql, args)).rows
     const tables = (await query("select relname,relrowsecurity from pg_class where relname like 'conecta_%' and relkind='r'"))
     assert.equal(tables.length, 14)
@@ -166,7 +170,7 @@ async function run() {
     assert.deepEqual((await query("select decision from conecta_decisions where application_id=$1", [correctionId])).map(row => row.decision), ["returned"])
     assert.equal((await query("select recipient from conecta_email_outbox where event_key=$1", ["correction:" + inactive]))[0].recipient, input.email)
     assert.equal((await query("select status from conecta_email_outbox where event_key=$1", ["correction:" + active]))[0].status, "cancelled")
-    const configuration = { signer: "Nome Exemplo", title: "Presidência", city: "Exemplo" }
+    const configuration = { city: "Farroupilha, RS" }
     const reserveCertificate = async (actor, code, settings) => (await query(
       "select public.conecta_reserve_certificate($1,$2,$3,$4) as data",
       [applicationId, actor, code, JSON.stringify(settings)],
@@ -181,6 +185,9 @@ async function run() {
     const repeat = await reserveCertificate(active, secondCode, {})
     assert.deepEqual(first, repeat)
     assert.equal(first.snapshot.minutes, 360)
+    assert.equal(first.snapshot.signer, "Aprovador Exemplo")
+    assert.equal(first.snapshot.title, "AFAPAN")
+    assert.equal(first.snapshot.city, "Farroupilha, RS")
     assert.equal(first.snapshot.code, firstCode)
     assert.match(first.snapshot.issuedAt, /[+-]\d{2}:\d{2}$/)
     const finalize = (hash) => query("select public.conecta_finish_certificate($1,$2) as path", [first.id, hash])
@@ -189,9 +196,17 @@ async function run() {
     await finalize(payload)
     await assert.rejects(finalize(token), error => error.code === "40001")
     await db.exec("reset role; set role authenticated")
+    const certificateStatus = async () => (await query("select public.conecta_certificate_status($1) as status", [applicationId]))[0].status
+    assert.equal((await certificateStatus()).invalidationReason, null)
     const invalidate = reason => query("select public.conecta_invalidate_certificate($1,$2)", [first.id, reason])
     await assert.rejects(invalidate(""), error => error.code === "22023")
     await invalidate("Emissão de teste")
+    const invalidated = await certificateStatus()
+    assert.equal(invalidated.id, first.id)
+    assert.equal(invalidated.invalidated, true)
+    assert.equal(invalidated.invalidationReason, "Emissão de teste")
+    await db.exec("reset role; set role anon")
+    await assert.rejects(certificateStatus(), error => error.code === "42501")
     await db.exec("reset role; set role service_role")
     await assert.rejects(finalize(payload), error => error.code === "40001")
     const replacement = await reserveCertificate(active, secondCode, configuration)
@@ -199,7 +214,26 @@ async function run() {
     await db.exec("reset role")
     assert.deepEqual((await query("select replaces, code from conecta_certificates where id=$1", [replacement.id]))[0], { replaces: first.id, code: secondCode })
     assert.deepEqual((await query("select generated_key, invalidated_by from conecta_certificates where id=$1", [first.id]))[0], { generated_key: original, invalidated_by: active })
-    console.log("SQL local aprovado: catálogo, RLS, submissão, análise, correção e emissão com preservação de histórico.")
+    await db.exec("set role service_role")
+    const noFilesToken = "9".repeat(64)
+    await reserve(noFilesToken, [])
+    await claim(noFilesToken)
+    const noFilesInput = { ...input, tasks: [modality.tasks[1].id], attachments: [], startDate: "2020-03-01", endDate: "2020-03-02" }
+    const [{ id: noFilesId }] = await submit(noFilesToken, [], payload, noFilesInput)
+    assert.equal((await submit(noFilesToken, [], payload, noFilesInput))[0].id, noFilesId)
+    await db.exec("reset role")
+    assert.equal((await query("select count(*)::int as n from conecta_attachments where application_id=$1", [noFilesId]))[0].n, 0)
+    await db.exec("set role authenticated")
+    const approveWithoutEvidence = tasks => query(
+      "select public.conecta_review_application($1,1,'approved',$2,null,null)",
+      [noFilesId, tasks],
+    )
+    await assert.rejects(approveWithoutEvidence(input.tasks), error => error.code === "22023")
+    await approveWithoutEvidence(noFilesInput.tasks)
+    await assert.rejects(approveWithoutEvidence(noFilesInput.tasks), error => error.code === "40001")
+    await db.exec("reset role")
+    assert.deepEqual((await query("select status,approved_minutes from conecta_applications where id=$1", [noFilesId]))[0], { status: "approved", approved_minutes: 120 })
+    console.log("SQL local aprovado incluindo envio sem comprovante, idempotência e preservação de arquivos.")
   } finally { await db.close() }
 }
 run().catch(error => { console.error(error); process.exitCode = 1 })

@@ -1,9 +1,41 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, expect, it, vi } from "vitest"
-vi.mock("@/lib/supabase", () => ({ supabase: { auth: { getSession: async () => ({ data: { session: { access_token: "test" } } }) } } }))
+const { upload } = vi.hoisted(() => ({ upload: vi.fn() }))
+vi.mock("@/lib/supabase", () => ({ supabase: {
+  auth: { getSession: async () => ({ data: { session: { access_token: "test" } } }) },
+  storage: { from: () => ({ uploadToSignedUrl: upload }) },
+} }))
 import { ConectaCertificateActions } from "./conecta-certificate-actions"
 
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks() })
+it("anexa o PDF somente após conferência e exibe o download do assinado", async () => {
+  let published = false
+  const signedPdf = new File(["%PDF-1.7"], "certificado-assinado.pdf", { type: "application/pdf" })
+  upload.mockResolvedValue({ error: null })
+  const request = vi.fn().mockImplementation(async (_url, options) => {
+    const body = JSON.parse(options.body)
+    if (body.action === "confirm") published = true
+    const result = body.action === "status"
+      ? { certificate: { id: "cert", code: "A".repeat(32), generated: true, invalidated: false, published } }
+      : body.action === "reserve" ? { uploadId: "upload", path: "certificates/cert/signed/upload.pdf", token: "token" }
+      : { success: true }
+    return { ok: true, json: async () => result }
+  })
+  vi.stubGlobal("fetch", request)
+  render(<ConectaCertificateActions applicationId="example" />)
+  const selector = await screen.findByLabelText("Selecionar PDF assinado (até 10 MB)")
+  fireEvent.change(selector, { target: { files: [signedPdf] } })
+  const attach = screen.getByRole("button", { name: "Anexar e confirmar PDF assinado" })
+  expect(attach).toBeDisabled()
+  fireEvent.click(screen.getByRole("checkbox", { name: "Conferi que o PDF está assinado e corresponde a esta emissão." }))
+  fireEvent.click(attach)
+  expect(await screen.findByRole("button", { name: "Baixar PDF assinado" })).toBeEnabled()
+  expect(upload).toHaveBeenCalledWith("certificates/cert/signed/upload.pdf", "token", signedPdf, expect.anything())
+  expect(request).toHaveBeenCalledWith("/api/conecta/internal/signed-certificate", expect.objectContaining({
+    body: JSON.stringify({ action: "confirm", applicationId: "example", certificateId: "cert", uploadId: "upload", confirmed: true }),
+  }))
+})
+
 it("mostra o motivo registrado ao abrir uma emissão invalidada", async () => {
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
     ok: true, json: async () => ({

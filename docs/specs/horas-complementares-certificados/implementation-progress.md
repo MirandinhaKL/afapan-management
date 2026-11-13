@@ -13,6 +13,9 @@ Data: 2026-11-03. “Pode seguir” autoriza plano e escolhas P-001 a P-010 para
 
 ## Evidência local e limites
 
+- T-007 em 2026-11-10. Suíte completa com 198 testes, TypeScript e compilação aprovados. O teste SQL aplica 012 em memória e cobre autoria, integridade referencial, recusa de emissão invalidada, confirmação idempotente, fila única e preservação do PDF na invalidação. Testes de rota e tela simulam Storage e cobrem PDF ilegível, confirmação explícita, hash dos bytes e download disponível após conferência.
+- Para homologar T-007, aplicar 012 após 011 no Supabase de teste, com o bucket conecta-documents privado. Baixar o original, assinar externamente e anexar o resultado de até 10 MiB. Conferir situação Assinado e conferido e baixar a mesma versão assinada. A fila fica pendente até T-008. Para reverter a implantação, usar a versão anterior da aplicação e preservar registros e objetos.
+
 - Suíte completa após a emissão: 31 arquivos e 182 testes aprovados. TypeScript sem emissão aprovado.
 
 - `test-catalog-sql.cjs` executa os sete scripts em PostgreSQL embarcado, com papéis e auth.uid simulados. Cobre catálogo, acesso, submissão, aprovação parcial e correção. Na emissão, verifica configuração obrigatória, autorização, reserva idempotente, conflito de hash, invalidação com motivo, preservação do caminho e vínculo com a emissão substituta.
@@ -25,8 +28,8 @@ Data: 2026-11-03. “Pode seguir” autoriza plano e escolhas P-001 a P-010 para
 ## Não concluído
 
 - Entrega da orientação por e-mail e verificação do fluxo de correção no ambiente de homologação (T-006, T-008).
-- Recebimento do PDF assinado, conferência e publicação para consulta (T-007). Os estados de emissão e invalidação foram validados em banco local. O Storage privado ainda depende de homologação.
-- Worker/adapter de e-mail e tratamento de falhas reais/simuladas (T-008). A outbox guarda eventos de recusa e correção. O worker deve conferir se o link ainda está vigente antes de enviar.
+- Homologação do recebimento e conferência do PDF assinado (T-007). Implementação local com migração 012, validação de estrutura, hash, confirmação da equipe, download restrito e registro transacional na fila. Validar com assinatura externa e Storage real após aplicação manual em ambiente de teste. Consulta pública permanece em T-009.
+- Homologação do worker de e-mail (T-008). A migração 013 e a rota interna simulam certificado, correção e recusa, com histórico separado, retentativas e conferência de resultado incerto. A execução no ambiente de teste segue [013-validation.md](013-validation.md). Integração Gmail, agendamento e aceitação real dependem de homologação.
 - Consulta pública por código e segunda via por CPF/nascimento (T-009).
 - Inspeção visual completa do módulo/PDF, documentação de implantação, verificação de preservação de dados e arquivos e verificação remota (T-001, T-004, T-010 a T-013).
 

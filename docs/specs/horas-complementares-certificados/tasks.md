@@ -23,10 +23,12 @@ Data: 2026-10-28. Planejamento preparado com autorização para seguir. Plano e 
   - Token temporário no e-mail original e escopo restrito; revisão da mesma solicitação com relato/checklist/evidências.
   - Preservar declaração/decisão anterior; impedir troca pública de identificação/destinatário e retorno de histórico alheio.
 - [ ] **T-007 — Certificado, assinatura e invalidação** (RF-007 a RF-011, RF-016; RNF-002, RNF-005; CA-004 a CA-007, CA-009).
+  - Upload, conferência e download do PDF assinado implementados localmente com migração 012. Homologação do Storage e PDF assinado externamente pendente.
   - PDF horizontal versionado/idempotente com marca/texto/signatário, código forte e armazenamento privado; bloquear emissão real sem configuração.
   - Download interno, assinatura externa, upload/conferência com hash e preservação de bytes; invalidar emissão errada e vincular nova emissão sem apagar histórico.
   - Gerar/renderizar/inspecionar exemplo fictício e validar ausência de cortes/Unicode perdido.
 - [ ] **T-008 — Mensageria e recuperação de falhas** (RF-006, RF-009, RF-011; RNF-001, RNF-004, RNF-006; CA-003, CA-005, CA-006).
+  - Worker e retentativas simulados implementados localmente com migração 013. Integração real e envio/reenvio em ambiente homologado dependem da autorização da conta institucional.
   - Adapter simulado local, templates escapados, outbox transacional, worker com lease e idempotência/reconciliação.
   - Retry/backoff e estado incerto; não afirmar entrega em caixa postal; revalidar emissão vigente no despacho. Não enviar mensagens reais.
 - [ ] **T-009 — Consulta pública e segunda via** (RF-010, RF-018; RNF-001, RNF-007; CA-007, CA-017).

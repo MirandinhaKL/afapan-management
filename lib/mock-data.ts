@@ -14,6 +14,7 @@ export interface User {
 export interface Participante {
   id: string
   nome: string
+  sobrenome?: string | null
   telefone: string
   email: string
   turma: string

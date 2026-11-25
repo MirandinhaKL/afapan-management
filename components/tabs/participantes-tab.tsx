@@ -2,6 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { formatParticipantName } from "@/lib/utils"
 import {
   Table,
   TableBody,
@@ -184,8 +185,8 @@ export function ParticipantesTab({
       {/* Main Content */}
       <Card className="border-border/50">
         <CardHeader>
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
+          <div className="grid gap-4 md:grid-cols-4 md:items-center">
+            <div className="md:col-span-3">
               <CardTitle className="flex items-center gap-2 text-base">
                 <Recycle size={18} className="text-primary" />
                 Gerenciamento do programa
@@ -195,9 +196,9 @@ export function ParticipantesTab({
               </CardDescription>
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="min-w-0">
               <Select value={turmaFilter} onValueChange={onTurmaFilterChange}>
-                <SelectTrigger className="w-full sm:w-40">
+                <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -349,7 +350,7 @@ export function ParticipantesTab({
                                 .toUpperCase()}
                             </div>
                             <div>
-                              <p className="font-medium text-foreground">{participante.nome}</p>
+                              <p className="font-medium text-foreground">{formatParticipantName(participante.nome)}</p>
                               <p className="text-xs text-muted-foreground md:hidden">
                                 {participante.telefone}
                               </p>

@@ -1,8 +1,29 @@
+import { useState } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { UserMinus } from "lucide-react"
 import { type Participante, type TurmaCompostagem } from "@/lib/mock-data"
+import { requestCompostagemImport } from "@/lib/compostagem-importacao-client"
+
+function ConsultaCpf({ turma, participante }: { turma: string; participante: string }) {
+  const [result, setResult] = useState("")
+  const [busy, setBusy] = useState(false)
+  async function consult() {
+    setBusy(true)
+    try {
+      const query = new URLSearchParams({ turma, participante })
+      const { cpf } = await requestCompostagemImport<{ cpf: string | null }>(`?${query}`)
+      setResult(cpf ? `CPF ${cpf}` : "CPF não informado.")
+    } catch (error) {
+      setResult((error as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+  return result ? <p role="status" className="text-xs">{result}</p> :
+    <Button variant="link" size="sm" className="h-auto p-0" disabled={busy} onClick={consult}>Consultar CPF</Button>
+}
 
 interface TurmaDetailDialogProps {
   open: boolean
@@ -65,6 +86,7 @@ export function TurmaDetailDialog({
                         <div>
                           <p className="text-sm font-medium">{participante.nome}</p>
                           <p className="text-xs text-muted-foreground">{participante.telefone}</p>
+                          {open && <ConsultaCpf key={turma.id} turma={turma.id} participante={participante.id} />}
                         </div>
                         <Button
                           variant="ghost"

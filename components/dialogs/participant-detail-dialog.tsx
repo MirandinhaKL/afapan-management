@@ -1,5 +1,6 @@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { formatParticipantName } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { type Participante } from "@/lib/mock-data"
 import { type Balde } from "@/lib/supabase-queries"
@@ -9,12 +10,41 @@ interface ParticipantDetailDialogProps {
   onOpenChange: (open: boolean) => void
   participante: Participante | null
   baldes?: Balde[]
+  turmaId?: string
+}
+
+function IntencaoParticipante({ participanteId, turmaId }: { participanteId: string; turmaId?: string }) {
+  const [resultado, setResultado] = useState<{ texto: string | null } | { erro: true }>()
+
+  useEffect(() => {
+    if (!turmaId) return
+    const controller = new AbortController()
+    fetchIntencaoParticipante(participanteId, turmaId, controller.signal).then(
+      texto => { if (!controller.signal.aborted) setResultado({ texto }) },
+      () => { if (!controller.signal.aborted) setResultado({ erro: true }) },
+    )
+    return () => controller.abort()
+  }, [participanteId, turmaId])
+
+  return (
+    <div className="rounded-lg border border-border/50 bg-muted/20 p-4">
+      <h3 className="text-sm font-semibold">Intenção de participar</h3>
+      <p role="status" className="mt-1 whitespace-pre-wrap break-words text-sm">
+        {resultado && "erro" in resultado
+          ? "Não foi possível carregar a resposta."
+          : resultado?.texto?.trim()
+            ? resultado.texto
+            : !resultado && turmaId ? "Carregando…" : "Não informada"}
+      </p>
+    </div>
+  )
 }
 
 export function ParticipantDetailDialog({
   open,
   onOpenChange,
   participante,
+  turmaId,
   baldes = [],
 }: ParticipantDetailDialogProps) {
 
@@ -42,7 +72,7 @@ export function ParticipantDetailDialog({
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="text-xs text-muted-foreground">Nome</Label>
-                    <p className="text-sm font-medium text-foreground">{participante.nome}</p>
+                    <p className="text-sm font-medium text-foreground">{formatParticipantName(participante.nome)}</p>
                   </div>
                   <div>
                     <Label className="text-xs text-muted-foreground">Turma</Label>
@@ -102,6 +132,8 @@ export function ParticipantDetailDialog({
                 </div>
               </div>
 
+              {open && <IntencaoParticipante key={`${participante.id}:${turmaId}`} participanteId={participante.id} turmaId={turmaId} />}
+
               <div className="space-y-3 rounded-lg border border-border/50 bg-muted/30 p-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -151,3 +183,5 @@ export function ParticipantDetailDialog({
     </>
   )
 }
+import { useEffect, useState } from "react"
+import { fetchIntencaoParticipante } from "@/lib/compostagem-importacao-client"

@@ -5,6 +5,11 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+export function formatParticipantName(name: string): string {
+  return name.toLocaleLowerCase('pt-BR').replace(/(^|[\s'’\-])(\p{L})/gu,
+    (_, separator: string, initial: string) => separator + initial.toLocaleUpperCase('pt-BR'))
+}
+
 export function formatTrimestre(trimestre: string): string {
   // Converte "2026-Q1" para "1º Trimestre 2026"
   // Converte "2026-Q2" para "2º Trimestre 2026", etc.

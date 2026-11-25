@@ -88,6 +88,7 @@ export function CompostagemPage() {
     handleRemoveParticipantFromTurma,
     openTurmaDetail,
     openAddParticipant,
+    refreshAfterImport,
 
     // Bucket records
     baldes,
@@ -203,6 +204,7 @@ export function CompostagemPage() {
             turmasCompostagem={turmasCompostagem}
             loading={loading}
             onCreateTurma={handleOpenCreateTurma}
+            onImported={refreshAfterImport}
             onDeleteTurma={handleDeleteTurmaClick}
             onOpenTurmaDetail={openTurmaDetail}
             onOpenMonitoramento={handleOpenMonitoramento}
@@ -214,6 +216,7 @@ export function CompostagemPage() {
       {/* Dialogs */}
       <ParticipantDetailDialog
         open={isDetailOpen}
+        turmaId={turmas.find(turma => turma.nome === turmaFilter)?.id}
         onOpenChange={setIsDetailOpen}
         participante={selectedParticipante}
         baldes={baldes}

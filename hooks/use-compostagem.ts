@@ -588,8 +588,13 @@ export function useCompostagem() {
       console.log("Iniciando edição do participante:", editingParticipante.id)
       console.log("Dados a atualizar:", data)
       
+      const nomeAlterado = data.nome !== editingParticipante.nome
+      const [primeiroNome, ...restante] = data.nome.trim().split(/\s+/)
+      const nomeAtualizado = editingParticipante.sobrenome != null
+        ? { nome: primeiroNome, sobrenome: restante.join(" ") || null }
+        : { nome: data.nome }
       const updateData = {
-        nome: data.nome,
+        ...(nomeAlterado ? nomeAtualizado : {}),
         telefone: data.telefone,
         email: data.email,
         turma: data.turma,
@@ -617,6 +622,7 @@ export function useCompostagem() {
             const merged = {
               ...p,
               ...updatedParticipante,
+              nome: [updatedParticipante.nome, updatedParticipante.sobrenome].filter(Boolean).join(" "),
               baldes: p.baldes, // Preservar baldes do participante anterior
             }
             console.log("Participante mergeado:", merged)
@@ -1013,7 +1019,25 @@ export function useCompostagem() {
     }
   }
 
+  const refreshAfterImport = async (turmaId: string) => {
+    const [resumo, detalhes, inscritos] = await Promise.all([
+      fetchTurmas(), fetchTurmasCompostagem(), fetchParticipantesWithBaldes(turmaId),
+    ])
+    const destino = resumo.find(item => item.id === turmaId)
+    setTurmas(resumo)
+    setTurmasCompostagem(detalhes.map(item => ({
+      ...item,
+      participantes: item.id === turmaId ? inscritos : [],
+      totalParticipantes: resumo.find(turma => turma.id === item.id)?.totalParticipantes ?? 0,
+    })))
+    if (destino) {
+      setTurmaFilter(destino.nome)
+      setParticipantes(inscritos)
+    }
+  }
+
   return {
+    refreshAfterImport,
     // Participant states
     participantes,
     turmas,

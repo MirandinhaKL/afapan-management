@@ -1,25 +1,24 @@
 import { NextResponse } from "next/server"
 import { createSupabaseServiceClient } from "@/lib/supabase-server"
 import { generateUniqueToken } from "@/lib/token-utils"
+import { nomeCompleto } from "@/lib/compostagem-importacao"
 import {
   formatBrazilWhatsAppPhone,
   getWhatsAppTemplateConfig,
   sendBucketCollectionTemplate,
 } from "@/lib/whatsapp-cloud"
 
+interface Destinatario {
+  id: string
+  nome: string
+  sobrenome?: string | null
+  telefone?: string
+  ativo?: boolean
+}
+
 interface ParticipanteRel {
   participante_id: string
-  participantes?: {
-    id: string
-    nome: string
-    telefone?: string
-    ativo?: boolean
-  } | {
-    id: string
-    nome: string
-    telefone?: string
-    ativo?: boolean
-  }[] | null
+  participantes?: Destinatario | Destinatario[] | null
 }
 
 function getBaseUrl(request: Request) {
@@ -68,7 +67,7 @@ export async function POST(request: Request) {
 
     const { data: rels, error: relsError } = await supabase
       .from("participantes_turmas")
-      .select("participante_id, participantes(id, nome, telefone, ativo)")
+      .select("participante_id, participantes(id, nome, sobrenome, telefone, ativo)")
       .eq("turma_id", turmaId)
 
     if (relsError) throw relsError
@@ -97,7 +96,7 @@ export async function POST(request: Request) {
       if (!formattedPhone) {
         results.push({
           participanteId: participante.id,
-          participanteNome: participante.nome,
+          participanteNome: nomeCompleto(participante),
           status: "skipped",
           error: "Telefone não informado",
         })
@@ -140,7 +139,7 @@ export async function POST(request: Request) {
       if (!whatsappConfig) {
         results.push({
           participanteId: participante.id,
-          participanteNome: participante.nome,
+          participanteNome: nomeCompleto(participante),
           telefone: formattedPhone,
           link,
           status: "not_configured",
@@ -152,14 +151,14 @@ export async function POST(request: Request) {
       try {
         const sendResult = await sendBucketCollectionTemplate(whatsappConfig, {
           to: formattedPhone,
-          participanteNome: participante.nome,
+          participanteNome: nomeCompleto(participante),
           periodoLabel: `de ${period.data_inicio.split("-").reverse().join("/")} a ${period.data_fim.split("-").reverse().join("/")}`,
           link,
         })
 
         results.push({
           participanteId: participante.id,
-          participanteNome: participante.nome,
+          participanteNome: nomeCompleto(participante),
           telefone: formattedPhone,
           link,
           status: "sent",
@@ -168,7 +167,7 @@ export async function POST(request: Request) {
       } catch (error) {
         results.push({
           participanteId: participante.id,
-          participanteNome: participante.nome,
+          participanteNome: nomeCompleto(participante),
           telefone: formattedPhone,
           link,
           status: "error",

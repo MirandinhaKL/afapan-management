@@ -4,11 +4,13 @@ import { Badge } from "@/components/ui/badge"
 import { Plus, CircleUser, UserPlus, Trash2, Group, CalendarRange } from "lucide-react"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { type Participante, type TurmaCompostagem } from "@/lib/mock-data"
+import { ImportarParticipantesDialog } from "@/components/dialogs/importar-participantes-dialog"
 
 interface TurmasTabProps {
   turmasCompostagem: (TurmaCompostagem & { participantes: Participante[]; totalParticipantes?: number })[]
   loading: boolean
   onCreateTurma: () => void
+  onImported: (turma: string) => Promise<void>
   onDeleteTurma: (turmaId: string) => void
   onOpenTurmaDetail: (turma: TurmaCompostagem & { participantes: Participante[]; totalParticipantes?: number }) => void
   onOpenMonitoramento: (turma: TurmaCompostagem & { participantes: Participante[]; totalParticipantes?: number }) => void
@@ -19,6 +21,7 @@ export function TurmasTab({
   turmasCompostagem,
   loading,
   onCreateTurma,
+  onImported,
   onDeleteTurma,
   onOpenTurmaDetail,
   onOpenMonitoramento,
@@ -37,10 +40,13 @@ export function TurmasTab({
             Organize participantes em turmas para atividades de compostagem
           </p>
         </div>
-        <Button onClick={onCreateTurma}>
-          <Plus size={16} className="mr-2" />
-          Nova Turma
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <ImportarParticipantesDialog turmas={turmasOrdenadas} onImported={onImported} />
+          <Button onClick={onCreateTurma}>
+            <Plus size={16} className="mr-2" />
+            Nova Turma
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

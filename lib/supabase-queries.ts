@@ -1,10 +1,12 @@
 import { supabase } from "./supabase"
+import { nomeCompleto } from "./compostagem-importacao"
 import type { User, Participante as MockParticipante, RegistroBalde, Turma, TurmaCompostagem, ParticipanteTurma } from "./mock-data"
 
 // Tipos para participantes e baldes
 export interface Participante {
   id: string
   nome: string
+  sobrenome?: string | null
   email: string
   telefone?: string
   turma: string
@@ -403,9 +405,15 @@ export async function fetchParticipantesWithBaldes(turmaId?: string): Promise<Mo
     // Combinar participantes com baldes e turma
     const participantesComBaldes: MockParticipante[] = participantes?.map(p => ({
       id: p.id,
-      nome: p.nome,
+      nome: nomeCompleto(p),
+      sobrenome: p.sobrenome,
+      endereco: p.endereco,
+      bairro: p.bairro,
+      cidade: p.cidade,
+      estado: p.estado,
+      cep: p.cep,
       telefone: p.telefone || '',
-      email: p.email,
+      email: p.email ?? '',
       turma: turmaNomeByParticipanteId[p.id] || p.turma || '',
       baldes: baldesPorParticipante?.[p.id] || [],
       ativo: p.ativo
@@ -1067,7 +1075,7 @@ export async function fetchParticipanteBucketLinkByToken(token: string): Promise
       .from('participante_bucket_links')
       .select(`
         *,
-        participantes:participante_id (id, nome, email, telefone),
+        participantes:participante_id (id, nome, sobrenome, email, telefone),
         turma_bucket_periods:turma_bucket_period_id (
           id,
           periodo_label,
@@ -1115,7 +1123,7 @@ export async function generateBucketLinksForPeriod(
     // Buscar todos os participantes ativos da turma
     const { data: participantesTurma, error: errorPT } = await supabase
       .from('participantes_turmas')
-      .select('participante_id, participantes(id, nome, telefone)')
+      .select('participante_id, participantes(id, nome, sobrenome, telefone)')
       .eq('turma_id', turmaId)
 
     if (errorPT) throw errorPT
@@ -1131,7 +1139,7 @@ export async function generateBucketLinksForPeriod(
       const participante = Array.isArray(rel.participantes)
         ? rel.participantes[0]
         : rel.participantes
-      const participanteNome = (participante as any)?.nome || 'Participante'
+      const participanteNome = nomeCompleto(participante) || 'Participante'
       const telefone = (participante as any)?.telefone || ''
 
       // Verificar se já existe um link ativo para este participante e período
@@ -1202,7 +1210,7 @@ export async function fetchBucketLinksForPeriod(
       .from('participante_bucket_links')
       .select(`
         *,
-        participantes:participante_id (id, nome)
+        participantes:participante_id (id, nome, sobrenome)
       `)
       .eq('turma_bucket_period_id', turmaBucketPeriodId)
       .order('criado_em', { ascending: false })
@@ -1238,7 +1246,7 @@ export async function fetchWhatsAppRecipientsForTurma(
   try {
     const { data, error } = await supabase
       .from('participantes_turmas')
-      .select('participante_id, participantes(id, nome, telefone, ativo)')
+      .select('participante_id, participantes(id, nome, sobrenome, telefone, ativo)')
       .eq('turma_id', turmaId)
 
     if (error) throw error
@@ -1251,7 +1259,7 @@ export async function fetchWhatsAppRecipientsForTurma(
 
         return {
           participanteId: rel.participante_id,
-          participanteNome: participante?.nome || 'Participante',
+          participanteNome: nomeCompleto(participante) || 'Participante',
           telefone: participante?.telefone || '',
           ativo: participante?.ativo,
         }

@@ -1,5 +1,7 @@
 "use client"
 
+import { nomeCompleto } from "@/lib/compostagem-importacao"
+
 import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -22,6 +24,7 @@ interface LinkData {
   participantes?: {
     id: string
     nome: string
+    sobrenome?: string | null
     email: string
     telefone?: string
   }
@@ -156,7 +159,7 @@ export default function BucketForm() {
     )
   }
 
-  const participanteName = (linkData?.participantes as any)?.nome || "Participante"
+  const participanteName = nomeCompleto(linkData?.participantes) || "Participante"
   const periodRange = formatBucketPeriodRange(
     linkData?.turma_bucket_periods?.data_inicio,
     linkData?.turma_bucket_periods?.data_fim
